@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog_Triptable</class>
+ <widget class="QDialog" name="Dialog_Triptable">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>620</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>agentPlans (Trip List -&gt; Trip Table)</string>
+  </property>
+  <layout class="QHBoxLayout" name="topLayout">
+   <item>
+    <layout class="QVBoxLayout" name="leftColumn">
+     <item>
+      <widget class="QFrame" name="frame">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>TSM Dir</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" colspan="3">
+         <widget class="QLineEdit" name="lineEdit_TSMLoc"/>
+        </item>
+        <item row="0" column="4">
+         <widget class="QPushButton" name="pushButton_ModelDir">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Scenario  Dir</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" colspan="3">
+         <widget class="QLineEdit" name="lineEdit_SCENLoc"/>
+        </item>
+        <item row="1" column="4">
+         <widget class="QPushButton" name="pushButton_ScenDir">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Scenario Year</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1" colspan="3">
+         <widget class="QComboBox" name="comboBox_Year"/>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Feedback Loop</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1" colspan="3">
+         <widget class="QComboBox" name="comboBox_Feedback"/>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_Resolution">
+          <property name="text">
+           <string>Output Resolution (min)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1" colspan="3">
+         <widget class="QComboBox" name="comboBox_Resolution">
+          <property name="toolTip">
+           <string>Trip-list output time bin. 30 -&gt; :00/:30, 15 -&gt; :00/:15/:30/:45. LDT and truck sources are daily. NOTE: 15-min roughly doubles the trip count and memory vs 30-min.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_eltod">
+          <property name="text">
+           <string>ELToD (quasi-DTA)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1" colspan="3">
+         <widget class="QPushButton" name="pushButton_ELToDTable">
+          <property name="toolTip">
+           <string>Build the ELToD trip TABLE (hourly) for the ELToD (quasi-DTA) assignment, using this same agentPlans tool. The trip list resolution above does not apply -- the ELToD table is hourly.</string>
+          </property>
+          <property name="text">
+           <string>Build trip table (hourly)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Trip Table</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1" colspan="3">
+         <widget class="QLineEdit" name="lineEdit_triptable"/>
+        </item>
+        <item row="6" column="4">
+         <widget class="QPushButton" name="browse_TripTable">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0">
+         <widget class="QPushButton" name="pushButton_RunTT">
+          <property name="text">
+           <string>Run</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="3" colspan="2">
+         <widget class="QDialogButtonBox" name="button_SaveCancel">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="standardButtons">
+           <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_Inputs">
+       <property name="title">
+        <string>Input files (defaults from TSM / Scenario dirs; override individually)</string>
+       </property>
+       <layout class="QVBoxLayout" name="inputsLayout">
+        <item>
+         <widget class="QScrollArea" name="scrollArea_Inputs">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <layout class="QGridLayout" name="gridLayout_Inputs"/>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_ResetInputs">
+          <property name="text">
+           <string>Reset paths to defaults</string>
+          </property>
+          <property name="toolTip">
+           <string>Recompute every input path from the current TSM/Scenario dirs (discards manual overrides).</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_MSR">
+       <property name="title">
+        <string>MSR — Multi-Spatial Resolution disaggregation (optional)</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_MSR">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_MSRSubarea">
+          <property name="text">
+           <string>MSR Subarea</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEdit_MSRSubarea"/>
+        </item>
+        <item row="0" column="2">
+         <widget class="QPushButton" name="browse_MSRSubarea">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_MSRLookup">
+          <property name="text">
+           <string>MSR Lookup</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="lineEdit_MSRLookup"/>
+        </item>
+        <item row="1" column="2">
+         <widget class="QPushButton" name="browse_MSRLookup">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_Help">
+     <property name="title">
+      <string>How the trip list is built (agentPlans)</string>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>440</width>
+       <height>0</height>
+      </size>
+     </property>
+     <layout class="QVBoxLayout" name="helpLayout">
+      <item>
+       <widget class="QTextBrowser" name="textBrowser_Help">
+        <property name="openExternalLinks">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

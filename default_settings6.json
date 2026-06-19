@@ -1,0 +1,15 @@
+{
+    "plugin_dir": "C:/Users/kn815vs/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/tsm_panel",
+    "synHH_file": "synthetic_hh.csv",
+    "synPer_file": "synthetic_per.csv",
+    "landuse_layer": "TSMv5_MPO_full_2035",
+    "jdk_path": "C:\\\\Progra~1\\\\Java\\\\jdk-1.8",
+    "rscript_path": "C:/Program Files/R/R-4.3.2/bin/Rscript.exe",
+    "tsm_location": "C:\\TSM_NextGen_v5",
+    "num_processors": "60",
+    "scenarioName": "TSMv5_2023",
+    "scenarioYear": "2023",
+    "scenarioDir": "C:/TSM_NextGen_v5/Base/TSMv5_default",
+    "line_layer": "TSM_Link_revised_Count",
+    "node_layer": "TSM_Node"
+}

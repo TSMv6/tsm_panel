@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>447</width>
+    <height>513</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QGroupBox" name="groupBox_2">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>180</y>
+     <width>411</width>
+     <height>151</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Scenario Settings</string>
+   </property>
+   <widget class="QTableWidget" name="tableWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>20</y>
+      <width>401</width>
+      <height>121</height>
+     </rect>
+    </property>
+    <row>
+     <property name="text">
+      <string>Scenario Name</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Scenario Year</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Network Year</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Scenario Description</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>GeoMaster Link Layer</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>GeoMaster Node Layer</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>SE Data Polygon Layer</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Scenario Directory (output)</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>checkbox TSM Assignment</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>New Row</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>checkbox Full Model</string>
+     </property>
+    </row>
+    <column>
+     <property name="text">
+      <string>Key</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Value</string>
+     </property>
+    </column>
+    <item row="0" column="0">
+     <property name="text">
+      <string>scenarioName</string>
+     </property>
+    </item>
+    <item row="0" column="1">
+     <property name="text">
+      <string>C:\Progra~1\Java\jdk-22</string>
+     </property>
+    </item>
+    <item row="1" column="0">
+     <property name="text">
+      <string>scenarioYear</string>
+     </property>
+    </item>
+    <item row="1" column="1">
+     <property name="text">
+      <string>C:\TSM_NextGen_v5</string>
+     </property>
+    </item>
+    <item row="2" column="0">
+     <property name="text">
+      <string>netYear</string>
+     </property>
+    </item>
+    <item row="2" column="1">
+     <property name="text">
+      <string>C:/Program Files/R/R-4.3.2/bin/Rscript.exe</string>
+     </property>
+    </item>
+    <item row="3" column="0">
+     <property name="text">
+      <string>scenarioDescription</string>
+     </property>
+    </item>
+    <item row="4" column="0">
+     <property name="text">
+      <string>link_layer</string>
+     </property>
+    </item>
+    <item row="5" column="0">
+     <property name="text">
+      <string>node_layer</string>
+     </property>
+    </item>
+    <item row="6" column="0">
+     <property name="text">
+      <string>tsm_landuse_path</string>
+     </property>
+    </item>
+    <item row="7" column="0">
+     <property name="text">
+      <string>scenarioDir</string>
+     </property>
+    </item>
+    <item row="8" column="0">
+     <property name="text">
+      <string/>
+     </property>
+    </item>
+   </widget>
+  </widget>
+  <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>20</y>
+     <width>401</width>
+     <height>141</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="title">
+    <string>General Settings</string>
+   </property>
+   <property name="collapsed">
+    <bool>false</bool>
+   </property>
+   <property name="scrollOnExpand">
+    <bool>true</bool>
+   </property>
+   <property name="saveCollapsedState">
+    <bool>true</bool>
+   </property>
+   <widget class="QTableWidget" name="tableWidget">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>20</y>
+      <width>381</width>
+      <height>111</height>
+     </rect>
+    </property>
+    <property name="autoScroll">
+     <bool>true</bool>
+    </property>
+    <row>
+     <property name="text">
+      <string>JAVA Path</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>TSM Location</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>RScript Path</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Num Processors</string>
+     </property>
+    </row>
+    <column>
+     <property name="text">
+      <string>Key</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Value</string>
+     </property>
+    </column>
+    <item row="0" column="0">
+     <property name="text">
+      <string>jdk_path</string>
+     </property>
+    </item>
+    <item row="0" column="1">
+     <property name="text">
+      <string>C:\Progra~1\Java\jdk-22</string>
+     </property>
+    </item>
+    <item row="1" column="0">
+     <property name="text">
+      <string>tsm_location</string>
+     </property>
+    </item>
+    <item row="1" column="1">
+     <property name="text">
+      <string>C:\TSM_NextGen_v5</string>
+     </property>
+    </item>
+    <item row="2" column="0">
+     <property name="text">
+      <string>rscript_path</string>
+     </property>
+    </item>
+    <item row="2" column="1">
+     <property name="text">
+      <string>C:/Program Files/R/R-4.3.2/bin/Rscript.exe</string>
+     </property>
+    </item>
+    <item row="3" column="0">
+     <property name="text">
+      <string>num_processors</string>
+     </property>
+    </item>
+    <item row="3" column="1">
+     <property name="text">
+      <string>60</string>
+     </property>
+    </item>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

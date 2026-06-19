@@ -1,0 +1,73 @@
+Key,Value
+plugin_dir,C:/Users/kn815vs/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/tsm_panel
+synHH_file,C:/TSM_NextGen_v5/Base/TSMv5_default/synthetic_households_35.csv
+synPer_file,C:/TSM_NextGen_v5/Base/TSMv5_default/synthetic_persons_35.csv
+landuse_layer,TSMv5_MPO_full_2035
+jdk_path,C:\Progra~1\Java\jdk-22
+rscript_path,C:/Program Files/R/R-4.3.2/bin/Rscript.exe
+tsm_location,C:\TSM_NextGen_v5
+num_processors,60
+scenarioName,TSMv5_2023
+scenarioYear,2023
+scenarioDir,C:/TSM_NextGen_v5/Base/TSMv5_default
+line_layer,TSM_Link_revised_Count
+node_layer,TSM_Node
+runPopsim_incrementally,True
+refSynHH_file,C:/TSM_NextGen_v5/Base/TSMv5_default/synthetic_households_23.csv
+refSynPer_file,C:/TSM_NextGen_v5/Base/TSMv5_default/synthetic_persons_23.csv
+ref_landuse_layer,TSMv5_MPO_full_2023
+ref_landuse_layer_path,M:/Models/StateWide/TSM_NextGen/900 CAD GIS Modeling/940 Modeling/working_dir/SE_Data/v5.0/v1/TSMv5_MPO_full_2023.GPKG
+landuse_layer_path,M:/Models/StateWide/TSM_NextGen/900 CAD GIS Modeling/940 Modeling/working_dir/SE_Data/v5.0/v1/TSMv5_MPO_full_2035.GPKG
+str_bool_run_incremental,TRUE
+r_exe_path,C:/Program Files/R/R-4.3.2/bin/Rscript.exe
+link_layer_name,TSM_Link
+node_layer_name,TSM_Node
+triptable_file,C:/TSM_NextGen_v5/Base/TSMv5_default/ELTOD_tt_HourClock.csv
+volume_file,C:/TSM_NextGen_v5/Base/TSMv5_default/TSM_Assignment_Volume.csv
+max_iterations,10
+SLOuputDir,
+SL_AB1,A1 - B1
+SL_AB2,A2 - B2
+runSelectLinkAnalysis,False
+runSelectLinkTT,False
+OutSL_TT,
+SL_TT_AB1,
+SL_TT_AB2,
+Subarea_boundaryList,C:/TSM_NextGen_v5/Base/TSMv5_default/Corridor_Boundary_LinkList.csv
+Subarea_maxZones,238
+Subarea_TT_out,C:/TSM_NextGen_v5/Base/TSMv5_default/Subarea_TripTable.csv
+runSubExtTT,True
+runTurnMove,False
+TurnMove_NodeList,
+TurnMove_OutDir,
+skim,C:/TSM_NextGen_v5/Base/TSMv5_default/AM_Skim.omx
+telework_share,15%
+SDT_res_OutDir,C:/TSM_NextGen_v5/Base/TSMv5_default
+visitor_skim,C:/TSM_NextGen_v5/Base/TSMv5_default/MD_Skim.omx
+SDT_visitor_OutDir,C:/TSM_NextGen_v5/Base/TSMv5_default
+LDT_resident_InputDir,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH
+LDT_resident_RoadSkim,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/TSMv4_roadLOS.omx
+LDT_resident_RailSkim,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/TSMv4_railLOS.omx
+LDT_resident_AirSkim,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/airLOS.dat
+LDT_resident_Landuse,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/2023_landuse.dat
+LDT_resident_SynHH,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/FL_ldt_syn_households_23.dat
+LDT_resident_OutDir,C:/TSM_NextGen_v5/Base/TSMv5_default
+LDT_resident_nHH,9092448
+LDT_visitor_InputDir,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH
+LDT_visitor_RoadSkim,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/TSMv4_roadLOS.omx
+LDT_visitor_RailSkim,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/TSMv4_railLOS.omx
+LDT_visitor_AirSkim,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/airLOS.dat
+LDT_visitor_Landuse,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/2023_landuse.dat
+LDT_visitor_SynHH,C:/TSM_NextGen_v5/Inputs/LDT_Skims_LU_SynHH/OS_ldt_syn_households_23.dat
+LDT_visitor_OutDir,C:/TSM_NextGen_v5/Base/TSMv5_default
+link_layer,TSM_Link
+output_format,OMX
+time_coeff,1.631
+cost_coeff,7.15
+skim_file,C:/TSM_NextGen_v5/Base/TSMv5_default/skim3.omx
+scenarioDescription,This is my test
+dist_coeff,0.9
+tsm_landuse_path,C:/TSM_NextGen_v5/Base/TSMv5_default/tsm_landuse.csv
+rjourney_exe_path,C:\TSM_NextGen_v5\Apps\rJourney\rjourney_1_7.exe
+LDTExtCountYear,2023
+LDTFutureYear,

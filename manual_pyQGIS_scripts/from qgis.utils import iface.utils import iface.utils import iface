@@ -1,0 +1,360 @@
+from qgis.utils import iface
+from PyQt5.QtCore import QPoint 
+
+# Change QGIS Title & Icon
+title = iface.mainWindow().windowTitle()
+new_title = title.replace(title, 'TSM')
+iface.mainWindow().setWindowTitle(new_title)
+
+import os
+icon = 'TPK-mainline-logo.png'
+dir = 'C:/Users/kn815vs/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/tsm_netmanager_plugin'
+icon_path = os.path.join(dir, icon)
+iface.mainWindow().setWindowIcon(QIcon(icon_path))
+
+# Function to add weblink
+
+def open_website():
+    webbrowser.open('https://rawcdn.githack.com/4Step/NextGen_StoryTelling/81080ccbe072f7c2c4f408c1236f94fd97ed5d52/index.html')
+
+website_action = QAction('TSM Overview')
+website_action.triggered.connect(open_website)
+iface.helpMenu().addSeparator()
+iface.helpMenu().addAction(website_action)
+
+def open_website2():
+    webbrowser.open('https://chatgpt.com/g/g-p-67db57d314d08191aab1ac2ecdd0e257-pyqgis/project')
+
+website_action = QAction('TSM AI Chat')
+website_action.triggered.connect(open_website2)
+iface.helpMenu().addSeparator()
+iface.helpMenu().addAction(website_action)
+
+
+
+# Accessing from outside the pyqgis console:
+from qgis.core import (
+    QgsProject,
+    QgsVectorLayer,
+)
+
+
+# Get layers
+layers = QgsProject.instance().mapLayers()
+print(layers)
+
+
+# list of layer names using list comprehension
+l = [layer.name() for layer in QgsProject.instance().mapLayers().values()]
+# dictionary with key = layer name and value = layer object
+layers_list = {}
+for l in QgsProject.instance().mapLayers().values():
+  layers_list[l.name()] = l
+print(layers_list)
+
+
+
+# Print list of fields
+node_layer = QgsProject.instance().mapLayersByName("net_node — nextgen_v9_nodes")[0]
+line_layer = QgsProject.instance().mapLayersByName("net_link — nextgen_v9_geomaster")[0]
+
+field_list = {}
+for field in node_layer.fields():
+    print(field.name(), field.typeName())
+    field_list[field.name()] = 'None'
+
+
+# Loop over features
+# "layer" is a QgsVectorLayer instance
+c
+features = layer.getFeatures()
+
+for feature in features:
+    # retrieve every feature with its geometry and attributes
+    print("Feature ID: ", feature.id())
+    # fetch geometry
+    # show some information about the feature geometry
+    geom = feature.geometry()
+    geomSingleType = QgsWkbTypes.isSingleType(geom.wkbType())
+    if geom.type() == QgsWkbTypes.PointGeometry:
+        # the geometry type can be of single or multi type
+        if geomSingleType:
+            x = geom.asPoint()
+            print("Point: ", x)
+        else:
+            x = geom.asMultiPoint()
+            print("MultiPoint: ", x)
+    elif geom.type() == QgsWkbTypes.LineGeometry:
+        if geomSingleType:
+            x = geom.asPolyline()
+            print("Line: ", x, "length: ", geom.length())
+        else:
+            x = geom.asMultiPolyline()
+            print("MultiLine: ", x, "length: ", geom.length())
+    elif geom.type() == QgsWkbTypes.PolygonGeometry:
+        if geomSingleType:
+            x = geom.asPolygon()
+            print("Polygon: ", x, "Area: ", geom.area())
+        else:
+            x = geom.asMultiPolygon()
+            print("MultiPolygon: ", x, "Area: ", geom.area())
+    else:
+        print("Unknown or invalid geometry")
+    # fetch attributes
+    attrs = feature.attributes()
+    # attrs is a list. It contains all the attribute values of this feature
+    print(attrs)
+    # for this test only print the first feature
+    break
+
+
+
+# select link by expression
+layer = iface.activeLayer()
+layer.selectAll() 
+layer.selectByExpression('"LINK_ID"=103177', QgsVectorLayer.SetSelection)
+
+layer.removeSelection()
+
+# iterate over selected features and get attributes
+selection = layer.selectedFeatures()
+for feature in selection:
+    attrs = feature.attributes()
+    print(attrs)
+    print(feature['LINK_ID'],(feature['A']), (feature['B']))
+
+
+# filter out features based on bbox
+areaOfInterest = QgsRectangle(450290,400520, 450750,400780)
+request = QgsFeatureRequest().setFilterRect(areaOfInterest)
+for feature in layer.getFeatures(request):
+    # do whatever you need with the feature
+    pass
+
+request.setSubsetOfAttributes(['LINK_ID','A', 'B'],layer.fields())
+
+# Refersh map canvas
+if iface.mapCanvas().isCachingEnabled():
+    layer.triggerRepaint()
+else:
+    iface.mapCanvas().refresh()
+
+# Check if vector data cand be edited (add, delete functionality)
+caps = layer.dataProvider().capabilities()
+if caps & QgsVectorDataProvider.AddFeatures:
+    feat = QgsFeature(layer.fields())
+    feat.setAttributes([0, 'hello'])
+    # Or set a single attribute by key or by index:
+    feat.setAttribute('name', 'hello')
+    feat.setAttribute(0, 'hello')
+    feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(123, 456)))
+    (res, outFeats) = layer.dataProvider().addFeatures([feat])
+
+
+layer = iface.activeLayer()
+feat = QgsFeature(layer.fields())
+feat.setAttributes(['N', 907672])
+feat.setAttributes(['type', 'qgis_add'])
+feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(561446, 2848775)))
+(res, outFeats) = layer.dataProvider().addFeatures([feat])
+
+# update feature attributes and geometries
+fid = 100   # ID of the feature we will modify
+if caps & QgsVectorDataProvider.ChangeAttributeValues:
+    attrs = { 0 : "hello", 1 : 123 }
+    layer.dataProvider().changeAttributeValues({ fid : attrs })
+
+if caps & QgsVectorDataProvider.ChangeGeometries:
+    geom = QgsGeometry.fromPointXY(QgsPointXY(111,222))
+    layer.dataProvider().changeGeometryValues({ fid : geom })
+
+
+ # select layer and get current fields
+layer = iface.activeLayer()
+layer = QgsProject.instance().mapLayersByName("net_node — nextgen_v9_nodes")[0]
+feat = QgsFeature(layer.fields())
+feat.setAttributes(['N', 907672])
+feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(561446, 2848775)))
+(res, outFeats) = layer.dataProvider().addFeatures([feat])
+iface.mapCanvas().refresh()
+
+selection = layer.selectedFeatures()
+for feature in selection:
+    attrs = feature.attributes()
+    print(attrs)
+
+
+# Delete features
+# select node
+layer = QgsProject.instance().mapLayersByName("net_node — nextgen_v9_nodes")[0]
+sel_node = layer.selectByExpression('"N"= 907672', QgsVectorLayer.SetSelection) 
+for feature in sel_node:
+    attrs = feature.attributes()
+    print(attrs)
+
+    res = layer.dataProvider().deleteFeatures([feature['fid']])
+
+ct = canvas.getCoordinateTransform()
+mouse_position = QPoint(100, 100)
+map_coordinates = ct.toMapCoordinates(mouse_position)
+print(f"Map coordinates: {map_coordinates.x()}, {map_coordinates.y()}")
+
+#-----------------------------------------------------
+def getFieldName(layer):
+    field_list = {}
+    for field in layer.fields():
+        field_list[field.name()] = field.typeName()
+    return(field_list)
+
+def getMaxNum(layer, field_name):
+    all_features = layer.getFeatures()
+    max_id = 0
+    for feature in all_features:
+        attrs = feature.attributes()
+        if feature[field_name]> max_id:
+            max_id = feature[field_name]
+    return(max_id)
+
+def find_field_index(field_dict, field_name):
+    fp = list(field_list.keys()).index(field_name)
+    return(fp)
+
+def addNodes(layer, node_xy_list):
+    # Get fid and node field positions
+    field_dict = getFieldName(layer)
+    #print(field_dict)
+    fp_fid = find_field_index(field_dict, 'fid')
+    fp_N = find_field_index(field_dict, 'N')
+    fp_type = find_field_index(field_dict, 'type')
+
+    for x, y in node_xy_list:
+        attr_list  = [0]*(fp_type+1)
+        attr_list[fp_fid] = getMaxNum(layer, 'fid')+ 1
+        attr_list[fp_N] = getMaxNum(layer, 'N')+ 1
+        attr_list[fp_type] = 'new'
+
+        # Add new feature
+        feat = QgsFeature(layer.fields())
+        feat.setAttributes(attr_list)
+        feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+        return(layer.dataProvider().addFeatures([feat]))
+
+def removeDuplicatePoints(points):
+    unique_points = []
+
+
+def getLineEndPoints(layer, selection):
+    line_points = []
+    for feature in selection:
+        geom = feature.geometry()
+        start_point = geom.vertexAt(0)
+        end_point = geom.vertexAt(geom.constGet().nCoordinates() - 1)
+        print(feature['LINK_ID'], start_point, end_point)
+        line_points.append(start_point)
+        line_points.append(end_point)
+    return(c)
+
+
+# Define bbox based on selected links
+def getCanvasExtents():
+    canvas = iface.mapCanvas()
+    cv_extent = iface.mapCanvas().extent()
+    return(cv_extent)
+
+# get nodes within bbox window
+def getNodesWithinExtents(layer, field_name):
+    cv_extent = getCanvasExtents()
+    request = QgsFeatureRequest().setFilterRect(cv_extent)
+    windowNodes = node_layer.getFeatures(request)
+    windowNodeXY = []
+    windowNodeAttr = []
+    for feature in windowNodes:
+        #print(feature['N'])
+        windowNodeAttr.append(feature['N'])
+        geom = feature.geometry()
+        pt = geom.asPoint()
+        # print(pt)
+        windowNodeXY.append(pt)
+    return(windowNodeXY, windowNodeAttr)
+
+# First split the links (selection or select the ones to update)
+# Update LINK_ID
+# create the end points of the split links (vetex) DONE
+# check in the node layer if they exist (subset search close to link vertices)
+#   - if not create addNodes
+# Update A, B from Node N
+
+link_layer = QgsProject.instance().mapLayersByName("net_link — nextgen_v9_geomaster")[0]
+selection = link_layer.selectedFeatures()
+maxLinkID = getMaxNum(link_layer, "LINK_ID")
+line_points = getLineEndPoints(link_layer, selection)
+
+node_layer = QgsProject.instance().mapLayersByName("net_node — nextgen_v9_nodes")[0]
+(windowNodeXY, windowNodeAttr) = getNodesWithinExtents(node_layer, 'N')
+
+
+
+node_xy_list = [(561446, 2848765), (561446, 2848975), (561446, 2848785)] # Review line_points for existing nodes 
+
+(res, outFeats) = addNodes(node_layer, node_xy_list) 
+iface.mapCanvas().refresh()
+
+
+#--------------------
+# Get screen cooridnates
+from qgis.gui import QgsMapTool
+from qgis.core import QgsPointXY
+
+class MouseCoordinatesTool(QgsMapTool):
+    def __init__(self, canvas):
+        self.canvas = canvas
+        QgsMapTool.__init__(self, self.canvas)
+
+    def canvasMoveEvent(self, event):
+        #Get mouse position in pixel coordinates
+        screen_point = event.pos()
+        #Transform screen coordinates to map coordinates
+        map_point = self.canvas.getCoordinateTransform().toMapCoordinates(screen_point)
+        print(f"Mouse coordinates: Screen - X: {screen_point.x()}, Y: {screen_point.y()} | Map - X: {map_point.x()}, Y: {map_point.y()}")
+
+    def deactivate(self):
+        super().deactivate()
+        print("Tool deactivated")
+
+
+# Get the active map canvas
+canvas = iface.mapCanvas()
+
+# Create and activate the tool
+mouse_tool = MouseCoordinatesTool(canvas)
+canvas.setMapTool(mouse_tool)
+
+mouse_tool.deactivate()
+
+
+#--------------------
+for feature in selection:
+    attrs = feature.attributes()
+    print(attrs)
+
+def getCanvasExtents():
+    canvas = iface.mapCanvas()
+    cv_extent = iface.mapCanvas().extent()
+    return(cv_extent)
+
+#--------------------
+# Debug layer fields
+def getFieldName(layer):
+    field_list = {}
+    for field in layer.fields():
+        field_list[field.name()] = field.typeName()
+    return(field_list)
+
+def find_field_index(field_dict, field_name):
+    fp = list(field_dict.keys()).index(field_name)
+    return(fp)
+
+line_layer = QgsProject.instance().mapLayersByName('Subarea_Link')[0]
+field_dict = getFieldName(line_layer)
+
+find_field_index(field_dict, 'LINK_ID')

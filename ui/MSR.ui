@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog_MSR</class>
+ <widget class="QDialog" name="Dialog_MSR">
+  <property name="windowModality">
+   <enum>Qt::WindowModal</enum>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>896</width>
+    <height>554</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MSR Subzones</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout_5">
+   <item>
+    <widget class="QFrame" name="frame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_6">
+      <item row="0" column="0">
+       <layout class="QGridLayout" name="gridLayout_5">
+        <item row="0" column="0">
+         <widget class="QWidget" name="widget" native="true">
+          <layout class="QGridLayout" name="gridLayout_4">
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_11">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Parent Zone Outputs</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <layout class="QGridLayout" name="gridLayout">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>Subzone Land use layer</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QComboBox" name="comboBox_Landuse"/>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_9">
+               <property name="text">
+                <string>Subzone Link Layer</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="comboBox_Landuse_2"/>
+             </item>
+             <item row="2" column="1">
+              <widget class="QComboBox" name="comboBox_Landuse_3"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>Subzone Link Layer</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_12">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Subzone Inputs (Compute Impedance)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <layout class="QGridLayout" name="gridLayout_2">
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineEdit_SynHH"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Syn Per File</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Syn HH File</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QPushButton" name="browse_Skim">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLineEdit" name="lineEdit_SynPer"/>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLineEdit" name="lineEdit_Skim"/>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="browse_SynHH">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Trip List File</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QPushButton" name="browse_SynPer">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="7" column="0">
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>Output Directory</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineEdit_OutDir"/>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="browse_SDTOut">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>Subzone Skim File</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLineEdit" name="lineEdit_Skim_2"/>
+             </item>
+             <item row="1" column="2">
+              <widget class="QPushButton" name="browse_Skim_2">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="text">
+                <string>MSR Trip List File</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLineEdit" name="lineEdit_Skim_3"/>
+             </item>
+             <item row="2" column="2">
+              <widget class="QPushButton" name="browse_Skim_3">
+               <property name="text">
+                <string>...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="9" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <widget class="QPushButton" name="Run_MSR">
+               <property name="text">
+                <string>Run MSR</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QDialogButtonBox" name="button_OkCancel">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="standardButtons">
+                <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="5" column="0">
+            <widget class="Line" name="line">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QLabel" name="label_10">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Outputs</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="Line" name="line_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0">
+            <widget class="Line" name="line_3">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QPlainTextEdit" name="plainTextEdit">
+          <property name="plainText">
+           <string>Land-use layer:
+SE data is maintained at the highest resolution (regional planning model level) with 26,000 zones to allow portablity between TSM and other egional models.  However the model is run at the TSM level with ~8700 zones for run timeand resource efficiency.  This layer is regional planning level and during the run, prepratory steps are run to aggregate the data to TSM level (Yes, TSM zonal strucute is desiged to nest quite well with regional model zone structure and is updated on annual basis).
+
+ Synthetic Household &amp; Population:
+Outputs of POPSIM which reflect the Land-use layer.  This is assumed to go with the land-use file (Households and Population/ GQ).
+
+Skim File:
+Produced from &quot;Skimmy&quot; Step.  DISTANCE table is required.  It is possible to expose the &quot;DISTANCE&quot; property where use many provide other vairables like  distance from congested skims or something of that nature,  however,  the user needs to edit UEC's (Excel spreadhseets &gt; data tab) and thus it is decided to no expose &quot;DISTANCE&quot; table for user control.  See   model API for details on thsi control. 
+
+Interim outputs for review:
+out_sizeTerms &lt;- (&quot;output/subarea_taz_sizeTerms_&quot;, year,&quot;.csv&quot;)
+out_msr_subarea &lt;- (&quot;output/subarea_msr_triplist_&quot;,year,&quot;.csv.gz&quot;)
+out_msr_subarea_rest &lt;- (&quot;output/subarea_msr_triplist_all_&quot;, year,&quot;.csv.gz&quot;)
+out_msr_intra_to_interzonals &lt;- (&quot;output/subarea_intra_to_interzonals_converted_trips_&quot;, year,&quot;.csv&quot;)
+
+Output:
+# 1. statewide Original trip table
+output_hourly             &lt;- (&quot;output/ELTOD_tt_hourly_&quot;, year,&quot;.csv.gz&quot;)  
+# 2. subset Original trip table      
+output_hourly_Subset      &lt;- (&quot;output/PC_Hourly_tt_&quot;, year,&quot;.csv&quot;)  
+# 3. statewide MSR trip table    
+output_hourly_MSR         &lt;- (&quot;output/ELToD_MSR_Hourly_tt_&quot;, year,&quot;.csv&quot;) 
+# 4. subset MSR trip table
+output_hourly_MSR_Subset  &lt;- paste0(&quot;output/PC_MSR_Hourly_tt_&quot;, year,&quot;.csv&quot;)  </string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

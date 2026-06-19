@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>TSM_GUI_Banner.png</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,125 @@
+####################################################################
+# PopulationSim Properties
+####################################################################
+
+
+# Algorithm/Software Configuration
+# ------------------------------------------------------------------
+INTEGERIZE_WITH_BACKSTOPPED_CONTROLS: True
+SUB_BALANCE_WITH_FLOAT_SEED_WEIGHTS: False
+GROUP_BY_INCIDENCE_SIGNATURE: True
+USE_SIMUL_INTEGERIZER: True
+USE_CVXPY: False
+max_expansion_factor: 30
+
+
+# Geographic Settings
+# ------------------------------------------------------------------
+geographies: [REGION, PUMA, TAZ]
+seed_geography: PUMA
+
+
+# Tracing
+# ------------------------------------------------------------------
+trace_geography:
+    TAZ: 1
+
+  
+# Data Directory
+# ------------------------------------------------------------------
+data_dir: {tsm_loc}\PopSim\Florida\Setup\data
+
+
+# Input Data Tables
+# ------------------------------------------------------------------
+# input_pre_processor input_table_list
+input_table_list:
+  - tablename: households
+    filename : seed_households_GQ_Y5_2022_updatePUMA.csv
+    index_col: hh_id
+  - tablename: persons
+    filename : seed_persons_GQ_Y5_2022_1D_NAICS_OCC.csv
+    column_map:
+      SPORDER: per_num
+    # drop mixed type fields that appear to have been incorrectly generated
+  - tablename: geo_cross_walk
+    filename : TSM_GQ_geo_Crosswalk.csv
+  - tablename: TAZ_control_data  
+    filename : SE_data.csv
+ 
+
+
+# Reserved Column Names
+# ------------------------------------------------------------------
+household_weight_col: GQWGTP
+household_id_col: hh_id
+total_hh_control: num_gq
+
+
+# Control Specification File Name
+# ------------------------------------------------------------------
+control_file_name: controls.csv
+
+
+# Output Tables
+# ------------------------------------------------------------------
+# output_tables can specify either a list of output tables to include or to skip
+# if neither is specified, then no tables will be written
+
+output_tables:
+  action: include
+  tables:
+    - summary_MAZ
+    - summary_TAZ
+    - summary_MAZ_PUMA
+    - summary_TAZ_PUMA
+    - expanded_household_ids
+    - summary_REGION
+    - summary_hh_weights
+    - summary_MAZ_aggregate
+    - summary_TAZ_aggregate
+
+
+# Synthetic Population Output Specification
+# ------------------------------------------------------------------
+#
+
+output_synthetic_population:
+  household_id: household_id
+  households:
+    filename: synthetic_households.csv
+    columns:
+      - NP
+      - BLD
+      - hh_id
+  persons:
+    filename: synthetic_persons.csv
+    columns:
+      - per_num
+      - SEX
+      - AGEP
+      - ESR
+      - OCCP
+      - NAICSP
+      - NAICSP1D 
+      - OCCP1D
+      - hh_id
+
+
+# Steps for base mode
+# ------------------------------------------------------------------
+run_list:
+  steps:
+    - input_pre_processor
+    - setup_data_structures
+    - initial_seed_balancing
+    - meta_control_factoring
+    - final_seed_balancing
+    - integerize_final_seed_weights
+    - sub_balancing.geography=TAZ
+    - expand_households
+    - summarize
+    - write_tables
+    - write_synthetic_population
+
+  #resume_after: expand_households

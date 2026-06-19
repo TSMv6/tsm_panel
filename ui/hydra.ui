@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DialogHydra</class>
+ <widget class="QDialog" name="DialogHydra">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>940</width>
+    <height>560</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Hydra (AgentFlow-DTA)</string>
+  </property>
+  <layout class="QHBoxLayout" name="topLayout">
+   <item>
+    <widget class="QFrame" name="frame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <layout class="QVBoxLayout" name="leftLayout">
+      <item>
+       <layout class="QGridLayout" name="gridLayout_io">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_link">
+          <property name="text">
+           <string>Link layer (GeoPackage)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" colspan="2">
+         <widget class="QComboBox" name="comboBox_LinkLayer"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_node">
+          <property name="text">
+           <string>Node layer (GeoPackage)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" colspan="2">
+         <widget class="QComboBox" name="comboBox_NodeLayer"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_trip">
+          <property name="text">
+           <string>Trip list (.csv.gz)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="lineEdit_TripFile"/>
+        </item>
+        <item row="2" column="2">
+         <widget class="QPushButton" name="browse_TripFile">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_out">
+          <property name="text">
+           <string>Output directory</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="lineEdit_OutDir"/>
+        </item>
+        <item row="3" column="2">
+         <widget class="QPushButton" name="browse_OutDir">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="macroLayout">
+        <item>
+         <widget class="QLabel" name="label_macro">
+          <property name="text">
+           <string>Run Mode (flow model)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBox_Macro">
+          <property name="toolTip">
+           <string>Preset configures the DNL flow model plus meso/micro defaults.</string>
+          </property>
+          <item><property name="text"><string>PointQueue</string></property></item>
+          <item><property name="text"><string>PointQueue + BPR</string></property></item>
+          <item><property name="text"><string>LTM</string></property></item>
+          <item><property name="text"><string>LTM + Meso</string></property></item>
+          <item><property name="text"><string>LTM + Meso + Signals</string></property></item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox_Equil">
+        <property name="title">
+         <string>Equilibrium</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_eq">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_iters">
+           <property name="text">
+            <string>Max Iterations</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_Iters">
+           <property name="text">
+            <string>30</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QLabel" name="label_gap">
+           <property name="text">
+            <string>Relative Gap</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="QLineEdit" name="lineEdit_Gap">
+           <property name="text">
+            <string>0.01</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_chunks">
+           <property name="text">
+            <string>Route Chunks</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="lineEdit_Chunks">
+           <property name="text">
+            <string>10</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QLabel" name="label_threads">
+           <property name="text">
+            <string>Threads (0=all)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="3">
+          <widget class="QLineEdit" name="lineEdit_Threads">
+           <property name="text">
+            <string>0</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox_MesoMicro">
+        <property name="title">
+         <string>Meso / Micro</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_mm">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_meso">
+           <property name="text">
+            <string>Meso FTYPEs</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" colspan="3">
+          <widget class="QLineEdit" name="lineEdit_MesoFtypes">
+           <property name="toolTip">
+            <string>Comma-separated FTYPEs run as meso (e.g. limited-access: 11,91,93,94).</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QCheckBox" name="checkBox_Micro">
+           <property name="text">
+            <string>Micro corridor</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="lineEdit_MicroFtypes">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="toolTip">
+            <string>FTYPEs tagged for the lane-level micro sim.</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QLabel" name="label_coupling">
+           <property name="text">
+            <string>Coupling</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="3">
+          <widget class="QComboBox" name="comboBox_Coupling">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <item><property name="text"><string>oneway</string></property></item>
+           <item><property name="text"><string>twoway_frozen</string></property></item>
+           <item><property name="text"><string>twoway_full</string></property></item>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_microchoice">
+           <property name="text">
+            <string>EL/GP choice</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1" colspan="3">
+          <widget class="QComboBox" name="comboBox_MicroChoice">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="toolTip">
+            <string>How EL vs GP is chosen inside a micro corridor: meso logit, or micro time-differential converted by each agent's VOT.</string>
+           </property>
+           <item><property name="text"><string>Meso logit</string></property></item>
+           <item><property name="text"><string>Micro time-differential (VOT)</string></property></item>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="tollLayout">
+        <item>
+         <widget class="QLabel" name="label_toll">
+          <property name="text">
+           <string>Toll policy (CSV)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_TollPolicy">
+          <property name="toolTip">
+           <string>Time-of-day tolls / EL toll curves (TOLL_POLICY_FILE). Optional.</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="browse_TollPolicy">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox_Outputs">
+        <property name="title">
+         <string>Outputs (link performance by macro/meso/micro is always written)</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_out">
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="checkBox_AgentPlans">
+           <property name="text">
+            <string>Agent plans</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QCheckBox" name="checkBox_AgentPaths">
+           <property name="toolTip">
+            <string>Full per-agent paths (large output).</string>
+           </property>
+           <property name="text">
+            <string>Agent paths (heavy)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QCheckBox" name="checkBox_DuckDB">
+           <property name="toolTip">
+            <string>Write agent results to DuckDB instead of CSV.</string>
+           </property>
+           <property name="text">
+            <string>Write to DuckDB</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="runLayout">
+        <item>
+         <widget class="QPushButton" name="run_Hydra">
+          <property name="text">
+           <string>Run</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDialogButtonBox" name="buttonBox">
+          <property name="standardButtons">
+           <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextBrowser" name="textBrowser">
+     <property name="minimumSize">
+      <size>
+       <width>320</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
