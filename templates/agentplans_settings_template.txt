@@ -35,7 +35,7 @@ distance_skim        = {distance_skim}
 sdt_syn_hh           = {sdt_syn_hh}
 
 # Outputs:
-#  trip_table_out   = the per-trip Hydra/AgentFlow list (gz, depart_time at the
+#  trip_table_out   = the per-trip HyDRA/AgentFlow list (gz, depart_time at the
 #                     selected resolution).
 #  hourly_table_out = the hourly OD trip table CSV (wide by market, STARTTIME
 #                     HH:00) -- same as the original R 3_get_ELTOD output.

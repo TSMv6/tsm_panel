@@ -1,6 +1,6 @@
-# Hybrid Dynamic Routing Assignment (Agent Flow DTA)
+# HyDRA — Hybrid Dynamic Routing Assignment (AgentFlow-DTA)
 
-Hydra routes **individual agents** over the network and loads them through a dynamic
+HyDRA routes **individual agents** over the network and loads them through a dynamic
 network-loading (DNL) flow model with iterative equilibrium. It reads the **agent
 trip list** directly (`*_tt_List_hourly.csv.gz` from agentPlans) — no trip table.
 

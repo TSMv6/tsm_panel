@@ -209,8 +209,11 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
             return False
         landuse_layer_path = self.get_layer_path(landuse_layer)
         settings.set("landuse_layer_path", landuse_layer_path)
-        r_script_path = os.path.join(settings.get("plugin_dir"), "Rscripts/Update_LDT_Landuse_from_SDT.R")
-        r_exe_path = settings.get("r_exe_path")
+        # ldtprep replaces Update_LDT_Landuse_from_SDT.R + convert_SDT_SynHH_to_LDT_format.R
+        ldtprep_exe = settings.app_exe("utilities/ldtprep.exe")
+        if not os.path.exists(ldtprep_exe):
+            QMessageBox.critical(self, "Error", f"Utility not found: {ldtprep_exe}")
+            return False
 
         us_lu_file = settings.get("scenarioYear") + "_landuse.dat"
         ldt_resident_default = os.path.join(settings.get("tsm_location"), "Inputs/LDT_Skims_LU_SynHH", us_lu_file).replace("\\","/")
@@ -219,10 +222,9 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         print(f"Updated Landuse file: {ldt_resident_updated}")
         print(f"Default Landuse file: {ldt_resident_default}")
         print(f"Landuse layer path: {landuse_layer_path}")
-        print(f"R script path: {r_script_path}")
-        print(f"R executable path: {r_exe_path}")
+        print(f"ldtprep exe: {ldtprep_exe}")
         try:
-            result1 = subprocess.run([r_exe_path, r_script_path, landuse_layer_path, ldt_resident_default, ldt_resident_updated])
+            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated])
             if result1.returncode == 0:
                 print(f"Running LDT Landuse updated successful: {ldt_resident_updated}")
             else:
@@ -244,15 +246,13 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         LDT_households_updated_basefile = "LDT_FL_Syn_hh.dat"
         LDT_households_updated = os.path.join(settings.get("scenarioDir"), LDT_households_updated_basefile).replace("/", "\\")
 
-        r_script_path = os.path.join(settings.get("plugin_dir"), "Rscripts",  "convert_SDT_SynHH_to_LDT_format.R").replace("/", "\\")
-        print(f"R script path: {r_script_path}")
-        print(f"R executable path: {r_exe_path}")
+        print(f"ldtprep exe: {ldtprep_exe}")
         print(f"SDT Syn HH: {sdt_syn_hh}")
         print(f"SDT Syn Auto: {sdt_syn_auto}")
         print(f"LDT HH template: {LDT_households_template}")
         print(f"LDT HH updated: {LDT_households_updated}")
         try:
-            result2 = subprocess.run([r_exe_path, r_script_path, sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated])
+            result2 = subprocess.run([ldtprep_exe, "synhh-convert", sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated])
             if result2.returncode == 0:
                 print(f"Running LDT HH from SDT successful: {LDT_households_updated}")
             else:

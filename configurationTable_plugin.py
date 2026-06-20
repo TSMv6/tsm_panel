@@ -10,6 +10,13 @@ from .tsm_settings import Config
 
 from .configurationTable_ui import Ui_Form
 
+# Settings that may still exist in older scenario files but are no longer used and
+# should NOT appear in View Settings:
+#   jdk_path   - SDModel no longer uses Java
+#   r_exe_path - R steps replaced by the C++ agentPlans / popsim engines
+HIDDEN_KEYS = {"jdk_path", "r_exe_path"}
+
+
 class ViewSettings(QDialog, Ui_Form):
     def __init__(self):
         super().__init__()
@@ -75,6 +82,12 @@ class ViewSettings(QDialog, Ui_Form):
                 new_value_item = QTableWidgetItem(str(new_value))
                 new_value_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
                 self.table.setItem(row, 2, new_value_item)
+
+        # Drop obsolete rows (auto-renumbers the table; avoids fragile .ui edits).
+        for row in reversed(range(self.table.rowCount())):
+            k = self.table.item(row, 1)
+            if k and k.text() in HIDDEN_KEYS:
+                self.table.removeRow(row)
 
         # keys = list(settings.keys())
         # # for row, (key, value) in enumerate(settings.items()):

@@ -55,6 +55,30 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.output_directory.setText(settings.get("scenarioDir"))
         if settings.get("max_internal_zones"):
             self.lineEdit_MaxZones.setText(str(settings.get("max_internal_zones")))
+        # Shared GeoMaster layers + network version come from Config (set once in
+        # Project Settings, or a prior run) so they are not re-picked per widget.
+        # The scenario settings file, loaded below, still overrides these.
+        if settings.get("network_version"):
+            self.networkVersion.setCurrentText(settings.get("network_version"))
+        self._select_layer_by_name(self.lineLayerCombo,   settings.get("GM_line_layer"))
+        self._select_layer_by_name(self.nodeLayerCombo,   settings.get("GM_node_layer"))
+        self._select_layer_by_name(self.lineLayerCombo_2, settings.get("GM_centroid_layer"))
+        self._select_layer_by_name(self.lineLayerCombo_3, settings.get("GM_cencon_layer"))
+        # This widget's own fields (outputs + run options) also persist in Config,
+        # so restore them here -- otherwise an OK without a Run leaves them blank
+        # on reopen (the settings file below still wins when it has them).
+        if settings.get("TSM_Link_File"):
+            self.lineEdit_TSMLink.setText(settings.get("TSM_Link_File"))
+        if settings.get("TSM_Node_File"):
+            self.lineEdit_TSMNode.setText(settings.get("TSM_Node_File"))
+        if settings.get("model_resolution"):
+            self.modelResolution.setCurrentText(str(settings.get("model_resolution")))
+        if settings.get("msr_subarea"):
+            self.lineEdit_MSRSubarea.setText(settings.get("msr_subarea"))
+        if settings.get("msr_lookup"):
+            self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
+        if settings.get("bool_Counts") is not None:
+            self.checkBox_Counts.setChecked(self._str2bool(settings.get("bool_Counts")))
 
         # Help text: render docs/LINK_CONSOLIDATION.md into the side panel.
         self.textBrowser = self.findChild(QTextBrowser, 'textBrowser')
@@ -67,6 +91,9 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # from the scenario directory and populate every widget from it.
         # ------------------------------------------------------------------
         self.load_from_settings_file()
+        # Default the output file paths (load-output-files on by default) so a
+        # run always produces loadable TSM_Link/TSM_Node layers.
+        self._apply_default_output_files()
 
         # Connect buttons
         self.browse_Outdir.clicked.connect(self.select_directory)
@@ -243,6 +270,20 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         directory = QFileDialog.getExistingDirectory(self, "Select Directory")
         if directory:
             self.output_directory.setText(directory)
+            self._apply_default_output_files()
+
+    def _apply_default_output_files(self):
+        """Default the TSM Link/Node output paths to <output_dir>/TSM_Link.gpkg
+        and TSM_Node.gpkg whenever they are blank, so netPrep always has a place
+        to write and the consolidated layers load back automatically."""
+        out_dir = self.output_directory.text().strip()
+        if not out_dir or out_dir == "Select Output Directory":
+            return
+        out_dir = out_dir.replace("\\", "/")
+        if not self.lineEdit_TSMLink.text().strip():
+            self.lineEdit_TSMLink.setText(f"{out_dir}/TSM_Link.gpkg")
+        if not self.lineEdit_TSMNode.text().strip():
+            self.lineEdit_TSMNode.setText(f"{out_dir}/TSM_Node.gpkg")
 
     def select_file(self, line_edit, type, file_filter="GeoPackage (*.gpkg);; Shapefiles (*.shp)"):
         if type == "open":
@@ -272,6 +313,15 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             return layer
         provider = layer.dataProvider()
         return provider.dataSourceUri().split("|")[0]
+
+    def _select_layer_by_name(self, combobox, name):
+        """Select a combo entry by layer name (Config stores layer names, not
+        paths). No-op if the name is empty or not among the loaded layers."""
+        if not name:
+            return
+        idx = combobox.findText(name)
+        if idx >= 0:
+            combobox.setCurrentIndex(idx)
 
     def select_layer_by_path(self, combobox, path):
         """Select the combo entry whose source matches `path`.
@@ -346,6 +396,9 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         msr_subarea = self.lineEdit_MSRSubarea.text().strip()
         msr_lookup = self.lineEdit_MSRLookup.text().strip()
         output_dir = self.output_directory.text().strip()
+        # Ensure default output paths are filled so the run always has loadable
+        # TSM_Link / TSM_Node targets even if the fields were cleared.
+        self._apply_default_output_files()
         output_linkfile = self.lineEdit_TSMLink.text().strip()
         output_nodefile = self.lineEdit_TSMNode.text().strip()
 
@@ -381,22 +434,41 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"TSM_Link_File = {output_linkfile}\n")
                 f.write(f"TSM_Node_File = {output_nodefile}\n")
                 f.write(f"plugin_dir = {plugin_dir}\n")
+                # Run both consolidation and GMNS export (GMNS feeds the DTA
+                # assignment; built from the consolidated network in one pass).
+                f.write("RUN_MODE = both\n")
         except Exception as e:
             print("Error writing settings file:", e)
             QMessageBox.critical(self, "Error", f"Error writing settings file: {e}")
             return False
 
-        # Resolve and run netPrep.exe (v6 C++ link consolidator)
-        tsm_location = settings.get("tsm_location")
-        exe_path = os.path.join(tsm_location, "Apps", "LinkConsolidator", "netPrep.exe")
+        # Resolve and run netPrep.exe (v6 C++ link consolidator). Ships self-
+        # contained (exe + GDAL DLLs + gdal-data/proj) inside the plugin's Apps
+        # folder, so the user installs nothing beyond the plugin.
+        exe_path = os.path.join(plugin_dir, "Apps", "netPrep", "netPrep.exe")
         if not os.path.exists(exe_path):
             QMessageBox.critical(self, "Error", f"netPrep.exe not found at: {exe_path}")
             return False
 
         print(f"netPrep exe : {exe_path}")
         print(f"Settings    : {settings_file}")
+
+        # netPrep ships its own self-contained GDAL beside the exe. Launch it with
+        # that GDAL on PATH (plus its matching gdal-data/proj) instead of letting
+        # the subprocess inherit QGIS's environment -- otherwise the shipped
+        # gdal.dll tries to load QGIS's version-mismatched driver plugins and
+        # spams "Can't load requested DLL ... 127" errors in the log.
+        app_dir = os.path.dirname(exe_path)
+        env = dict(os.environ)
+        env["PATH"] = app_dir + os.pathsep + env.get("PATH", "")
+        env["GDAL_DATA"] = os.path.join(app_dir, "gdal-data")
+        env["PROJ_LIB"] = os.path.join(app_dir, "proj")
+        # Point the driver path at the app folder (no GDAL plugins there) so the
+        # shipped gdal.dll does not pick up QGIS's version-mismatched plugins.
+        env["GDAL_DRIVER_PATH"] = app_dir
+
         try:
-            result = subprocess.run([exe_path, settings_file])
+            result = subprocess.run([exe_path, settings_file], env=env)
             if result.returncode != 0:
                 print("netPrep execution failed.")
                 if show_message:
@@ -404,6 +476,9 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 return False
 
             print("netPrep executed successfully.")
+            # netPrep writes the spatial TSM_Link / TSM_Node GeoPackages directly
+            # (true merged geometry in the GeoMaster CRS), plus GMNS in 'both'
+            # mode. Load the consolidated layers.
             # Output layers always load; failing to load them is an error.
             link_qml_file = os.path.join(plugin_dir, "qgis_styles/TSM_Link_Symbology.qml").replace("\\", "/")
             node_qml_file = os.path.join(plugin_dir, "qgis_styles/TSM_Node_Symbology.qml").replace("\\", "/")

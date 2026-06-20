@@ -188,16 +188,25 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
             QMessageBox.warning(self, "Warning", "Please select a land-use layer.")
             return False
 
-        if self.checkBox_Increment.isChecked():
-            # Incremental runs PopulationSIM on the delta (future - base) land use with
-            # only the HH/POP count control. The delta land-use is produced by a separate
-            # utility converter, which is not yet wired into the GUI.
-            QMessageBox.information(
-                self, "Incremental run",
-                "Incremental PopulationSIM needs the delta land-use (future - base) built "
-                "by the utility converter, which is not yet wired in. Run a standard "
-                "(non-incremental) synthesis for now.")
-            return False
+        # Incremental: PopulationSIM is synthesized on the land-use DELTA
+        # (scenario - reference), then merged into the reference synthetic
+        # population (add growth, remove shrink) keeping household ids consistent.
+        # NOTE: the delta is for PopulationSIM only -- SDT and LDT use the full
+        # user-supplied land use (handled in their own dialogs).
+        incremental = self.checkBox_Increment.isChecked()
+        ref_landuse_path = ref_synhh = ref_synper = None
+        if incremental:
+            ref_layer = self.comboBox_RefLUlayer.currentData()
+            if not ref_layer:
+                QMessageBox.warning(self, "Warning", "Incremental: select a reference (base) land-use layer.")
+                return False
+            ref_landuse_path = self.get_layer_path(ref_layer)
+            ref_synhh = self.lineEdit_RefSynHH.text().strip()
+            ref_synper = self.lineEdit_RefSynPer.text().strip()
+            if not (ref_synhh and ref_synper and os.path.exists(ref_synhh) and os.path.exists(ref_synper)):
+                QMessageBox.warning(self, "Warning",
+                    "Incremental: select existing reference synthetic Households and Persons files.")
+                return False
 
         # Resolve apps
         popsim_exe = os.path.join(tsm_location, "Apps", "popsim", "popsim-run.exe")
@@ -210,16 +219,40 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
                 QMessageBox.critical(self, "Error", f"{label} not found at: {path}")
                 return False
 
-        # 1) Export the land-use layer attributes -> tsm_landuse.csv (se_data)
+        # Utilities for the incremental path (delta land use + reference append).
+        ldelta_exe = settings.app_exe("utilities/landuse_delta.exe")
+        popsimprep_exe = settings.app_exe("utilities/popsimprep.exe")
+        if incremental:
+            for path, label in ((ldelta_exe, "landuse_delta.exe"), (popsimprep_exe, "popsimprep.exe")):
+                if not os.path.exists(path):
+                    QMessageBox.critical(self, "Error", f"{label} not found at: {path}")
+                    return False
+
+        # 1) Build the PopSim control land use (se_data) -> tsm_landuse.csv
         landuse_path = self.get_layer_path(landuse_layer)
         se_data = os.path.join(scenario_dir, "tsm_landuse.csv").replace("\\", "/")
         try:
-            r = subprocess.run([gpkgcsv_exe, "to-csv", landuse_path, se_data, "--drop-geom"])
+            if incremental:
+                # delta = scenario - reference, keyed on the unique MSR subzone index
+                # (MSR_Index, formerly PopSyn_Index). TSM_NG (parent TAZ) and TAZ_REG
+                # (subzone, both non-unique) ride along. Growth floored at 0 (PopSim
+                # synthesizes only the increment; shrink is handled at the append step).
+                try:
+                    field_names = [f.name() for f in landuse_layer.fields()]
+                except Exception:
+                    field_names = []
+                msr_key = "MSR_Index" if "MSR_Index" in field_names else "PopSyn_Index"
+                r = subprocess.run([ldelta_exe, ref_landuse_path, landuse_path, se_data,
+                                    "--key", msr_key, "--keep-zero", "--floor0"])
+                err = f"Failed to build delta land-use (landuse_delta, key={msr_key})."
+            else:
+                r = subprocess.run([gpkgcsv_exe, "to-csv", landuse_path, se_data, "--drop-geom"])
+                err = "Failed to export land-use layer to tsm_landuse.csv."
             if r.returncode != 0 or not os.path.exists(se_data):
-                QMessageBox.critical(self, "Error", "Failed to export land-use layer to tsm_landuse.csv.")
+                QMessageBox.critical(self, "Error", err)
                 return False
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error exporting land-use layer: {e}")
+            QMessageBox.critical(self, "Error", f"Error building PopSim land-use: {e}")
             return False
 
         # 2) Generate the HH + GQ TOMLs into the config folder
@@ -263,12 +296,39 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
             synHH = os.path.join(scenario_dir, "synthetic_hh.csv")
         if not synPer or synPer == "synthetic_per.csv":
             synPer = os.path.join(scenario_dir, "synthetic_per.csv")
-        try:
-            shutil.copy(os.path.join(combined_dir, "synthetic_households.csv"), synHH)
-            shutil.copy(os.path.join(combined_dir, "synthetic_persons.csv"), synPer)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Combine finished but copying outputs failed: {e}")
-            return False
+        if incremental:
+            # Merge the delta synthesis into the reference population: add the new
+            # (growth) households with ids continued above the reference max, and
+            # remove reference households for shrink zones. popsimprep writes the
+            # final synHH/synPer directly.
+            settings_popsim = os.path.join(scenario_dir, "settings_PopSim.txt").replace("\\", "/")
+            gq_flag = "T" if self.checkBox_GQ.isChecked() else "F"
+            try:
+                with open(settings_popsim, "w") as f:
+                    f.write(f"tsm_location = {tsm_location}\n")
+                    f.write(f"combined_dir = {combined_dir}\n".replace("\\", "/"))
+                    f.write("str_bool_run_incremental = T\n")
+                    f.write(f"str_bool_GQ_in_POP = {gq_flag}\n")
+                    f.write(f"landuse_layer_path = {landuse_path}\n")
+                    f.write(f"ref_landuse_layer_path = {ref_landuse_path}\n")
+                    f.write(f"synHH_path = {synHH}\n".replace("\\", "/"))
+                    f.write(f"synPer_path = {synPer}\n".replace("\\", "/"))
+                    f.write(f"refSynHH_path = {ref_synhh}\n")
+                    f.write(f"refSynPer_path = {ref_synper}\n")
+                r = subprocess.run([popsimprep_exe, "append-incremental", settings_popsim])
+                if r.returncode != 0 or not os.path.exists(synHH):
+                    QMessageBox.critical(self, "Error", "Incremental append (popsimprep) failed.")
+                    return False
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Error in incremental append: {e}")
+                return False
+        else:
+            try:
+                shutil.copy(os.path.join(combined_dir, "synthetic_households.csv"), synHH)
+                shutil.copy(os.path.join(combined_dir, "synthetic_persons.csv"), synPer)
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Combine finished but copying outputs failed: {e}")
+                return False
         settings.set("synHH_file", synHH)
         settings.set("synPer_file", synPer)
 

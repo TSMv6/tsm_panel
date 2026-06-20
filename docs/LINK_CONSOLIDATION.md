@@ -143,7 +143,7 @@ intersection, the road geometry, signals, tolls, and counts.
   Link.csv / Node.csv                    [636k model links, 278k nodes]
         │
         ▼
-  Hydra (AgentFlow) DTA assignment       [routing, DNL, signal delay, counts]
+  HyDRA (AgentFlow) DTA assignment       [routing, DNL, signal delay, counts]
 ```
 
 The consolidated `Link.csv` carries the schema the assignment reads directly

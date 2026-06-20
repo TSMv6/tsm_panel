@@ -317,9 +317,12 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             QMessageBox.critical(self, "Error", "Please select a landuse layer.")
             return False
         landuse_layer_path = self.get_layer_path(landuse_layer)
-        settings.set("landuse_layer_path", landuse_layer_path) 
-        r_script_path = os.path.join(settings.get("plugin_dir"), "Rscripts/Update_LDT_Landuse_from_SDT.R")
-        r_exe_path = settings.get("r_exe_path")
+        settings.set("landuse_layer_path", landuse_layer_path)
+        # ldtprep replaces Update_LDT_Landuse_from_SDT.R, Create_Incremental_*, Append_Incremental_*
+        ldtprep_exe = settings.app_exe("utilities/ldtprep.exe")
+        if not os.path.exists(ldtprep_exe):
+            QMessageBox.critical(self, "Error", f"Utility not found: {ldtprep_exe}")
+            return False
 
         us_lu_file = settings.get("scenarioYear") + "_landuse.dat"
         ldt_resident_default = os.path.join(settings.get("tsm_location"), "Inputs/LDT_Skims_LU_SynHH", us_lu_file).replace("\\","/")
@@ -328,10 +331,9 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         print(f"Updated Landuse file: {ldt_resident_updated}")
         print(f"Default Landuse file: {ldt_resident_default}")
         print(f"Landuse layer path: {landuse_layer_path}")
-        print(f"R script path: {r_script_path}")
-        print(f"R executable path: {r_exe_path}")
+        print(f"ldtprep exe: {ldtprep_exe}")
         try:
-            result1 = subprocess.run([r_exe_path, r_script_path, landuse_layer_path, ldt_resident_default, ldt_resident_updated])
+            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated])
             if result1.returncode != 0:
                 QMessageBox.critical(self, "Error", "LDT Landuse update failed.")
                 return False
@@ -347,9 +349,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         out_ldt_syn_hh = os.path.join(settings.get("scenarioDir"), "LDT_visitor_SynHH.dat").replace("/", "\\")
         settings.set("LDT_visitor_SynHH_updated", out_ldt_syn_hh)
 
-        r_script_path = os.path.join(settings.get("plugin_dir"), "Rscripts",  "Create_Incremental_LDT_Syn_HH.R").replace("/", "\\")
-        print(f"R script path: {r_script_path}")
-        print(f"R executable path: {r_exe_path}")
+        print(f"ldtprep exe: {ldtprep_exe}")
         print(f"US HH all years: {US_ldt_syn_hh}")
         print(f"Scenario Year: {scenYear}")
         print(f"LDT reference year: {ref_year}")
@@ -359,7 +359,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             ref_year = "2023"  # Default reference year if not provided
 
         try:
-            result2 = subprocess.run([r_exe_path, r_script_path, US_ldt_syn_hh, scenYear, ref_year, out_ldt_syn_hh])
+            result2 = subprocess.run([ldtprep_exe, "synhh-incremental", US_ldt_syn_hh, scenYear, ref_year, out_ldt_syn_hh])
             if result2.returncode != 0:
                 QMessageBox.critical(self, "Error", "LDT HH from Scenario failed.")
                 return False
@@ -438,15 +438,17 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             prev_out_file = "none"
             checkBox_userRef_str = "False"
 
-        r_exe_path = settings.get("r_exe_path")
-        r_script_path = os.path.join(settings.get("plugin_dir"), "Rscripts", "Append_Incremental_LDT_Syn_HH.R")
+        ldtprep_exe = settings.app_exe("utilities/ldtprep.exe")
+        if not os.path.exists(ldtprep_exe):
+            QMessageBox.critical(self, "Error", f"Utility not found: {ldtprep_exe}")
+            return False
         scenYear = settings.get("scenarioYear")
         scenarioDir = settings.get("scenarioDir")
         tsm_location = settings.get("tsm_location")
         incremental_output = os.path.join(scenarioDir, "OS_LD_increment_tour_out.csv")
-    
+
         try:
-            result4 = subprocess.run([r_exe_path, r_script_path, incremental_output, checkBox_userRef_str, prev_out_file, tsm_location,  scenarioDir, scenYear])
+            result4 = subprocess.run([ldtprep_exe, "synhh-append", incremental_output, checkBox_userRef_str, prev_out_file, tsm_location,  scenarioDir, scenYear])
             if result4.returncode == 0:
                 print(f"Appended LDT incremental results with previous years: OS_LD_tour_out.csv")
                 # QMessageBox.information(self, "Success", "Appended LDT incremental results with previous years: OS_LD_tour_out.csv")

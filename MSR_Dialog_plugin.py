@@ -131,13 +131,16 @@ class MSR_Disaggregate(QDialog, Ui_Dialog_MSR):
         tsm_landuse_default = os.path.join(settings.get("plugin_dir"), "Rscripts/tsm_landuse_default.csv").replace("\\", "/")
         settings.set("tsm_landuse_path", tsm_landuse_path)
 
-        r_exe_path = settings.get("r_exe_path")
-        r_script_path = os.path.join(settings.get("plugin_dir"), "Rscripts/SDT_resident_LUPrep.R")
+        # se_aggregate.exe replaces SDT_resident_LUPrep.R (aggregate MPO/SE polygons
+        # to the TSM zone land use; args: gpkg, out, default).
+        se_exe = settings.app_exe("utilities/se_aggregate.exe")
+        if not os.path.exists(se_exe):
+            QMessageBox.critical(self, "Error", f"Land-use prep utility not found: {se_exe}")
+            return False
         try:
-            print(f"Running R script: {r_script_path} with landuse layer: {landuse_layer_path} to create TSM landuse: {tsm_landuse_path}")
-            print([r_exe_path, r_script_path, landuse_layer_path, tsm_landuse_path, tsm_landuse_default])
-            result1 = subprocess.run([r_exe_path, r_script_path, landuse_layer_path, tsm_landuse_path, tsm_landuse_default], shell=True)
-            if result1.returncode != 0:
+            print(f"Aggregating MPO landuse to TSM with {se_exe}: {landuse_layer_path} -> {tsm_landuse_path}")
+            result1 = subprocess.run([se_exe, landuse_layer_path, tsm_landuse_path, tsm_landuse_default])
+            if result1.returncode != 0 or not os.path.exists(tsm_landuse_path):
                 print("Aggregating MPO landuse to TSM failed.")
                 QMessageBox.critical(self, "Error", "Aggregating MPO landuse to TSM failed.")
                 return False

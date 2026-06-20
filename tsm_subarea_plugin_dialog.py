@@ -213,7 +213,6 @@ class TsmSubareaExtDialogX(QDialog, Ui_Dialog):
         settings.set("subarea_linkfile", os.path.join(output_dir, subarea_name, "Subarea_Link.GPKG").replace("\\","/"))
         settings.set("subarea_nodefile", os.path.join(output_dir, subarea_name, "Subarea_Link.GPKG").replace("\\","/"))
 
-        settings.set("r_script_path", os.path.join(plugin_dir, "Renumber_Subarea_Nodes.R").replace("\\","/"))
         settings.set("link_qml_file",  os.path.join(plugin_dir, "qgis_styles/Subarea_Link_Symbology.qml").replace("\\","/"))
         settings.set("node_qml_file",  os.path.join(plugin_dir, "qgis_styles/Subarea_Node_Symbology.qml").replace("\\","/"))
         settings.check_and_save_to_file("scenario_settings_file")
@@ -306,10 +305,13 @@ class TsmSubareaExtDialogX(QDialog, Ui_Dialog):
         # script_path = "C:/TSM_NextGen_v5/Base/TSMv5_2023/validation"
         # plugin_dir = os.path.dirname(__file__).replace("\\","/")
         # settings = Config()
-        r_exe_path = settings.get("r_exe_path")
         plugin_dir = settings.get("plugin_dir")
-        r_script_path = os.path.join(plugin_dir, "Rscripts/Renumber_Subarea_Nodes.R").replace("\\","/")
-        
+        # subarea.exe replaces Renumber_Subarea_Nodes.R (reads the same settings file).
+        subarea_exe = settings.app_exe("utilities/subarea.exe")
+        if not os.path.exists(subarea_exe):
+            QMessageBox.critical(self, "Error", f"Utility not found: {subarea_exe}")
+            return False
+
         link_qml_file = os.path.join(plugin_dir, "qgis_styles/Subarea_Link_Symbology.qml").replace("\\","/")
         node_qml_file = os.path.join(plugin_dir, "qgis_styles/Subarea_Node_Symbology.qml").replace("\\","/")
 
@@ -337,7 +339,6 @@ class TsmSubareaExtDialogX(QDialog, Ui_Dialog):
         config.set("subarea_linkfile", os.path.join(output_dir, subarea_name, "Subarea_Link.GPKG").replace("\\","/"))
         config.set("subarea_nodefile", os.path.join(output_dir, subarea_name, "Subarea_Link.GPKG").replace("\\","/"))
 
-        config.set("r_script_path", os.path.join(plugin_dir, "Renumber_Subarea_Nodes.R").replace("\\","/"))
         config.set("link_qml_file",  os.path.join(plugin_dir, "qgis_styles/Subarea_Link_Symbology.qml").replace("\\","/"))
         config.set("node_qml_file",  os.path.join(plugin_dir, "qgis_styles/Subarea_Node_Symbology.qml").replace("\\","/"))
 
@@ -360,11 +361,10 @@ class TsmSubareaExtDialogX(QDialog, Ui_Dialog):
             f.write(f"check_saveCW = {bool_SaveNodeCW}\n")
             f.write(f"saveCW_file = {saveCW_file}\n") 
 
-            f.write(f"plugin_dir = {plugin_dir}\n") 
-            f.write(f"r_exe_path = {r_exe_path}\n") 
+            f.write(f"plugin_dir = {plugin_dir}\n")
 
         try:
-            result = subprocess.run([r_exe_path, r_script_path, settings_file]) #capture_output=True, text=True)
+            result = subprocess.run([subarea_exe, "renumber", settings_file]) #capture_output=True, text=True)
             print("Output:", result.stdout)
             print("Error:", result.stderr)
 

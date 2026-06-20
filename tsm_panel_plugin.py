@@ -137,6 +137,8 @@ class TsmPanelPlugin():
             self.ui.setupUi(self.dock_widget)
             self._normalize_status_columns()
             self.connect_buttons()
+            self._load_history()
+            self.log_message("TSM panel ready.")
             
             main_win = self.iface.mainWindow()
 
@@ -175,17 +177,13 @@ class TsmPanelPlugin():
         loadSettings_button = getattr(self.ui, "pushButton_loadSettings", None)
         loadSettings_button.clicked.connect(lambda _, tool= "load":self.load_settings())
 
-        # Network Model Manager
-        settings_button = getattr(self.ui, "pushButton_subareaExt", None)
-        settings2_button = getattr(self.ui, "pushButton_many2One", None)
-        if settings_button:
-            settings_button.clicked.connect(lambda _, tool= "tsm_subarea_extractor": self.open_settings(tool))
-        if settings2_button:
-            settings2_button.clicked.connect(lambda _, tool= "many_to_one": self.open_settings(tool))
-        
-        run_button = getattr(self.ui, "pushButton_22", None)
-        if run_button:
-            run_button.clicked.connect(lambda _, tool="tsm_subarea_extractor": self.run_tool(tool))
+        # Network Modeler — single button opens each tool's dialog (Hydra-style)
+        linkConsolidator_button = getattr(self.ui, "run_Many2One", None)
+        if linkConsolidator_button:
+            linkConsolidator_button.clicked.connect(lambda _, tool="many_to_one": self.open_settings(tool))
+        subareaNetworks_button = getattr(self.ui, "pushButton", None)
+        if subareaNetworks_button:
+            subareaNetworks_button.clicked.connect(lambda _, tool="tsm_subarea_extractor": self.open_settings(tool))
 
         # General & Project Settings
         GenPrjSetting_button = getattr(self.ui, "pushButton_GenPrjSetting", None)
@@ -203,54 +201,51 @@ class TsmPanelPlugin():
         update_links_button.clicked.connect(lambda _, tool= "UpdateLinksNodesPlugin":self.open_settings(tool))
         MSRSetting_button = getattr(self.ui, "pushButton_MSR", None)
         MSRSetting_button.clicked.connect(lambda _, tool= "MSR_Disaggregate":self.open_settings(tool))
+        # MSR is now read/supported, so enable the editor under "Editors" (GeoMaster
+        # Editing). The .ui ships it disabled; activate it here regardless of UI source.
+        MSRSetting_button.setEnabled(True)
+        MSRSetting_button.setToolTip("Open the Multi-Spatial Resolution (MSR) disaggregation editor.")
         # update_links_button.clicked.connect(self.run_update_links_nodes)
 
-        # Black Box Settings
-        PopSIMSettings_button = getattr(self.ui, "pushButton_PopSIMSettings", None)
-        PopSIMSettings_button.clicked.connect(lambda _, tool= "PopSIM":self.open_settings(tool))
-        
-        pushButton_SkimmySetings = getattr(self.ui, "pushButton_SkimmySetings", None)
-        pushButton_SkimmySetings.clicked.connect(lambda _, tool= "FL_skimmy":self.open_settings(tool))
+        # The "Analyst" — the Summarization button opens the summary dialog
+        # (formerly the separate "properties" button, now removed).
+        Summary_button = getattr(self.ui, "pushButton_74", None)
+        if Summary_button:
+            Summary_button.clicked.connect(lambda _, tool= "SummaryLoadedVolume":self.open_settings(tool))
 
-        pushButton_SDTResSettings = getattr(self.ui, "pushButton_SDTResSettings", None)
-        pushButton_SDTResSettings.clicked.connect(lambda _, tool= "SDT_resident":self.open_settings(tool))
+        # Demand & Route Choice Models — each model's single button opens its
+        # dialog (Hydra-style); the per-row "..." settings buttons were removed.
+        # Actual model execution happens inside each dialog or via "Run TSM (Selected)".
+        self.ui.run_PopSIM.clicked.connect(lambda _, tool="PopSIM": self.open_settings(tool))
+        self.ui.run_Skimmy.clicked.connect(lambda _, tool="FL_skimmy": self.open_settings(tool))
+        self.ui.run_SDTRes.clicked.connect(lambda _, tool="SDT_resident": self.open_settings(tool))
+        self.ui.run_SDTVis.clicked.connect(lambda _, tool="SDT_visitor": self.open_settings(tool))
+        self.ui.run_LDTRes.clicked.connect(lambda _, tool="LDT_resident": self.open_settings(tool))
+        self.ui.run_LDTVis.clicked.connect(lambda _, tool="LDT_visitor": self.open_settings(tool))
+        self.ui.run_TripTable.clicked.connect(lambda _, tool="TripList2Table": self.open_settings(tool))
+        self.ui.run_TSMAssign.clicked.connect(lambda _, tool="tsm_assign": self.open_settings(tool))
+        self.ui.run_SubAssign.clicked.connect(lambda _, tool="SubareaAssignDialog": self.open_settings(tool))
+        self.ui.run_Hydra.clicked.connect(lambda _, tool="hydra": self.open_settings(tool))
 
-        pushButton_SDTVisSettings = getattr(self.ui, "pushButton_SDTVisSettings", None)
-        pushButton_SDTVisSettings.clicked.connect(lambda _, tool= "SDT_visitor":self.open_settings(tool))
-
-        pushButton_LDTResSettings = getattr(self.ui, "pushButton_LDTResSettings", None)
-        pushButton_LDTResSettings.clicked.connect(lambda _, tool= "LDT_resident":self.open_settings(tool))
-
-        pushButton_LDTVisSettings = getattr(self.ui, "pushButton_LDTVisSettings", None)
-        pushButton_LDTVisSettings.clicked.connect(lambda _, tool= "LDT_visitor":self.open_settings(tool))
-
-        TripList2Table_button = getattr(self.ui, "pushButton_TripTable", None)
-        TripList2Table_button.clicked.connect(lambda _, tool= "TripList2Table":self.open_settings(tool))
-
-        TSM_AssignSettings_button = getattr(self.ui, "pushButton_TSM_AssignSettings", None)
-        TSM_AssignSettings_button.clicked.connect(lambda _, tool= "tsm_assign":self.open_settings(tool))    
-        
-        SubareaAssignDialog_button = getattr(self.ui, "pushButton_SubAssignSettings", None)
-        SubareaAssignDialog_button.clicked.connect(lambda _, tool= "SubareaAssignDialog":self.open_settings(tool))
-        
-        # Summary Loaded Network
-        Summary_button = getattr(self.ui, "pushButton_SummaryLoadedVolume", None)
-        Summary_button.clicked.connect(lambda _, tool= "SummaryLoadedVolume":self.open_settings(tool))
-
-        # Black Box Run Buttons
-        self.ui.run_PopSIM.clicked.connect(lambda _, tool= "PopSIM":self.run_tool(tool))
-        self.ui.run_Skimmy.clicked.connect(lambda _, tool= "FL_skimmy":self.run_tool(tool))
-        self.ui.run_SDTRes.clicked.connect(lambda _, tool= "SDT_resident":self.run_tool(tool))
-        self.ui.run_SDTVis.clicked.connect(lambda _, tool= "SDT_visitor":self.run_tool(tool))
-        self.ui.run_LDTRes.clicked.connect(lambda _, tool= "LDT_resident":self.run_tool(tool))
-        self.ui.run_LDTVis.clicked.connect(lambda _, tool= "LDT_visitor":self.run_tool(tool))
-        self.ui.run_TripTable.clicked.connect(lambda _, tool= "TripList2Table":self.run_tool(tool))
-        self.ui.run_TSMAssign.clicked.connect(lambda _, tool= "tsm_assign":self.run_tool(tool))
-        self.ui.run_Hydra.clicked.connect(lambda _, tool= "hydra": self.open_settings(tool))
+        # ELToD and HyDRA are alternative assignment models (both step 9): it is
+        # one or the other, never both. Selecting one clears the other; either
+        # can still be left unchecked.
+        self.ui.checkBox_TSMAssign.toggled.connect(self._on_eltod_toggled)
+        self.ui.checkBox_Hydra.toggled.connect(self._on_hydra_toggled)
 
         # Check box for running all tools
         self.ui.pushButton_ClearSelection.clicked.connect(self.reset_all_step_labels)
         self.ui.pushButton_RunSelected.clicked.connect(self.run_all_tools)
+
+    def _on_eltod_toggled(self, checked):
+        """ELToD selected -> clear HyDRA (they are the same step 9, mutually exclusive)."""
+        if checked:
+            self.ui.checkBox_Hydra.setChecked(False)
+
+    def _on_hydra_toggled(self, checked):
+        """HyDRA selected -> clear ELToD (they are the same step 9, mutually exclusive)."""
+        if checked:
+            self.ui.checkBox_TSMAssign.setChecked(False)
 
     def run_update_links_nodes(self):
         plugin_instance = UpdateLinksNodesPlugin(self.iface)
@@ -261,6 +256,7 @@ class TsmPanelPlugin():
         """Run all tools with saved settings, stop if any step fails."""
         self.reset_all_step_labels()
         print("Running all tools with saved settings")
+        self.log_message("Running selected models…")
         selected_tools = []
         if self.ui.checkBox_PopSIM.isChecked():
             selected_tools.append("PopSIM")
@@ -282,9 +278,11 @@ class TsmPanelPlugin():
         for tool in selected_tools:
             success = self.run_tool([tool])  # run_tool now returns True/False
             if not success:
+                self.log_message(f"Stopped — remaining steps skipped.")
                 QMessageBox.warning(None, "Stopped", f"Stopped at step: {tool}. Remaining steps will not be run.")
                 break
         else:
+            self.log_message("All selected models completed.")
             QMessageBox.information(None, "Information", "All selected models have been run with saved settings")
 
     def run_tool(self, tool_list):
@@ -412,9 +410,23 @@ class TsmPanelPlugin():
                 return False
         return True
 
+    # Friendly names for tool keys, used in the Messages history.
+    _TOOL_LABELS = {
+        "GenConSet": "General Configuration", "ProjSpecs": "Scenario Specs",
+        "ViewSettings": "View Settings", "UpdateLinksNodesPlugin": "GeoMaster Editor",
+        "tsm_subarea_extractor": "Subarea Networks", "many_to_one": "Link Consolidator",
+        "MSR_Disaggregate": "MSR", "PopSIM": "Population SIM", "FL_skimmy": "Skimmy",
+        "SDT_resident": "SDT Resident", "SDT_visitor": "SDT Visitor",
+        "LDT_resident": "LDT Resident", "LDT_visitor": "LDT Visitor",
+        "TripList2Table": "agentPlans", "tsm_assign": "ELToD",
+        "SubareaAssignDialog": "Subarea Assignment", "hydra": "HyDRA",
+        "SummaryLoadedVolume": "Summarization",
+    }
+
     def open_settings(self, tool_name):
         """Opens the tool-specific settings UI."""
         print("open_settings called")  # Verify if this line is printed
+        self.log_message(f"Opened {self._TOOL_LABELS.get(tool_name, tool_name)}")
 
         if tool_name == 'GenConSet':
             dialog = GeneralConfigDialog()
@@ -477,7 +489,8 @@ class TsmPanelPlugin():
             if file_path:
                 try:
                     # Save the settings as JSON
-                    settings.save_to_file(file_path) 
+                    settings.save_to_file(file_path)
+                    self.log_message(f"Settings saved → {os.path.basename(file_path)}")
                     QMessageBox.information(parent_main_window, "Information", f"Save settings to file: {file_path}")
                 except Exception as e:
                     QMessageBox.critical(parent_main_window, "Error", f"Failed to save settings: {e}")
@@ -531,6 +544,9 @@ class TsmPanelPlugin():
                     settings.set("plugin_dir", plugin_dir)
                     # self.save_last_used_settings(file_path)  # Save the last used settings file path
                     print("UI updated with loaded settings")
+                    # Show this scenario's saved action history, then log the load.
+                    self._load_history()
+                    self.log_message(f"Settings loaded ← {os.path.basename(file_path)}")
                     QMessageBox.information(parent_main_window, "Information", f"Read settings from file: {file_path}")
                 # self.update_ui_with_settings(settings)
                 except Exception as e:
@@ -547,7 +563,15 @@ class TsmPanelPlugin():
         appears, and so the two groups stay visually aligned."""
         from qgis.PyQt.QtWidgets import QSizePolicy, QLabel as _QLabel
         from PyQt5.QtCore import QSize
-        STATUS_WIDTH = 95
+        from PyQt5.QtGui import QFont, QFontMetrics
+        # Size the status/messaging column to ~10 characters at the panel's
+        # small (8pt) font. The longest message shown is "Running..." (10
+        # chars); reserve just enough for it plus the 4px label padding so the
+        # column is compact instead of a wide blank gap.
+        fm = QFontMetrics(QFont("MS Shell Dlg 2", 8))
+        STATUS_WIDTH = max(
+            fm.horizontalAdvance(s) for s in ("Running...", "Completed", "Failed")
+        ) + 12
         # Reserve the status column width on both independent grids.
         for grid_name in ("gridLayout_13", "gridLayout_2"):
             grid = getattr(self.ui, grid_name, None)
@@ -565,10 +589,76 @@ class TsmPanelPlugin():
             if not isinstance(lbl, _QLabel):
                 continue
             lbl.setMinimumSize(QSize(STATUS_WIDTH, 0))
+            lbl.setMaximumWidth(STATUS_WIDTH)
             sp = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
             sp.setHeightForWidth(lbl.sizePolicy().hasHeightForWidth())
             lbl.setSizePolicy(sp)
             lbl.setAlignment(Qt.AlignCenter)
+
+    # Friendly names for the status labels, used in the Messages log.
+    _STEP_NAMES = {
+        "label_PopSIM": "Population SIM",
+        "label_Skimmy": "Skimmy",
+        "label_SDTRes": "SDT Resident",
+        "label_SDTVis": "SDT Visitor",
+        "label_LDTRes": "LDT Resident",
+        "label_LDTVis": "LDT Visitor",
+        "label_Truck": "Truck Trip Table",
+        "label_TripList": "agentPlans",
+        "label_TSMAssign": "ELToD",
+        "label_SubAssign": "Subarea Assignment",
+        "label_Hydra": "HyDRA",
+        "label_Many2One": "Link Consolidator",
+        "label_MSRDisagg": "MSR",
+    }
+
+    def _step_name(self, label):
+        obj = label.objectName() if label is not None else ""
+        return self._STEP_NAMES.get(obj, obj.replace("label_", "") or "Step")
+
+    def _history_file(self):
+        """Path to the per-scenario action-history log, or None if no scenario
+        directory has been set yet."""
+        scen_dir = Config().get("scenarioDir")
+        if not scen_dir:
+            return None
+        return os.path.join(scen_dir, "tsm_panel_history.log").replace("\\", "/")
+
+    def log_message(self, text):
+        """Append a timestamped action line to the Messages log and, when a
+        scenario directory is set, to <scenarioDir>/tsm_panel_history.log so the
+        history survives across sessions. No-op on the widget if it isn't present."""
+        from datetime import datetime
+        line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {text}"
+        box = getattr(self.ui, "plainTextEdit_Messages", None)
+        if box is not None:
+            box.appendPlainText(line)
+            sb = box.verticalScrollBar()
+            sb.setValue(sb.maximum())
+        hist = self._history_file()
+        if hist:
+            try:
+                with open(hist, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+            except Exception as e:
+                print(f"Could not write history log {hist}: {e}")
+
+    def _load_history(self):
+        """Load the saved action history for the current scenario into the
+        Messages box (replacing its contents). No-op if there's no history yet."""
+        box = getattr(self.ui, "plainTextEdit_Messages", None)
+        if box is None:
+            return
+        hist = self._history_file()
+        if not hist or not os.path.exists(hist):
+            return
+        try:
+            with open(hist, "r", encoding="utf-8") as f:
+                box.setPlainText(f.read().rstrip("\n"))
+            sb = box.verticalScrollBar()
+            sb.setValue(sb.maximum())
+        except Exception as e:
+            print(f"Could not read history log {hist}: {e}")
 
     def mark_step_completed(self, label: QLabel):
         label.setText("Completed")
@@ -580,14 +670,17 @@ class TsmPanelPlugin():
                 border-radius: 4px;
             }
         """)
+        self.log_message(f"{self._step_name(label)}: completed")
 
     def mark_step_failed(self, label: QLabel):
         label.setText("Failed")
         label.setStyleSheet("background-color: red; color: white; padding: 4px; border-radius: 4px;")
+        self.log_message(f"{self._step_name(label)}: FAILED")
 
     def mark_step_in_progress(self, label: QLabel):
         label.setText("Running...")
         label.setStyleSheet("background-color: yellow; color: black; padding: 4px; border-radius: 4px;")
+        self.log_message(f"{self._step_name(label)}: running…")
 
     def reset_all_step_labels(self):
         for label in [
@@ -597,3 +690,5 @@ class TsmPanelPlugin():
         ]:
             label.setText("")
             label.setStyleSheet("")
+        # The Messages log is a persistent history, so it is intentionally NOT
+        # cleared here — "Clear Status" only resets the per-step status labels.

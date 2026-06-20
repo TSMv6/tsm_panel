@@ -22,6 +22,11 @@
    <string>TSM 6.0</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
+   <property name="styleSheet">
+    <string notr="true">QGroupBox { font-family: 'MS Shell Dlg 2'; font-size: 9pt; font-weight: bold; }
+QPushButton { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: normal; }
+QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: normal; }</string>
+   </property>
    <layout class="QGridLayout" name="gridLayout">
     <item row="1" column="0">
      <widget class="QScrollArea" name="scrollArea">
@@ -93,7 +98,7 @@
              <property name="minimumSize">
               <size>
                <width>300</width>
-               <height>100</height>
+               <height>0</height>
               </size>
              </property>
              <property name="title">
@@ -184,7 +189,7 @@
              <property name="minimumSize">
               <size>
                <width>300</width>
-               <height>200</height>
+               <height>0</height>
               </size>
              </property>
              <property name="title">
@@ -257,7 +262,7 @@
            <item>
             <widget class="QgsCollapsibleGroupBox" name="Step3__Blackbox">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -265,7 +270,7 @@
              <property name="minimumSize">
               <size>
                <width>300</width>
-               <height>650</height>
+               <height>0</height>
               </size>
              </property>
              <property name="title">
@@ -273,37 +278,7 @@
              </property>
              <layout class="QGridLayout" name="gridLayout_3">
               <item row="0" column="0">
-               <widget class="QScrollArea" name="scrollArea_2">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="font">
-                 <font>
-                  <family>Arial</family>
-                  <pointsize>8</pointsize>
-                  <weight>50</weight>
-                  <bold>false</bold>
-                 </font>
-                </property>
-                <property name="frameShape">
-                 <enum>QFrame::NoFrame</enum>
-                </property>
-                <property name="widgetResizable">
-                 <bool>true</bool>
-                </property>
-                <widget class="QWidget" name="scrollAreaWidgetContents_4">
-                 <property name="geometry">
-                  <rect>
-                   <x>0</x>
-                   <y>0</y>
-                   <width>362</width>
-                   <height>616</height>
-                  </rect>
-                 </property>
-                 <layout class="QFormLayout" name="formLayout_2">
+               <layout class="QFormLayout" name="formLayout_2">
                   <item row="2" column="0">
                    <layout class="QFormLayout" name="formLayout">
                     <item row="0" column="0">
@@ -335,7 +310,7 @@
                       <property name="minimumSize">
                        <size>
                         <width>0</width>
-                        <height>130</height>
+                        <height>0</height>
                        </size>
                       </property>
                       <property name="font">
@@ -356,50 +331,7 @@
                        <bool>false</bool>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_12">
-                       <item row="1" column="1">
-                        <widget class="QPushButton" name="pushButton_many2One">
-                         <property name="font">
-                          <font>
-                           <family>MS Shell Dlg 2</family>
-                           <pointsize>8</pointsize>
-                           <weight>50</weight>
-                           <bold>false</bold>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Settings</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QPushButton" name="run_Many2One">
-                         <property name="enabled">
-                          <bool>true</bool>
-                         </property>
-                         <property name="text">
-                          <string>Link Consolidator</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QPushButton" name="pushButton_79">
-                         <property name="enabled">
-                          <bool>false</bool>
-                         </property>
-                         <property name="font">
-                          <font>
-                           <family>MS Shell Dlg 2</family>
-                           <pointsize>8</pointsize>
-                           <weight>50</weight>
-                           <bold>false</bold>
-                          </font>
-                         </property>
-                         <property name="text">
-                          <string>Settings</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
+                       <item row="0" column="0" colspan="2">
                         <widget class="QPushButton" name="pushButton_78">
                          <property name="enabled">
                           <bool>false</bool>
@@ -417,8 +349,11 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
-                        <widget class="QPushButton" name="pushButton_subareaExt">
+                       <item row="1" column="0" colspan="2">
+                        <widget class="QPushButton" name="run_Many2One">
+                         <property name="enabled">
+                          <bool>true</bool>
+                         </property>
                          <property name="font">
                           <font>
                            <family>MS Shell Dlg 2</family>
@@ -428,12 +363,20 @@
                           </font>
                          </property>
                          <property name="text">
-                          <string>Settings</string>
+                          <string>Link Consolidator</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="0">
+                       <item row="2" column="0" colspan="2">
                         <widget class="QPushButton" name="pushButton">
+                         <property name="font">
+                          <font>
+                           <family>MS Shell Dlg 2</family>
+                           <pointsize>8</pointsize>
+                           <weight>50</weight>
+                           <bold>false</bold>
+                          </font>
+                         </property>
                          <property name="text">
                           <string>Subarea Networks</string>
                          </property>
@@ -453,20 +396,13 @@
                       <property name="minimumSize">
                        <size>
                         <width>175</width>
-                        <height>300</height>
+                        <height>0</height>
                        </size>
                       </property>
                       <property name="title">
                        <string>Demand Models</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_13">
-                       <item row="10" column="4">
-                        <widget class="QPushButton" name="pushButton_TripTable">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="4" column="1">
                         <widget class="QLabel" name="label_Skimmy">
                          <property name="text">
@@ -488,13 +424,6 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="0" column="4">
-                        <widget class="QPushButton" name="pushButton_PopSIMSettings">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="6" column="1">
                         <widget class="QLabel" name="label_SDTVis">
                          <property name="text">
@@ -502,17 +431,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="4">
-                        <widget class="QPushButton" name="pushButton_TruckSettings">
-                         <property name="enabled">
-                          <bool>false</bool>
-                         </property>
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="2" colspan="2">
+                       <item row="0" column="2" colspan="3">
                         <widget class="QPushButton" name="run_PopSIM">
                          <property name="font">
                           <font>
@@ -530,7 +449,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="2" colspan="2">
+                       <item row="4" column="2" colspan="3">
                         <widget class="QPushButton" name="run_Skimmy">
                          <property name="font">
                           <font>
@@ -562,38 +481,10 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="4">
-                        <widget class="QPushButton" name="pushButton_SDTResSettings">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="4">
-                        <widget class="QPushButton" name="pushButton_SkimmySetings">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="5" column="0">
                         <widget class="QCheckBox" name="checkBox_SDTRes">
                          <property name="text">
                           <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="4">
-                        <widget class="QPushButton" name="pushButton_SDTVisSettings">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="4">
-                        <widget class="QPushButton" name="pushButton_LDTResSettings">
-                         <property name="text">
-                          <string>...</string>
                          </property>
                         </widget>
                        </item>
@@ -604,7 +495,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="2" colspan="2">
+                       <item row="5" column="2" colspan="3">
                         <widget class="QPushButton" name="run_SDTRes">
                          <property name="font">
                           <font>
@@ -656,14 +547,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="4">
-                        <widget class="QPushButton" name="pushButton_LDTVisSettings">
-                         <property name="text">
-                          <string>...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="2" colspan="2">
+                       <item row="6" column="2" colspan="3">
                         <widget class="QPushButton" name="run_SDTVis">
                          <property name="font">
                           <font>
@@ -688,7 +572,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="2" colspan="2">
+                       <item row="7" column="2" colspan="3">
                         <widget class="QPushButton" name="run_LDTRes">
                          <property name="font">
                           <font>
@@ -713,7 +597,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="2" colspan="2">
+                       <item row="8" column="2" colspan="3">
                         <widget class="QPushButton" name="run_LDTVis">
                          <property name="font">
                           <font>
@@ -738,7 +622,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="2" colspan="2">
+                       <item row="9" column="2" colspan="3">
                         <widget class="QPushButton" name="run_Truck">
                          <property name="enabled">
                           <bool>false</bool>
@@ -766,7 +650,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="2" colspan="2">
+                       <item row="10" column="2" colspan="3">
                         <widget class="QPushButton" name="run_TripTable">
                          <property name="font">
                           <font>
@@ -800,7 +684,7 @@
                     <property name="minimumSize">
                      <size>
                       <width>261</width>
-                      <height>100</height>
+                      <height>0</height>
                      </size>
                     </property>
                     <property name="title">
@@ -839,7 +723,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="0" column="2">
+                     <item row="0" column="2" colspan="2">
                       <widget class="QPushButton" name="run_TSMAssign">
                        <property name="font">
                         <font>
@@ -857,28 +741,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="0" column="3">
-                      <widget class="QPushButton" name="pushButton_TSM_AssignSettings">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <family>MS Shell Dlg 2</family>
-                         <pointsize>8</pointsize>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>...</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
+                     <item row="2" column="0">
                       <widget class="QCheckBox" name="checkBox_SubAssign">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -891,7 +754,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="1" column="1">
+                     <item row="2" column="1">
                       <widget class="QLabel" name="label_SubAssign">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -910,7 +773,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="1" column="2">
+                     <item row="2" column="2" colspan="2">
                       <widget class="QPushButton" name="run_SubAssign">
                        <property name="font">
                         <font>
@@ -928,7 +791,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="2" column="0">
+                     <item row="1" column="0">
                       <widget class="QCheckBox" name="checkBox_Hydra">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -941,7 +804,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="2" column="1">
+                     <item row="1" column="1">
                       <widget class="QLabel" name="label_Hydra">
                        <property name="sizePolicy">
                         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -960,7 +823,7 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="2" column="2">
+                     <item row="1" column="2" colspan="2">
                       <widget class="QPushButton" name="run_Hydra">
                        <property name="font">
                         <font>
@@ -971,22 +834,7 @@
                         </font>
                        </property>
                        <property name="text">
-                        <string>10. Hydra (AgentFlow-DTA)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="3">
-                      <widget class="QPushButton" name="pushButton_SubAssignSettings">
-                       <property name="font">
-                        <font>
-                         <family>MS Shell Dlg 2</family>
-                         <pointsize>8</pointsize>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="text">
-                        <string>...</string>
+                        <string>9. HyDRA (AgentFlow-DTA)</string>
                        </property>
                       </widget>
                      </item>
@@ -994,8 +842,6 @@
                    </widget>
                   </item>
                  </layout>
-                </widget>
-               </widget>
               </item>
              </layout>
             </widget>
@@ -1005,7 +851,7 @@
              <property name="minimumSize">
               <size>
                <width>300</width>
-               <height>100</height>
+               <height>0</height>
               </size>
              </property>
              <property name="title">
@@ -1014,7 +860,7 @@
              <layout class="QVBoxLayout" name="verticalLayout_17">
               <item>
                <layout class="QGridLayout" name="gridLayout_11">
-                <item row="0" column="0">
+                <item row="0" column="0" colspan="2">
                  <widget class="QPushButton" name="pushButton_74">
                   <property name="autoFillBackground">
                    <bool>false</bool>
@@ -1024,24 +870,7 @@
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="1">
-                 <widget class="QPushButton" name="pushButton_SummaryLoadedVolume">
-                  <property name="text">
-                   <string>properties</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QPushButton" name="pushButton_76">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string>properties</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
+                <item row="1" column="0" colspan="2">
                  <widget class="QPushButton" name="pushButton_77">
                   <property name="enabled">
                    <bool>false</bool>
@@ -1055,6 +884,49 @@
                  </widget>
                 </item>
                </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_Messages">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>1</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>300</width>
+               <height>80</height>
+              </size>
+             </property>
+             <property name="title">
+              <string>Messages</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_msg">
+              <property name="leftMargin">
+               <number>4</number>
+              </property>
+              <property name="topMargin">
+               <number>4</number>
+              </property>
+              <property name="rightMargin">
+               <number>4</number>
+              </property>
+              <property name="bottomMargin">
+               <number>4</number>
+              </property>
+              <item>
+               <widget class="QPlainTextEdit" name="plainTextEdit_Messages">
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>Status messages from the Black Box steps appear here…</string>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>

@@ -183,7 +183,7 @@ class Ui_DialogHydra(object):
 
     def retranslateUi(self, DialogHydra):
         _translate = QtCore.QCoreApplication.translate
-        DialogHydra.setWindowTitle(_translate("DialogHydra", "Hydra (AgentFlow-DTA)"))
+        DialogHydra.setWindowTitle(_translate("DialogHydra", "HyDRA (AgentFlow-DTA)"))
         self.label_link.setText(_translate("DialogHydra", "Link layer (GeoPackage)"))
         self.label_node.setText(_translate("DialogHydra", "Node layer (GeoPackage)"))
         self.label_trip.setText(_translate("DialogHydra", "Trip list (.csv.gz)"))

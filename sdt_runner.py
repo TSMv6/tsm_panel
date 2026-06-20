@@ -44,15 +44,15 @@ def run_sdt_models(flags):
     if not skim_file:
         return False, "Please select a skim file."
 
-    # ---- 1) Land-use prep (#8, R 1:1 for now) -> tsm_landuse.csv ----------
-    r_exe_path = settings.get("r_exe_path")
-    r_script = os.path.join(plugin_dir, "Rscripts", "SDT_resident_LUPrep.R")
+    # ---- 1) Land-use prep (#8) -> tsm_landuse.csv -------------------------
+    # se_aggregate.exe replaces SDT_resident_LUPrep.R (args: gpkg, out, default).
+    se_exe = settings.app_exe("utilities/se_aggregate.exe")
     tsm_landuse = os.path.join(scenario_dir, "tsm_landuse.csv")
     tsm_landuse_default = os.path.join(plugin_dir, "Rscripts", "tsm_landuse_default.csv")
-    if not r_exe_path or not os.path.exists(r_script):
-        return False, "Land-use prep (Rscript / SDT_resident_LUPrep.R) not found. Set the Rscript path in General Configuration."
+    if not os.path.exists(se_exe):
+        return False, f"Land-use prep utility not found: {se_exe}"
     try:
-        r = subprocess.run([r_exe_path, r_script, landuse_layer_path, tsm_landuse, tsm_landuse_default], shell=True)
+        r = subprocess.run([se_exe, landuse_layer_path, tsm_landuse, tsm_landuse_default])
         if r.returncode != 0 or not os.path.exists(tsm_landuse):
             return False, "Land-use prep (26k -> 8.7k) failed."
     except Exception as e:

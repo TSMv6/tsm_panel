@@ -208,7 +208,7 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
 <h2 style='margin:0 0 6px 0;'>agentPlans &#8211; trip list / trip table builder</h2>
 <p>agentPlans merges every demand market into one <b>trip list</b> at the selected
 resolution (<code>tripList_&lt;res&gt;min.csv.gz</code>) that the assignment engine
-(Hydra/AgentFlow, or ELToD) reads. Each output row is one vehicle trip with origin (O),
+(HyDRA/AgentFlow, or ELToD) reads. Each output row is one vehicle trip with origin (O),
 destination (D), <code>depart_time</code> (HH:MM:SS), market segment and
 value-of-time class.</p>
 
@@ -272,7 +272,7 @@ segment (<code>marketVot</code>).</li>
 <h4>6. Output</h4>
 <ul>
 <li><b><code>tripList_&lt;res&gt;min.csv.gz</code></b> &#8211; the agent trip list at the
-selected resolution (feeds Hydra): <code>hh_id, person_id, tour_id, trip_id,
+selected resolution (feeds HyDRA): <code>hh_id, person_id, tour_id, trip_id,
 valueOfTime, purpose, depart_time, O, D, marketVot, vehTrips, occupancy, hhIncome,
 market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b></li>
 <li><b><code>ELTOD_tt_HourClock.csv</code></b> &#8211; the wide <b>ELToD trip table</b>
@@ -380,61 +380,21 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
         trip_table_out = settings.get("triptable_file")
         plugin_dir = settings.get("plugin_dir")
 
-        # --- v6 path: agentPlans.exe (C++ port of the two R scripts) ---
-        # If the compiled app is deployed, run the whole trip-list pipeline from a
-        # single generated control file. Otherwise fall back to the legacy R scripts.
+        # agentPlans.exe (C++ port of 2_Create_LDT_TripTable + 3_get_ELTOD_TripTable)
+        # is the only path; the legacy R scripts are retired.
         agentplans_exe = os.path.join(modelDir, "Apps", "TripList_to_TripTable", "agentPlans.exe")
-        if os.path.exists(agentplans_exe):
-            return self._run_agentplans(settings, agentplans_exe, modelDir, scenarioDir,
-                                         year, feedback_loop, plugin_dir, show_message)
-
-        r_exe_path = settings.get("r_exe_path")
-        r_script_path1 = os.path.join(settings.get("plugin_dir"), "Rscripts", "2_Create_LDT_TripTable_GA_AL_template.R")
-        r_script_path2 = os.path.join(settings.get("plugin_dir"), "Rscripts", "3_get_ELTOD_TripTable_template.R")
-        syn_hh = settings.get("synHH_file")
-
-        # Check required inputs
-        if not all([r_exe_path, r_script_path1, r_script_path2, modelDir, scenarioDir, year, syn_hh]):
-            QMessageBox.critical(self, "Error", "Missing required input for Trip Table generation.")
+        if not os.path.exists(agentplans_exe):
+            QMessageBox.critical(self, "Error", f"agentPlans.exe not found: {agentplans_exe}")
             return False
-
-        CREATE_NEW_CONSOLE = subprocess.CREATE_NEW_CONSOLE
-        
-
-        try:
-            result1 = subprocess.run([r_exe_path, r_script_path1, modelDir, scenarioDir, year],
-                                       creationflags=CREATE_NEW_CONSOLE)
-            if result1.returncode == 0:
-                print("Trip List to trip table created successfully")
-            else:
-                print("Trip List to trip table conversion failed")
-        except Exception as e:
-            print(f"Trip List to trip table conversion failed: {e}")
-            QMessageBox.critical(self, "Error", f"Error processing LDT Tours: {e}")
-            return False
-        
-        try:
-            result2 = subprocess.run([r_exe_path, r_script_path2, modelDir, scenarioDir, year, feedback_loop, syn_hh, trip_table_out],  creationflags=CREATE_NEW_CONSOLE)
-            if result2.returncode == 0:
-                print(f"Trip List to trip table created successfully")
-                if show_message:
-                    QMessageBox.information(self, "Success", "Trip Table generated successfully.")
-                return True
-            else:
-                print("Trip Table R script failed")
-                QMessageBox.critical(self, "Error", "Trip Table R script failed.")
-                return False
-        except Exception as e:
-            print(f"Error running Trip Table R script: {e}")
-            QMessageBox.critical(self, "Error", f"Error running Trip Table R script: {e}")
-            return False
+        return self._run_agentplans(settings, agentplans_exe, modelDir, scenarioDir,
+                                     year, feedback_loop, plugin_dir, show_message)
 
     def _run_agentplans(self, settings, agentplans_exe, modelDir, scenarioDir,
                          year, feedback_loop, plugin_dir, show_message):
         """Generate a control file and run the agentPlans C++ trip-list pipeline.
 
         agentPlans replaces 2_Create_LDT_TripTable + 3_get_ELTOD_TripTable and
-        writes the Hydra trip list scenario_dir/ELTOD_tt_List_hourly.csv.gz
+        writes the HyDRA trip list scenario_dir/ELTOD_tt_List_hourly.csv.gz
         (depart_time as HH:MM:SS) plus the ELToD OD table. Resolution of the
         output trip list is taken from the 'output_resolution' project setting
         (15 or 30 minutes; default 30)."""

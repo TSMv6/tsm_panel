@@ -216,7 +216,6 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
     # ------------------------------------------------------------------
     def run_Skimmy(self, show_message=False):
         settings = Config()
-        tsm_location = settings.get("tsm_location")
 
         link_layer = self.comboBox_Linklayer.currentData()
         node_layer = self.comboBox_Nodelayer.currentData()
@@ -241,9 +240,10 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
             QMessageBox.critical(self, "Error", "tiled_omx output needs the tile geo file, tile directory, and tile index file.")
             return False
 
-        # Resolve apps
-        pathskim_exe = os.path.join(tsm_location, "Apps", "skimmy", "PathSkim.exe")
-        gpkgcsv_exe = os.path.join(tsm_location, "Apps", "LinkConsolidator", "gpkgcsv.exe")
+        # Resolve apps from the plugin's own Apps/ folder (not tsm_location), so
+        # all code runs from the plugin directory.
+        pathskim_exe = settings.app_exe("skimmy/PathSkim.exe")
+        gpkgcsv_exe = settings.app_exe("utilities/gpkgcsv.exe")
         for path, label in ((pathskim_exe, "PathSkim.exe"), (gpkgcsv_exe, "gpkgcsv.exe")):
             if not os.path.exists(path):
                 QMessageBox.critical(self, "Error", f"{label} not found at: {path}")
