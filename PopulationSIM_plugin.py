@@ -271,6 +271,9 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
             QMessageBox.critical(self, "Error", f"Error building PopSim land-use: {e}")
             return False
 
+        # (PopSim's res_pop control reads the existing 'ResPOP' column -- the
+        # controls file maps control_field=ResPOP, so no NP column is needed.)
+
         # 2) Generate the HH + GQ TOMLs into the config folder
         config_popsim = os.path.join(tsm_location, "config", "popsim")
         hh_toml = os.path.join(config_popsim, "popsim_run_HH.toml")

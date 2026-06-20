@@ -1,0 +1,18 @@
+# MSR truck size terms — MSR-specific (no model TOML exists for trucks).
+# Subzone attractiveness for truck trips = POP + 2 * total employment.
+# Same label/value shape as the SDT size_terms.toml so the msr loader reads it
+# uniformly: attractiveness_subzone = Σ(land_use[label] * value); θ = 1 (linear).
+
+[size_terms]
+model_name  = "truck_size_terms"
+description = "Truck subzone attractiveness = POP + 2 × total employment"
+version     = "1.0"
+
+# Single alternative covers all truck classes (light/medium/heavy share the split).
+[[size_terms.alternatives]]
+alt     = 0
+purpose = "Truck"
+coefficients = [
+  { label = "POP",    value = 1.0 },
+  { label = "totEMP", value = 2.0 },
+]
