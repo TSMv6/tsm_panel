@@ -224,7 +224,8 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         print(f"Landuse layer path: {landuse_layer_path}")
         print(f"ldtprep exe: {ldtprep_exe}")
         try:
-            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated])
+            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
+                                     env=Config().app_env(ldtprep_exe))
             if result1.returncode == 0:
                 print(f"Running LDT Landuse updated successful: {ldt_resident_updated}")
             else:
@@ -252,7 +253,8 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         print(f"LDT HH template: {LDT_households_template}")
         print(f"LDT HH updated: {LDT_households_updated}")
         try:
-            result2 = subprocess.run([ldtprep_exe, "synhh-convert", sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated])
+            result2 = subprocess.run([ldtprep_exe, "synhh-convert", sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated],
+                                     env=Config().app_env(ldtprep_exe))
             if result2.returncode == 0:
                 print(f"Running LDT HH from SDT successful: {LDT_households_updated}")
             else:

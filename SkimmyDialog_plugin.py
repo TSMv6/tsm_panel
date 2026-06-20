@@ -188,7 +188,8 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
         return ""
 
     def _gpkg_to_full_csv(self, gpkgcsv_exe, gpkg_path, out_csv):
-        r = subprocess.run([gpkgcsv_exe, "to-csv", gpkg_path, out_csv, "--drop-geom"])
+        r = subprocess.run([gpkgcsv_exe, "to-csv", gpkg_path, out_csv, "--drop-geom"],
+                           env=Config().app_env(gpkgcsv_exe))
         return r.returncode == 0 and os.path.exists(out_csv)
 
     def _transform_links(self, full_csv, out_csv):

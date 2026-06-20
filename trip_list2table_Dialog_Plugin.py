@@ -351,7 +351,7 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
         subarea = self.lineEdit_MSRSubarea.text().strip()
         lookup = self.lineEdit_MSRLookup.text().strip()
         try:
-            r = subprocess.run([msr_exe, scenarioDir, subarea, lookup])
+            r = subprocess.run([msr_exe, scenarioDir, subarea, lookup], env=Config().app_env(msr_exe))
             if r.returncode != 0:
                 QMessageBox.critical(self, "Error", "MSR disaggregation failed. Check console for details.")
         except Exception as e:

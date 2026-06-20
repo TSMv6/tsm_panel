@@ -333,7 +333,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         print(f"Landuse layer path: {landuse_layer_path}")
         print(f"ldtprep exe: {ldtprep_exe}")
         try:
-            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated])
+            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
+                                     env=Config().app_env(ldtprep_exe))
             if result1.returncode != 0:
                 QMessageBox.critical(self, "Error", "LDT Landuse update failed.")
                 return False
@@ -359,7 +360,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             ref_year = "2023"  # Default reference year if not provided
 
         try:
-            result2 = subprocess.run([ldtprep_exe, "synhh-incremental", US_ldt_syn_hh, scenYear, ref_year, out_ldt_syn_hh])
+            result2 = subprocess.run([ldtprep_exe, "synhh-incremental", US_ldt_syn_hh, scenYear, ref_year, out_ldt_syn_hh],
+                                     env=Config().app_env(ldtprep_exe))
             if result2.returncode != 0:
                 QMessageBox.critical(self, "Error", "LDT HH from Scenario failed.")
                 return False
@@ -448,7 +450,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         incremental_output = os.path.join(scenarioDir, "OS_LD_increment_tour_out.csv")
 
         try:
-            result4 = subprocess.run([ldtprep_exe, "synhh-append", incremental_output, checkBox_userRef_str, prev_out_file, tsm_location,  scenarioDir, scenYear])
+            result4 = subprocess.run([ldtprep_exe, "synhh-append", incremental_output, checkBox_userRef_str, prev_out_file, tsm_location,  scenarioDir, scenYear],
+                                     env=Config().app_env(ldtprep_exe))
             if result4.returncode == 0:
                 print(f"Appended LDT incremental results with previous years: OS_LD_tour_out.csv")
                 # QMessageBox.information(self, "Success", "Appended LDT incremental results with previous years: OS_LD_tour_out.csv")

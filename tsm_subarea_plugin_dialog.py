@@ -364,7 +364,7 @@ class TsmSubareaExtDialogX(QDialog, Ui_Dialog):
             f.write(f"plugin_dir = {plugin_dir}\n")
 
         try:
-            result = subprocess.run([subarea_exe, "renumber", settings_file]) #capture_output=True, text=True)
+            result = subprocess.run([subarea_exe, "renumber", settings_file], env=settings.app_env(subarea_exe)) #capture_output=True, text=True)
             print("Output:", result.stdout)
             print("Error:", result.stderr)
 

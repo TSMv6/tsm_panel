@@ -403,8 +403,8 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
 
          # STEP 1: Generate PopulationSIM input files
         try:
-            result1 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"])
-            result2 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"])
+            result1 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"], env=Config().app_env(gpkgcsv_exe))
+            result2 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"], env=Config().app_env(gpkgcsv_exe))
             if result1.returncode == 0 and result2.returncode == 0:  # Check if the conversion ran successfully
                     print("Link and node file are exported to csv")
             else:

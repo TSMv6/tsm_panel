@@ -31,7 +31,30 @@ class Config:
         under Apps/, e.g. "utilities/gpkgcsv.exe" or "ldt/ldt-run.exe".
         """
         return os.path.join(self.get("plugin_dir"), "Apps", rel).replace("\\", "/")
-    
+
+    def app_env(self, exe_path):
+        """Environment for launching a bundled GDAL-linked exe.
+
+        The utilities/netPrep exes ship their own self-contained GDAL beside them.
+        Pass this env to subprocess so the shipped gdal.dll uses ITS OWN driver
+        path (the exe's folder, which has no GDAL plugins) instead of inheriting
+        QGIS's GDAL_DRIVER_PATH -- otherwise the version-mismatched QGIS plugins
+        fail to load and spam "Can't load requested DLL ... 127" errors. Also
+        points GDAL_DATA/PROJ_LIB at the shipped data when present (needed to read
+        CRS / write GeoPackages).
+        """
+        app_dir = os.path.dirname(exe_path)
+        env = dict(os.environ)
+        env["PATH"] = app_dir + os.pathsep + env.get("PATH", "")
+        env["GDAL_DRIVER_PATH"] = app_dir          # no GDAL plugins here -> none loaded
+        gdata = os.path.join(app_dir, "gdal-data")
+        projd = os.path.join(app_dir, "proj")
+        if os.path.isdir(gdata):
+            env["GDAL_DATA"] = gdata
+        if os.path.isdir(projd):
+            env["PROJ_LIB"] = projd
+        return env
+
     def save_to_file(self, file_path):
             """Save the configuration settings to a JSON file."""
             try:

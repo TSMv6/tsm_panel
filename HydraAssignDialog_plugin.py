@@ -157,7 +157,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         try:
             for src_layer, dst, label in ((link_layer, link_csv, "link"), (node_layer, node_csv, "node")):
                 src = self.get_layer_path(src_layer)
-                r = subprocess.run([gpkgcsv, "to-csv", src, dst, "--drop-geom"])
+                r = subprocess.run([gpkgcsv, "to-csv", src, dst, "--drop-geom"],
+                                   env=Config().app_env(gpkgcsv))
                 if r.returncode != 0 or not os.path.exists(dst):
                     QMessageBox.critical(self, "Error", f"Failed to convert {label} layer to CSV.")
                     return False

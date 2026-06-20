@@ -260,7 +260,8 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             return
         try:
             # odme counts (C++ port of Generate_ODME_Counts.R): subarea link gpkg -> ODME target counts
-            result = subprocess.run([odme_exe, "counts", sub_link_file, count_file])
+            result = subprocess.run([odme_exe, "counts", sub_link_file, count_file],
+                                    env=Config().app_env(odme_exe))
             if result.returncode == 0:
                 print("ODME Target Counts file generated successfully")
             else:
@@ -279,7 +280,8 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             return
         try:
             # odme develop (C++ port of Develop_ODME_Correction_factors.R)
-            result = subprocess.run([odme_exe, "develop", base_tt_file, odme_tt_file, odme_correct_file])
+            result = subprocess.run([odme_exe, "develop", base_tt_file, odme_tt_file, odme_correct_file],
+                                    env=Config().app_env(odme_exe))
             if result.returncode == 0:
                 print("Successfully computed ODME correction factors")
                 QMessageBox.information(self, "Success", "Successfully computed ODME correction factors.")
@@ -509,9 +511,10 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
          # STEP 1: Generate PopulationSIM input files
         try:
             result1 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "Subarea_LINK.csv"),
-                                      "--drop-geom", "--drop", "A", "--drop", "B", "--rename", "Sub_A=A", "--rename", "Sub_B=B"])
+                                      "--drop-geom", "--drop", "A", "--drop", "B", "--rename", "Sub_A=A", "--rename", "Sub_B=B"],
+                                     env=settings.app_env(gpkgcsv_exe))
             result2 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "Subarea_NODE.csv"),
-                                      "--drop-geom"])
+                                      "--drop-geom"], env=settings.app_env(gpkgcsv_exe))
             if result1.returncode == 0 and result2.returncode == 0:  # Check if the conversion ran successfully
                     print("Link and node file are exported to csv")
             else:
@@ -625,7 +628,7 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             apply_args = [odme_exe, "apply", fut_sub_file, fut_odme_file, odme_corr_fac]
             if node_replacement_file and os.path.exists(node_replacement_file):
                 apply_args.append(node_replacement_file)
-            result1 = subprocess.run(apply_args)
+            result1 = subprocess.run(apply_args, env=settings.app_env(odme_exe))
             if( result1.returncode == 0):
                 print("Successfully applied ODME correction factors")
             else:

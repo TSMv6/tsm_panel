@@ -56,6 +56,13 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
         self.browse_SynHH.clicked.connect(lambda: self.select_file(self.lineEdit_SynHH, "save"))
         self.browse_SynPer.clicked.connect(lambda: self.select_file(self.lineEdit_SynPer, "save"))
         self.checkBox_Increment.clicked.connect(self.update_incremental_state)
+        # Connect run/ok/cancel ONCE here. These must NOT live in
+        # update_incremental_state(), which re-runs on every Increment toggle and
+        # would stack duplicate connections -> the "settings saved" message (and a
+        # run) firing multiple times.
+        self.runPopSim.clicked.connect(lambda: self.run_popsim_script(show_message=True))
+        self.okcancel_PopSIM.accepted.connect(self.update_settings)
+        self.okcancel_PopSIM.rejected.connect(self.cancel_action)
         self.update_incremental_state()
 
     # ------------------------------------------------------------------
@@ -82,11 +89,6 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
         else:
             self.browse_RefSynHH.setEnabled(False)
             self.browse_RefSynPer.setEnabled(False)
-
-        # (Re)connect run/ok/cancel
-        self.runPopSim.clicked.connect(lambda: self.run_popsim_script(show_message=True))
-        self.okcancel_PopSIM.accepted.connect(self.update_settings)
-        self.okcancel_PopSIM.rejected.connect(self.cancel_action)
 
     def cancel_action(self):
         print("Action canceled. Closing dialog.")
@@ -243,10 +245,12 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
                     field_names = []
                 msr_key = "MSR_Index" if "MSR_Index" in field_names else "PopSyn_Index"
                 r = subprocess.run([ldelta_exe, ref_landuse_path, landuse_path, se_data,
-                                    "--key", msr_key, "--keep-zero", "--floor0"])
+                                    "--key", msr_key, "--keep-zero", "--floor0"],
+                                   env=settings.app_env(ldelta_exe))
                 err = f"Failed to build delta land-use (landuse_delta, key={msr_key})."
             else:
-                r = subprocess.run([gpkgcsv_exe, "to-csv", landuse_path, se_data, "--drop-geom"])
+                r = subprocess.run([gpkgcsv_exe, "to-csv", landuse_path, se_data, "--drop-geom"],
+                                   env=settings.app_env(gpkgcsv_exe))
                 err = "Failed to export land-use layer to tsm_landuse.csv."
             if r.returncode != 0 or not os.path.exists(se_data):
                 QMessageBox.critical(self, "Error", err)
@@ -315,7 +319,8 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
                     f.write(f"synPer_path = {synPer}\n".replace("\\", "/"))
                     f.write(f"refSynHH_path = {ref_synhh}\n")
                     f.write(f"refSynPer_path = {ref_synper}\n")
-                r = subprocess.run([popsimprep_exe, "append-incremental", settings_popsim])
+                r = subprocess.run([popsimprep_exe, "append-incremental", settings_popsim],
+                                   env=settings.app_env(popsimprep_exe))
                 if r.returncode != 0 or not os.path.exists(synHH):
                     QMessageBox.critical(self, "Error", "Incremental append (popsimprep) failed.")
                     return False

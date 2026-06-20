@@ -52,7 +52,8 @@ def run_sdt_models(flags):
     if not os.path.exists(se_exe):
         return False, f"Land-use prep utility not found: {se_exe}"
     try:
-        r = subprocess.run([se_exe, landuse_layer_path, tsm_landuse, tsm_landuse_default])
+        r = subprocess.run([se_exe, landuse_layer_path, tsm_landuse, tsm_landuse_default],
+                           env=Config().app_env(se_exe))
         if r.returncode != 0 or not os.path.exists(tsm_landuse):
             return False, "Land-use prep (26k -> 8.7k) failed."
     except Exception as e:

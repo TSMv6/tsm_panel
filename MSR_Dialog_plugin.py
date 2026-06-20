@@ -139,7 +139,8 @@ class MSR_Disaggregate(QDialog, Ui_Dialog_MSR):
             return False
         try:
             print(f"Aggregating MPO landuse to TSM with {se_exe}: {landuse_layer_path} -> {tsm_landuse_path}")
-            result1 = subprocess.run([se_exe, landuse_layer_path, tsm_landuse_path, tsm_landuse_default])
+            result1 = subprocess.run([se_exe, landuse_layer_path, tsm_landuse_path, tsm_landuse_default],
+                                     env=Config().app_env(se_exe))
             if result1.returncode != 0 or not os.path.exists(tsm_landuse_path):
                 print("Aggregating MPO landuse to TSM failed.")
                 QMessageBox.critical(self, "Error", "Aggregating MPO landuse to TSM failed.")
