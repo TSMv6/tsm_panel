@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApp
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
+from .model_run import run_gated_model
 # from .helper_functions import HelperFun 
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtGui import QColor
@@ -408,21 +409,16 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # Persist the external-station overwrite targets for the downstream step.
         self._persist_external_targets()
 
-        ldt_exe = os.path.join(settings.get("tsm_location"), "Apps", "ldt", "ldt-run.exe")
+        ldt_exe = settings.app_exe("ldt/ldt-run.exe")
         if not os.path.exists(ldt_exe):
             QMessageBox.critical(self, "Error", f"ldt-run.exe not found at: {ldt_exe}")
             return False
 
-        # Run the LDT-visitor model (ldt-run.exe)
-        try:
-            result3 = subprocess.run([ldt_exe, properties_file], cwd = settings.get("scenarioDir"))
-            if result3.returncode != 0:
-                return False
-            # if show_message:
-                # QMessageBox.information(self, "Success", "LDT Visitor Model run successfully.")
-        except Exception as e:
-            print(f"Running LDT-visitor model failed: {e}")
-            return
+        # Run the LDT-visitor model (ldt-run.exe) via the shared gated runner
+        # (captures output, reports token/offline/model errors in a message box).
+        if not run_gated_model(self, [ldt_exe, properties_file], "LDT-visitor model",
+                               cwd=settings.get("scenarioDir")):
+            return False
         
         #------------------------------------------------------------------------------------
         # Check and append if incremental

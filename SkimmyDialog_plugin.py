@@ -2,6 +2,7 @@ import os
 import csv
 import subprocess
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from .model_run import run_gated_model
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -301,14 +302,10 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
             QMessageBox.critical(self, "Error", f"Error writing skim settings: {e}")
             return False
 
-        # 3) Run PathSkim
-        try:
-            r = subprocess.run([pathskim_exe, settings_file])
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error running PathSkim: {e}")
-            return False
-        if r.returncode != 0:
-            QMessageBox.critical(self, "Error", "Path skim failed. Check console for details.")
+        # 3) Run PathSkim via the shared gated runner (captures output and reports the
+        #    real reason — token missing/invalid/expired/revoked, offline, or a
+        #    PathSkim error — in a message box).
+        if not run_gated_model(self, [pathskim_exe, settings_file], "Skimmy"):
             return False
 
         self.update_settings_silent()

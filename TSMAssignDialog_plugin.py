@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
+from .model_run import run_gated_model
 # from .helper_functions import HelperFun 
 
 import processing
@@ -486,23 +487,18 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         self.update_controls_by_selection(etlod_temp_scenario, etlod_scenario, update_keys, keys_to_remove)
         os.remove(etlod_temp_scenario)
 
-        # Run ELToD 
-        eltod_exe_path = os.path.join(tsm_location, "Apps", "ELToD", "ELToD5_14.exe") 
+        # Run ELToD  (shipped under the plugin's Apps/ELToD; was tsm_location/Apps)
+        eltod_exe_path = Config().app_exe("ELToD/ELToD5_23.exe")
         etlod_scenario 
 
-        try:
-            result3 = subprocess.run([eltod_exe_path, etlod_scenario]) 
-            if result3.returncode == 0:  # Check if the ELToD ran successfully
-                    print("TSM Assignment ran successfully")
-                    if show_message:
-                        QMessageBox.information(self, "Success", "TSM Assignment ran successfully.")
-                    return True
-            else:
-                print("TSM Assignment Failed to run.")
-        except Exception as e:
-            print("Error running TSM Assignment:", e)
-            QMessageBox.critical(self, "Error", f"Error in TSM Assignment STEP 3: {e}") 
+        # Run ELToD via the shared gated runner (captures output; reports
+        # token/offline/model errors in a message box instead of the console).
+        if not run_gated_model(self, [eltod_exe_path, etlod_scenario], "ELToD assignment"):
             return False
+        print("TSM Assignment ran successfully")
+        if show_message:
+            QMessageBox.information(self, "Success", "TSM Assignment ran successfully.")
+        return True
         
         # ====================================================================================
         # Loaded network -- C++ summarize.exe (port of Summarise_Loaded_Volumes.R)

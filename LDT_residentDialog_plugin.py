@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
+from .model_run import run_gated_model
 # from .helper_functions import HelperFun 
 
 from .LDT_resident_ui import Ui_Dialog_LDTRes
@@ -302,22 +303,17 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
 
         self.template_keys_update(ldt_res_template, replacements, properties_file)
 
-        ldt_exe = os.path.join(settings.get("tsm_location"), "Apps", "ldt", "ldt-run.exe")
+        ldt_exe = settings.app_exe("ldt/ldt-run.exe")
         if not os.path.exists(ldt_exe):
             QMessageBox.critical(self, "Error", f"ldt-run.exe not found at: {ldt_exe}")
             return False
 
-        # Run the LDT-resident model (ldt-run.exe)
-        try:
-            result1 = subprocess.run([ldt_exe, properties_file], cwd = settings.get("scenarioDir"))
-            if result1.returncode == 0:
-                print(f"Running LDT-resident model successful: {properties_file}")
-                if show_message:
-                    QMessageBox.information(self, "Success", "LDT-resident model run successfully.")
-                return True
-            else:
-                print(f"Running LDT-resident model failed: {result1}")
-                return False
-        except Exception as e:
-            print(f"Running LDT-resident model failed: {e}")
+        # Run the LDT-resident model (ldt-run.exe) via the shared gated runner
+        # (captures output, reports token/offline/model errors in a message box).
+        if not run_gated_model(self, [ldt_exe, properties_file], "LDT-resident model",
+                               cwd=settings.get("scenarioDir")):
             return False
+        print(f"Running LDT-resident model successful: {properties_file}")
+        if show_message:
+            QMessageBox.information(self, "Success", "LDT-resident model run successfully.")
+        return True

@@ -11,6 +11,7 @@ step for now; it produces tsm_landuse.csv that the model reads as taz_data.
 import os
 import subprocess
 from .tsm_settings import Config
+from .model_run import run_gated_model_result
 
 TELEWORK_TO_SHARE = {"7%": "0.07", "10%": "0.10", "15%": "0.15", "20%": "0.20", "25%": "0.25"}
 
@@ -105,15 +106,15 @@ def run_sdt_models(flags):
         return False, f"Error writing model.toml: {e}"
 
     # ---- 3) Run sdt-run.exe --config model.toml --------------------------
-    sdt_exe = os.path.join(tsm_location, "Apps", "sdt", "sdt-run.exe")
+    sdt_exe = settings.app_exe("sdt/sdt-run.exe")
     if not os.path.exists(sdt_exe):
         return False, f"sdt-run.exe not found at: {sdt_exe}"
-    try:
-        r = subprocess.run([sdt_exe, "--config", model_toml])
-    except Exception as e:
-        return False, f"Error running sdt-run.exe: {e}"
-    if r.returncode != 0:
-        return False, "SDT model run failed. Check console for details."
+    # Run via the shared gated runner (captures output; builds the real reason —
+    # token missing/invalid/expired/revoked, offline, or model error — for the caller
+    # to show in a message box).
+    ok, _title, msg = run_gated_model_result([sdt_exe, "--config", model_toml], "SDT model")
+    if not ok:
+        return False, msg
 
     which = " + ".join([m for m, on in (("Resident", run_resident), ("Visitor", run_visitor)) if on])
     return True, f"SDT model completed ({which})."

@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
+from .model_run import run_gated_model
 
 from .hydra_ui import Ui_DialogHydra
 
@@ -142,13 +143,13 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         meso = self.lineEdit_MesoFtypes.text().strip()
         toll_policy = self.lineEdit_TollPolicy.text().strip()
 
-        afdta = os.path.join(tsm_location, "Apps", "Hydra", "afdta.exe")
+        afdta = settings.app_exe("Hydra/afdta.exe")
         if not os.path.exists(afdta):
             QMessageBox.critical(self, "Error", f"afdta.exe not found at: {afdta}")
             return False
 
         # Convert the GeoPackage link/node layers to CSV (gpkgcsv.exe), then run.
-        gpkgcsv = os.path.join(tsm_location, "Apps", "LinkConsolidator", "gpkgcsv.exe")
+        gpkgcsv = settings.app_exe("utilities/gpkgcsv.exe")
         if not os.path.exists(gpkgcsv):
             QMessageBox.critical(self, "Error", f"gpkgcsv.exe not found at: {gpkgcsv}")
             return False
@@ -210,13 +211,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
 
         print(f"afdta   : {afdta}")
         print(f"control : {ctl}")
-        try:
-            result = subprocess.run([afdta, "--control", ctl])
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error running afdta: {e}")
-            return False
-        if result.returncode != 0:
-            QMessageBox.critical(self, "Error", "AgentFlow DTA run failed. Check console for details.")
+        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA (AgentFlow-DTA)"):
             return False
 
         if show_message:

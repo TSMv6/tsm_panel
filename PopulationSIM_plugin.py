@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
+from .model_run import run_gated_model
 
 from .PopulationSIM_ui import Ui_Dialog_PopulationSIM
 
@@ -152,11 +153,14 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
             self.textBrowser.setPlainText(md)
 
     @staticmethod
-    def _generate_toml(template_path, out_path, scenario_dir, threads):
-        """Fill {scenario_dir} and {threads} in a template TOML and write it out."""
+    def _generate_toml(template_path, out_path, scenario_dir, threads, tsm_location=""):
+        """Fill {scenario_dir}, {threads} and {tsm_location} in a template TOML.
+        se_data + output stay per-scenario; shared seeds/crosswalk/controls live
+        under {tsm_location}/Inputs/pop_seed."""
         with open(template_path, "r", encoding="utf-8") as f:
             text = f.read()
         text = text.replace("{scenario_dir}", scenario_dir.replace("\\", "/"))
+        text = text.replace("{tsm_location}", str(tsm_location).replace("\\", "/").rstrip("/"))
         text = text.replace("{threads}", str(threads))
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
@@ -211,12 +215,12 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
                 return False
 
         # Resolve apps
-        popsim_exe = os.path.join(tsm_location, "Apps", "popsim", "popsim-run.exe")
-        combine_script = os.path.join(tsm_location, "Apps", "popsim", "combine_synpop.py")
-        gpkgcsv_exe = os.path.join(tsm_location, "Apps", "LinkConsolidator", "gpkgcsv.exe")
+        popsim_exe = settings.app_exe("popsim/popsim-run.exe")
+        combine_script = settings.app_exe("popsim/combine_synpop.py")
+        se_agg_exe = settings.app_exe("utilities/se_aggregate.exe")
         for path, label in ((popsim_exe, "popsim-run.exe"),
                             (combine_script, "combine_synpop.py"),
-                            (gpkgcsv_exe, "gpkgcsv.exe")):
+                            (se_agg_exe, "se_aggregate.exe")):
             if not os.path.exists(path):
                 QMessageBox.critical(self, "Error", f"{label} not found at: {path}")
                 return False
@@ -230,28 +234,36 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
                     QMessageBox.critical(self, "Error", f"{label} not found at: {path}")
                     return False
 
-        # 1) Build the PopSim control land use (se_data) -> tsm_landuse.csv
+        # 1) Build the PopSim control land use (se_data) -> tsm_landuse.csv AT TSM
+        # level: se_aggregate sums the subzone (TAZ_REG) fields up to the parent
+        # TSM_NG and appends the derived TSM-level columns from the second file
+        # (tsm_landuse_default.csv) -- same prep SDT/MSR use.
         landuse_path = self.get_layer_path(landuse_layer)
         se_data = os.path.join(scenario_dir, "tsm_landuse.csv").replace("\\", "/")
+        lu_default = os.path.join(plugin_dir, "Rscripts", "tsm_landuse_default.csv")
         try:
             if incremental:
-                # delta = scenario - reference, keyed on the unique MSR subzone index
-                # (MSR_Index, formerly PopSyn_Index). TSM_NG (parent TAZ) and TAZ_REG
-                # (subzone, both non-unique) ride along. Growth floored at 0 (PopSim
-                # synthesizes only the increment; shrink is handled at the append step).
-                try:
-                    field_names = [f.name() for f in landuse_layer.fields()]
-                except Exception:
-                    field_names = []
-                msr_key = "MSR_Index" if "MSR_Index" in field_names else "PopSyn_Index"
-                r = subprocess.run([ldelta_exe, ref_landuse_path, landuse_path, se_data,
-                                    "--key", msr_key, "--keep-zero", "--floor0"],
+                # Aggregate BOTH scenario and reference to TSM level, then delta at
+                # TSM (key TAZ), growth floored at 0 (PopSim synthesizes only the
+                # increment; shrink is handled at the append step). PopSim-only --
+                # SDT/LDT use the full user land use.
+                scen_tsm = os.path.join(scenario_dir, "scenario_tsm_landuse.csv").replace("\\", "/")
+                ref_tsm = os.path.join(scenario_dir, "reference_tsm_landuse.csv").replace("\\", "/")
+                ra = subprocess.run([se_agg_exe, landuse_path, scen_tsm, lu_default],
+                                    env=settings.app_env(se_agg_exe))
+                rb = subprocess.run([se_agg_exe, ref_landuse_path, ref_tsm, lu_default],
+                                    env=settings.app_env(se_agg_exe))
+                if ra.returncode != 0 or rb.returncode != 0 or not (os.path.exists(scen_tsm) and os.path.exists(ref_tsm)):
+                    QMessageBox.critical(self, "Error", "Failed to aggregate scenario/reference land use to TSM (se_aggregate).")
+                    return False
+                r = subprocess.run([ldelta_exe, ref_tsm, scen_tsm, se_data,
+                                    "--key", "TAZ", "--keep-zero", "--floor0"],
                                    env=settings.app_env(ldelta_exe))
-                err = f"Failed to build delta land-use (landuse_delta, key={msr_key})."
+                err = "Failed to build TSM-level delta land-use (landuse_delta)."
             else:
-                r = subprocess.run([gpkgcsv_exe, "to-csv", landuse_path, se_data, "--drop-geom"],
-                                   env=settings.app_env(gpkgcsv_exe))
-                err = "Failed to export land-use layer to tsm_landuse.csv."
+                r = subprocess.run([se_agg_exe, landuse_path, se_data, lu_default],
+                                   env=settings.app_env(se_agg_exe))
+                err = "Failed to aggregate land use to TSM (se_aggregate)."
             if r.returncode != 0 or not os.path.exists(se_data):
                 QMessageBox.critical(self, "Error", err)
                 return False
@@ -266,21 +278,16 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
         tmpl_hh = os.path.join(plugin_dir, "templates", "popsim_run_HH_template.toml")
         tmpl_gq = os.path.join(plugin_dir, "templates", "popsim_run_GQ_template.toml")
         try:
-            self._generate_toml(tmpl_hh, hh_toml, scenario_dir, threads)
-            self._generate_toml(tmpl_gq, gq_toml, scenario_dir, threads)
+            self._generate_toml(tmpl_hh, hh_toml, scenario_dir, threads, tsm_location)
+            self._generate_toml(tmpl_gq, gq_toml, scenario_dir, threads, tsm_location)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error writing PopSim TOML configs: {e}")
             return False
 
-        # 3) Run popsim-run.exe for HH then GQ
+        # 3) Run popsim-run.exe for HH then GQ via the shared gated runner
+        #    (captures output, reports token/offline/model errors in a message box).
         for toml_path, label in ((hh_toml, "HH"), (gq_toml, "GQ")):
-            try:
-                r = subprocess.run([popsim_exe, toml_path])
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Error running PopulationSIM ({label}): {e}")
-                return False
-            if r.returncode != 0:
-                QMessageBox.critical(self, "Error", f"PopulationSIM {label} run failed. Check console for details.")
+            if not run_gated_model(self, [popsim_exe, toml_path], f"PopulationSIM ({label})"):
                 return False
 
         # 4) Combine HH + GQ
