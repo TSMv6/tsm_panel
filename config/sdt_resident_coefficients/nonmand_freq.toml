@@ -1,0 +1,838 @@
+# =============================================================================
+# NON-MANDATORY FREQUENCY — All 6 segments from UEC XLS
+# Extracted comprehensively — includes base constants, all-count variables,
+#   mandatory tour count corrections, child age counts, gender, WFH/TC.
+# total_Ntours are in alt=99/purpose=0 entries (global per-segment).
+# =============================================================================
+
+[nonmand_freq]
+
+# ------------------------------------------
+# Segment 1: FullTimeWorker
+# ------------------------------------------
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 escort tour
+purpose = 3  # escort
+segment = 1
+coefficients = [
+  { id=18, label="const_1escort", value=-3.59313195552 },
+  { id=29, label="med_income_1escort", value=-0.161791784345 },
+  { id=41, label="auto_insuff_1escort", value=0.266267761504 },
+  { id=47, label="hhsize1_1escort", value=-0.531852341778 },
+  { id=53, label="hhsize2_1escort", value=-0.387749221696 },
+  { id=59, label="preschool_1escort", value=0.577567250503 },
+  { id=65, label="nondrive_age_1escort", value=1.43138940089 },
+  { id=71, label="driving_age_1escort", value=0.436593213272 },
+  { id=77, label="work_tours_1escort", value=-0.503798037744 },
+  { id=86, label="dist30_1escort", value=-0.417910325055 },
+  { id=92, label="female_1escort", value=0.279326988943 },
+  { id=83, label="wfh_escort", value=0.5 },
+  { id=99, label="base_escort", value=-0.8105000000000001 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 escort tours
+purpose = 3  # escort
+segment = 1
+coefficients = [
+  { id=19, label="const_2escort", value=-4.59866197983 },
+  { id=33, label="high_income_2escort", value=-0.232995438846 },
+  { id=42, label="auto_insuff_2escort", value=0.259149144663 },
+  { id=48, label="hhsize1_2escort", value=-1.63631643145 },
+  { id=54, label="hhsize2_2escort", value=-0.291987667321 },
+  { id=60, label="preschool_2escort", value=1.05427958941 },
+  { id=66, label="nondrive_age_2escort", value=1.56913142554 },
+  { id=72, label="driving_age_2escort", value=0.687387371732 },
+  { id=78, label="work_tours_2escort", value=-0.918490655137 },
+  { id=87, label="dist30_2escort", value=-1.02770093818 },
+  { id=93, label="female_2escort", value=0.450950274886 },
+  { id=83, label="wfh_escort", value=0.5 },
+  { id=99, label="base_escort", value=-0.8105000000000001 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 maintenance tour
+purpose = 4  # maintenance
+segment = 1
+coefficients = [
+  { id=20, label="const_1maint", value=-1.04369043983 },
+  { id=30, label="med_income_1maint", value=-0.0704526388533 },
+  { id=34, label="high_income_1maint", value=-0.155174536388 },
+  { id=38, label="zero_auto_1maint", value=0.186777880018 },
+  { id=43, label="auto_insuff_1maint", value=0.0787462476167 },
+  { id=49, label="hhsize1_1maint", value=0.28237660723 },
+  { id=55, label="hhsize2_1maint", value=0.0705640814392 },
+  { id=61, label="preschool_1maint", value=0.11071532724 },
+  { id=67, label="nondrive_age_1maint", value=0.0488950987985 },
+  { id=73, label="driving_age_1maint", value=0.202265920628 },
+  { id=79, label="work_tours_1maint", value=-1.1547828013 },
+  { id=88, label="dist30_1maint", value=-0.245739175207 },
+  { id=94, label="female_1maint", value=0.166430437735 },
+  { id=84, label="wfh_maint", value=0.5 },
+  { id=100, label="base_maint", value=0.37 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 maintenance tours
+purpose = 4  # maintenance
+segment = 1
+coefficients = [
+  { id=21, label="const_2maint", value=-2.53545169448 },
+  { id=27, label="low_income_2maint", value=-0.220234579672 },
+  { id=35, label="high_income_2maint", value=0.1952482201 },
+  { id=44, label="auto_insuff_2maint", value=-0.223696853031 },
+  { id=50, label="hhsize1_2maint", value=0.724422238692 },
+  { id=56, label="hhsize2_2maint", value=0.260313546145 },
+  { id=62, label="preschool_2maint", value=-0.0167597915415 },
+  { id=68, label="nondrive_age_2maint", value=-0.157975053594 },
+  { id=74, label="driving_age_2maint", value=-0.0429750552394 },
+  { id=80, label="work_tours_2maint", value=-1.67613488322 },
+  { id=89, label="dist30_2maint", value=-0.828169789213 },
+  { id=95, label="female_2maint", value=0.106988108208 },
+  { id=84, label="wfh_maint", value=0.5 },
+  { id=100, label="base_maint", value=0.37 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 discretionary tour
+purpose = 5  # discretionary
+segment = 1
+coefficients = [
+  { id=22, label="const_1disc", value=-1.02819876036 },
+  { id=28, label="low_income_1disc", value=-0.331548608681 },
+  { id=31, label="med_income_1disc", value=-0.103444001343 },
+  { id=36, label="high_income_1disc", value=0.24483827575 },
+  { id=39, label="zero_auto_1disc", value=-0.362789792091 },
+  { id=45, label="auto_insuff_1disc", value=0.0518732358708 },
+  { id=51, label="hhsize1_1disc", value=0.291402304993 },
+  { id=57, label="hhsize2_1disc", value=0.043817896017 },
+  { id=63, label="preschool_1disc", value=-0.174105844215 },
+  { id=69, label="nondrive_age_1disc", value=0.000378704917092 },
+  { id=75, label="driving_age_1disc", value=0.252774635913 },
+  { id=81, label="work_tours_1disc", value=-0.565387640416 },
+  { id=90, label="dist30_1disc", value=-0.204292988085 },
+  { id=96, label="female_1disc", value=-0.0765838941473 },
+  { id=85, label="wfh_disc", value=0.5 },
+  { id=101, label="base_disc", value=-0.04 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 discretionary tours
+purpose = 5  # discretionary
+segment = 1
+coefficients = [
+  { id=23, label="const_2disc", value=-2.64900034798 },
+  { id=32, label="med_income_2disc", value=-0.245803019277 },
+  { id=37, label="high_income_2disc", value=0.128722320091 },
+  { id=40, label="zero_auto_2disc", value=-1.5239148094 },
+  { id=46, label="auto_insuff_2disc", value=-0.199499413891 },
+  { id=52, label="hhsize1_2disc", value=-0.0113451587215 },
+  { id=58, label="hhsize2_2disc", value=-0.162559303474 },
+  { id=64, label="preschool_2disc", value=-1.50191021983 },
+  { id=70, label="nondrive_age_2disc", value=-0.333013762652 },
+  { id=76, label="driving_age_2disc", value=0.291469806358 },
+  { id=82, label="work_tours_2disc", value=-1.06897067522 },
+  { id=91, label="dist30_2disc", value=-0.596515907265 },
+  { id=97, label="female_2disc", value=-0.00843811770975 },
+  { id=85, label="wfh_disc", value=0.5 },
+  { id=101, label="base_disc", value=-0.04 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 99  # global total-tour corrections for this segment
+purpose = 0
+segment = 1
+coefficients = [
+  { id=24, label="total_2tours", value=-0.0744980957112 },
+  { id=25, label="total_3tours", value=0.145268390772 },
+  { id=26, label="total_4tours", value=0.542177174004 },
+]
+
+# ------------------------------------------
+# Segment 2: PartTimeWorker
+# ------------------------------------------
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 escort tour
+purpose = 3  # escort
+segment = 2
+coefficients = [
+  { id=18, label="const_1escort", value=-3.27147276613 },
+  { id=32, label="med_income_1escort", value=-0.0343526431912 },
+  { id=38, label="high_income_1escort", value=-0.502759647604 },
+  { id=44, label="zero_auto_1escort", value=-1.20068478983 },
+  { id=50, label="auto_insuff_1escort", value=0.00913352199908 },
+  { id=56, label="female_1escort", value=0.108005578549 },
+  { id=62, label="work_tours_1escort", value=-0.535708884645 },
+  { id=71, label="dist30_1escort", value=-0.0380164949421 },
+  { id=77, label="hhsize1_1escort", value=-0.791306903135 },
+  { id=83, label="hhsize2_1escort", value=-0.220160728742 },
+  { id=89, label="driving_age_1escort", value=0.168705100136 },
+  { id=95, label="nondrive_age_1escort", value=1.80415583613 },
+  { id=101, label="preschool_1escort", value=1.04796410429 },
+  { id=27, label="low_income_escort", value=-0.0982723606653 },
+  { id=68, label="wfh_escort", value=0.5 },
+  { id=108, label="base_escort", value=-1.4586000000000001 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 escort tours
+purpose = 3  # escort
+segment = 2
+coefficients = [
+  { id=19, label="const_2escort", value=-3.45237380367 },
+  { id=33, label="med_income_2escort", value=0.172526750257 },
+  { id=39, label="high_income_2escort", value=0.441242672267 },
+  { id=51, label="auto_insuff_2escort", value=-0.296013720185 },
+  { id=57, label="female_2escort", value=0.275884544295 },
+  { id=63, label="work_tours_2escort", value=-1.76820532976 },
+  { id=72, label="dist30_2escort", value=0.71459504749 },
+  { id=78, label="hhsize1_2escort", value=-1.35110845698 },
+  { id=84, label="hhsize2_2escort", value=-0.67117257252 },
+  { id=90, label="driving_age_2escort", value=0.311493794558 },
+  { id=96, label="nondrive_age_2escort", value=2.20783870158 },
+  { id=102, label="preschool_2escort", value=0.253316603744 },
+  { id=27, label="low_income_escort", value=-0.0982723606653 },
+  { id=68, label="wfh_escort", value=0.5 },
+  { id=108, label="base_escort", value=-1.4586000000000001 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 maintenance tour
+purpose = 4  # maintenance
+segment = 2
+coefficients = [
+  { id=20, label="const_1maint", value=-0.299290606795 },
+  { id=28, label="low_income_1maint", value=-0.139772331145 },
+  { id=34, label="med_income_1maint", value=-0.000508165562504 },
+  { id=40, label="high_income_1maint", value=-0.0609255037084 },
+  { id=46, label="zero_auto_1maint", value=0.026845718747 },
+  { id=52, label="auto_insuff_1maint", value=-0.0438965544331 },
+  { id=58, label="female_1maint", value=-0.00997393903908 },
+  { id=64, label="work_tours_1maint", value=-1.04354366669 },
+  { id=73, label="dist30_1maint", value=-0.412458977531 },
+  { id=79, label="hhsize1_1maint", value=0.462101382101 },
+  { id=85, label="hhsize2_1maint", value=0.0926044349642 },
+  { id=91, label="driving_age_1maint", value=-0.0150917186009 },
+  { id=97, label="nondrive_age_1maint", value=0.198371962791 },
+  { id=103, label="preschool_1maint", value=0.000661947471238 },
+  { id=69, label="wfh_maint", value=0.5 },
+  { id=109, label="base_maint", value=-0.04 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 maintenance tours
+purpose = 4  # maintenance
+segment = 2
+coefficients = [
+  { id=21, label="const_2maint", value=-1.8583101391 },
+  { id=29, label="low_income_2maint", value=-0.47422322051 },
+  { id=35, label="med_income_2maint", value=-0.331604527067 },
+  { id=41, label="high_income_2maint", value=-0.00236550114167 },
+  { id=47, label="zero_auto_2maint", value=-1.07450701088 },
+  { id=53, label="auto_insuff_2maint", value=-0.310238096365 },
+  { id=59, label="female_2maint", value=-0.1237833272 },
+  { id=65, label="work_tours_2maint", value=-1.76251609946 },
+  { id=74, label="dist30_2maint", value=-1.73958413979 },
+  { id=80, label="hhsize1_2maint", value=0.707975521652 },
+  { id=86, label="hhsize2_2maint", value=0.441928380405 },
+  { id=92, label="driving_age_2maint", value=0.589181500297 },
+  { id=98, label="nondrive_age_2maint", value=0.67639807245 },
+  { id=104, label="preschool_2maint", value=-0.426540710674 },
+  { id=69, label="wfh_maint", value=0.5 },
+  { id=109, label="base_maint", value=-0.04 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 discretionary tour
+purpose = 5  # discretionary
+segment = 2
+coefficients = [
+  { id=22, label="const_1disc", value=-0.816761255716 },
+  { id=30, label="low_income_1disc", value=-0.667648791295 },
+  { id=36, label="med_income_1disc", value=-0.177024939091 },
+  { id=42, label="high_income_1disc", value=0.277385530457 },
+  { id=48, label="zero_auto_1disc", value=-0.167377415502 },
+  { id=54, label="auto_insuff_1disc", value=0.059306354021 },
+  { id=60, label="female_1disc", value=-0.00345346574737 },
+  { id=66, label="work_tours_1disc", value=-0.637669303889 },
+  { id=75, label="dist30_1disc", value=-0.294990366241 },
+  { id=81, label="hhsize1_1disc", value=0.194861085891 },
+  { id=87, label="hhsize2_1disc", value=0.117908895612 },
+  { id=93, label="driving_age_1disc", value=0.21439425987 },
+  { id=99, label="nondrive_age_1disc", value=0.163988439268 },
+  { id=105, label="preschool_1disc", value=-0.214406995546 },
+  { id=70, label="wfh_disc", value=0.5 },
+  { id=110, label="base_disc", value=-0.11 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 discretionary tours
+purpose = 5  # discretionary
+segment = 2
+coefficients = [
+  { id=23, label="const_2disc", value=-2.27542932035 },
+  { id=31, label="low_income_2disc", value=-1.65111617783 },
+  { id=37, label="med_income_2disc", value=-0.469500782762 },
+  { id=43, label="high_income_2disc", value=0.10632804528 },
+  { id=55, label="auto_insuff_2disc", value=0.324987005021 },
+  { id=61, label="female_2disc", value=0.130645766822 },
+  { id=67, label="work_tours_2disc", value=-1.8253801628 },
+  { id=82, label="hhsize1_2disc", value=0.798719804125 },
+  { id=88, label="hhsize2_2disc", value=0.0802998749335 },
+  { id=94, label="driving_age_2disc", value=-0.436381669802 },
+  { id=100, label="nondrive_age_2disc", value=0.349479711584 },
+  { id=106, label="preschool_2disc", value=-0.94235579354 },
+  { id=70, label="wfh_disc", value=0.5 },
+  { id=110, label="base_disc", value=-0.11 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 99  # global total-tour corrections for this segment
+purpose = 0
+segment = 2
+coefficients = [
+  { id=24, label="total_2tours", value=-0.0796554610382 },
+  { id=25, label="total_3tours", value=-0.16324525059 },
+  { id=26, label="total_4tours", value=-0.334429652683 },
+]
+
+# ------------------------------------------
+# Segment 3: NonWorkingAdult
+# ------------------------------------------
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 escort tour
+purpose = 3  # escort
+segment = 3
+coefficients = [
+  { id=13, label="const_1escort", value=-2.47711837799 },
+  { id=27, label="med_income_1escort", value=-0.263249901272 },
+  { id=33, label="high_income_1escort", value=0.141873308011 },
+  { id=39, label="zero_auto_1escort", value=-0.789324628781 },
+  { id=45, label="auto_insuff_1escort", value=0.2905018534 },
+  { id=51, label="female_1escort", value=0.359716422972 },
+  { id=57, label="hhsize1_1escort", value=-0.238965361699 },
+  { id=63, label="hhsize2_1escort", value=-0.323089074395 },
+  { id=69, label="driving_age_1escort", value=0.307214317846 },
+  { id=75, label="nondrive_age_1escort", value=1.33154192544 },
+  { id=81, label="preschool_1escort", value=0.496164717821 },
+  { id=22, label="low_income_escort", value=-0.228718462428 },
+  { id=87, label="base_escort", value=-1.4127 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 escort tours
+purpose = 3  # escort
+segment = 3
+coefficients = [
+  { id=14, label="const_2escort", value=-3.07752105408 },
+  { id=28, label="med_income_2escort", value=-0.353507015091 },
+  { id=34, label="high_income_2escort", value=-0.058987961302 },
+  { id=40, label="zero_auto_2escort", value=-1.47833873945 },
+  { id=46, label="auto_insuff_2escort", value=0.135855738146 },
+  { id=52, label="female_2escort", value=0.576827444007 },
+  { id=58, label="hhsize1_2escort", value=-1.19215500605 },
+  { id=64, label="hhsize2_2escort", value=-0.822986841325 },
+  { id=70, label="driving_age_2escort", value=0.594375925858 },
+  { id=76, label="nondrive_age_2escort", value=2.05908197015 },
+  { id=82, label="preschool_2escort", value=1.23465924927 },
+  { id=22, label="low_income_escort", value=-0.228718462428 },
+  { id=87, label="base_escort", value=-1.4127 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 maintenance tour
+purpose = 4  # maintenance
+segment = 3
+coefficients = [
+  { id=15, label="const_1maint", value=-0.544074530194 },
+  { id=23, label="low_income_1maint", value=-0.0804071172411 },
+  { id=29, label="med_income_1maint", value=-0.124707254988 },
+  { id=35, label="high_income_1maint", value=-0.124866686594 },
+  { id=41, label="zero_auto_1maint", value=-0.0582571641982 },
+  { id=47, label="auto_insuff_1maint", value=-0.0215674644634 },
+  { id=53, label="female_1maint", value=0.106168966179 },
+  { id=59, label="hhsize1_1maint", value=0.598702659178 },
+  { id=65, label="hhsize2_1maint", value=0.296002846549 },
+  { id=71, label="driving_age_1maint", value=0.182912937375 },
+  { id=77, label="nondrive_age_1maint", value=-0.0618805592885 },
+  { id=83, label="preschool_1maint", value=-0.246846499778 },
+  { id=88, label="base_maint", value=-0.29 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 maintenance tours
+purpose = 4  # maintenance
+segment = 3
+coefficients = [
+  { id=16, label="const_2maint", value=-1.50605374823 },
+  { id=24, label="low_income_2maint", value=-0.112815373171 },
+  { id=30, label="med_income_2maint", value=-0.119086854787 },
+  { id=36, label="high_income_2maint", value=0.0207551486279 },
+  { id=42, label="zero_auto_2maint", value=-0.231222442795 },
+  { id=48, label="auto_insuff_2maint", value=-0.28244685026 },
+  { id=54, label="female_2maint", value=-0.0400153472642 },
+  { id=60, label="hhsize1_2maint", value=0.690448359902 },
+  { id=66, label="hhsize2_2maint", value=0.330094960304 },
+  { id=72, label="driving_age_2maint", value=0.0471838350249 },
+  { id=78, label="nondrive_age_2maint", value=0.0672774235777 },
+  { id=84, label="preschool_2maint", value=-1.95707637988 },
+  { id=88, label="base_maint", value=-0.29 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 discretionary tour
+purpose = 5  # discretionary
+segment = 3
+coefficients = [
+  { id=17, label="const_1disc", value=-0.699744623413 },
+  { id=25, label="low_income_1disc", value=-0.62613405007 },
+  { id=31, label="med_income_1disc", value=-0.412297881128 },
+  { id=37, label="high_income_1disc", value=-0.0342231364646 },
+  { id=43, label="zero_auto_1disc", value=-0.327566653339 },
+  { id=49, label="auto_insuff_1disc", value=0.0576308233691 },
+  { id=55, label="female_1disc", value=-0.0990336907806 },
+  { id=61, label="hhsize1_1disc", value=0.506786321601 },
+  { id=67, label="hhsize2_1disc", value=0.343325274524 },
+  { id=73, label="driving_age_1disc", value=0.163562908098 },
+  { id=79, label="nondrive_age_1disc", value=0.226334446452 },
+  { id=85, label="preschool_1disc", value=-0.30176041186 },
+  { id=89, label="base_disc", value=-0.24 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 discretionary tours
+purpose = 5  # discretionary
+segment = 3
+coefficients = [
+  { id=18, label="const_2disc", value=-1.40204243702 },
+  { id=26, label="low_income_2disc", value=-0.810563979803 },
+  { id=32, label="med_income_2disc", value=-0.338444587358 },
+  { id=38, label="high_income_2disc", value=0.337327139305 },
+  { id=44, label="zero_auto_2disc", value=-0.400721719768 },
+  { id=50, label="auto_insuff_2disc", value=-0.003274891094 },
+  { id=56, label="female_2disc", value=-0.0698408685939 },
+  { id=62, label="hhsize1_2disc", value=0.736656354473 },
+  { id=68, label="hhsize2_2disc", value=0.269055496638 },
+  { id=74, label="driving_age_2disc", value=0.213122455725 },
+  { id=80, label="nondrive_age_2disc", value=0.416957926374 },
+  { id=86, label="preschool_2disc", value=0.137337556964 },
+  { id=89, label="base_disc", value=-0.24 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 99  # global total-tour corrections for this segment
+purpose = 0
+segment = 3
+coefficients = [
+  { id=19, label="total_2tours", value=-0.521922628471 },
+  { id=20, label="total_3tours", value=-0.850132159979 },
+  { id=21, label="total_4tours", value=-1.36206140141 },
+]
+
+# ------------------------------------------
+# Segment 4: Retiree
+# ------------------------------------------
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 escort tour
+purpose = 3  # escort
+segment = 4
+coefficients = [
+  { id=13, label="const_1escort", value=-2.61304652819 },
+  { id=27, label="med_income_1escort", value=-0.156020381741 },
+  { id=33, label="high_income_1escort", value=-0.118714338805 },
+  { id=39, label="zero_auto_1escort", value=-1.10958404496 },
+  { id=45, label="auto_insuff_1escort", value=-0.0363514849773 },
+  { id=51, label="female_1escort", value=-0.0995125308119 },
+  { id=57, label="hhsize1_1escort", value=-0.312441312849 },
+  { id=63, label="hhsize2_1escort", value=-0.140479166255 },
+  { id=69, label="driving_age_1escort", value=0.919454411158 },
+  { id=75, label="nondrive_age_1escort", value=0.523333901663 },
+  { id=81, label="preschool_1escort", value=0.162513989615 },
+  { id=22, label="low_income_escort", value=-0.335411267216 },
+  { id=87, label="base_escort", value=-0.5185000000000001 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 escort tours
+purpose = 3  # escort
+segment = 4
+coefficients = [
+  { id=14, label="const_2escort", value=-2.73894923863 },
+  { id=28, label="med_income_2escort", value=-0.682116445294 },
+  { id=34, label="high_income_2escort", value=-0.702492914145 },
+  { id=40, label="zero_auto_2escort", value=-0.744939172813 },
+  { id=46, label="auto_insuff_2escort", value=0.374044375041 },
+  { id=52, label="female_2escort", value=-0.207899752996 },
+  { id=58, label="hhsize1_2escort", value=-1.15536022961 },
+  { id=64, label="hhsize2_2escort", value=-0.888431636222 },
+  { id=70, label="driving_age_2escort", value=1.41016487695 },
+  { id=76, label="nondrive_age_2escort", value=1.18561875177 },
+  { id=82, label="preschool_2escort", value=0.302146453062 },
+  { id=22, label="low_income_escort", value=-0.335411267216 },
+  { id=87, label="base_escort", value=-0.5185000000000001 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 maintenance tour
+purpose = 4  # maintenance
+segment = 4
+coefficients = [
+  { id=15, label="const_1maint", value=-0.44037413207 },
+  { id=23, label="low_income_1maint", value=-0.128584958803 },
+  { id=29, label="med_income_1maint", value=0.00584672876068 },
+  { id=35, label="high_income_1maint", value=0.0167576274525 },
+  { id=41, label="zero_auto_1maint", value=-0.406454951319 },
+  { id=47, label="auto_insuff_1maint", value=-0.012018173031 },
+  { id=53, label="female_1maint", value=-0.14185413289 },
+  { id=59, label="hhsize1_1maint", value=0.740571984662 },
+  { id=65, label="hhsize2_1maint", value=0.411283978396 },
+  { id=71, label="driving_age_1maint", value=0.171314582528 },
+  { id=77, label="nondrive_age_1maint", value=-0.249100635074 },
+  { id=83, label="preschool_1maint", value=-0.809303763642 },
+  { id=88, label="base_maint", value=-0.29 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 maintenance tours
+purpose = 4  # maintenance
+segment = 4
+coefficients = [
+  { id=16, label="const_2maint", value=-1.01612678057 },
+  { id=24, label="low_income_2maint", value=-0.404426988124 },
+  { id=30, label="med_income_2maint", value=-0.100535769228 },
+  { id=36, label="high_income_2maint", value=0.286041966531 },
+  { id=42, label="zero_auto_2maint", value=-0.965952585488 },
+  { id=48, label="auto_insuff_2maint", value=-0.0997592685633 },
+  { id=54, label="female_2maint", value=-0.307364589612 },
+  { id=60, label="hhsize1_2maint", value=0.794757378098 },
+  { id=66, label="hhsize2_2maint", value=0.386257169822 },
+  { id=72, label="driving_age_2maint", value=-0.195194109022 },
+  { id=78, label="nondrive_age_2maint", value=0.1672763982 },
+  { id=88, label="base_maint", value=-0.29 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 discretionary tour
+purpose = 5  # discretionary
+segment = 4
+coefficients = [
+  { id=17, label="const_1disc", value=-0.832914829184 },
+  { id=25, label="low_income_1disc", value=-0.62619322872 },
+  { id=31, label="med_income_1disc", value=-0.167896909696 },
+  { id=37, label="high_income_1disc", value=0.0999745292143 },
+  { id=43, label="zero_auto_1disc", value=-0.995258893903 },
+  { id=49, label="auto_insuff_1disc", value=0.0421111900159 },
+  { id=55, label="female_1disc", value=-0.219656938822 },
+  { id=61, label="hhsize1_1disc", value=0.826205913216 },
+  { id=67, label="hhsize2_1disc", value=0.557729820255 },
+  { id=73, label="driving_age_1disc", value=-0.559403871901 },
+  { id=79, label="nondrive_age_1disc", value=0.161868052026 },
+  { id=85, label="preschool_1disc", value=0.25472138594 },
+  { id=89, label="base_disc", value=-0.13 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 discretionary tours
+purpose = 5  # discretionary
+segment = 4
+coefficients = [
+  { id=18, label="const_2disc", value=-1.75806096158 },
+  { id=26, label="low_income_2disc", value=-1.38218041983 },
+  { id=32, label="med_income_2disc", value=-0.517172996123 },
+  { id=38, label="high_income_2disc", value=0.0135760551844 },
+  { id=44, label="zero_auto_2disc", value=-1.08463037941 },
+  { id=50, label="auto_insuff_2disc", value=0.158256088321 },
+  { id=56, label="female_2disc", value=-0.296303397258 },
+  { id=62, label="hhsize1_2disc", value=1.31684003899 },
+  { id=68, label="hhsize2_2disc", value=0.961490914968 },
+  { id=74, label="driving_age_2disc", value=0.317297341033 },
+  { id=80, label="nondrive_age_2disc", value=-0.455990372428 },
+  { id=89, label="base_disc", value=-0.13 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 99  # global total-tour corrections for this segment
+purpose = 0
+segment = 4
+coefficients = [
+  { id=19, label="total_2tours", value=-0.640710471163 },
+  { id=20, label="total_3tours", value=-1.30042904736 },
+  { id=21, label="total_4tours", value=-1.88706946936 },
+]
+
+# ------------------------------------------
+# Segment 5: UniversityStudent
+# ------------------------------------------
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 escort tour
+purpose = 3  # escort
+segment = 5
+coefficients = [
+  { id=15, label="const_1escort", value=-3.95191117257 },
+  { id=29, label="med_income_1escort", value=-0.152268321878 },
+  { id=35, label="high_income_1escort", value=-0.484601388184 },
+  { id=41, label="zero_auto_1escort", value=-0.759383620792 },
+  { id=47, label="auto_insuff_1escort", value=0.0197975556347 },
+  { id=53, label="female_1escort", value=0.448809739794 },
+  { id=59, label="univ_tours_1escort", value=-0.394566128486 },
+  { id=65, label="dist30_univ_1escort", value=-0.433271079191 },
+  { id=71, label="hhsize1_1escort", value=-0.15750807527 },
+  { id=77, label="hhsize2_1escort", value=-0.086344610084 },
+  { id=83, label="driving_age_1escort", value=0.32031747075 },
+  { id=89, label="nondrive_age_1escort", value=1.5978164181 },
+  { id=95, label="preschool_1escort", value=0.859507910491 },
+  { id=24, label="low_income_escort", value=-0.476643237561 },
+  { id=101, label="base_escort", value=-1.3056 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 escort tours
+purpose = 3  # escort
+segment = 5
+coefficients = [
+  { id=16, label="const_2escort", value=-4.66507962749 },
+  { id=30, label="med_income_2escort", value=-0.633214205774 },
+  { id=36, label="high_income_2escort", value=-0.84963244449 },
+  { id=48, label="auto_insuff_2escort", value=0.689439309894 },
+  { id=54, label="female_2escort", value=1.05320224674 },
+  { id=60, label="univ_tours_2escort", value=-0.102936132659 },
+  { id=72, label="hhsize1_2escort", value=-0.704895884289 },
+  { id=78, label="hhsize2_2escort", value=-0.829071839752 },
+  { id=84, label="driving_age_2escort", value=-0.17713795983 },
+  { id=90, label="nondrive_age_2escort", value=1.75580877687 },
+  { id=96, label="preschool_2escort", value=0.187907250047 },
+  { id=24, label="low_income_escort", value=-0.476643237561 },
+  { id=101, label="base_escort", value=-1.3056 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 maintenance tour
+purpose = 4  # maintenance
+segment = 5
+coefficients = [
+  { id=17, label="const_1maint", value=-0.757565052005 },
+  { id=25, label="low_income_1maint", value=0.146373676562 },
+  { id=31, label="med_income_1maint", value=0.138907752812 },
+  { id=37, label="high_income_1maint", value=-0.0930000959205 },
+  { id=43, label="zero_auto_1maint", value=0.170946854063 },
+  { id=49, label="auto_insuff_1maint", value=-0.415263329962 },
+  { id=55, label="female_1maint", value=0.371859064356 },
+  { id=61, label="univ_tours_1maint", value=-0.507918591842 },
+  { id=67, label="dist30_univ_1maint", value=-0.893022152016 },
+  { id=73, label="hhsize1_1maint", value=0.368240388349 },
+  { id=79, label="hhsize2_1maint", value=0.592040050022 },
+  { id=85, label="driving_age_1maint", value=0.0670314644847 },
+  { id=91, label="nondrive_age_1maint", value=0.148245097792 },
+  { id=97, label="preschool_1maint", value=-0.204619597556 },
+  { id=102, label="base_maint", value=0.12 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 maintenance tours
+purpose = 4  # maintenance
+segment = 5
+coefficients = [
+  { id=18, label="const_2maint", value=-2.62781398846 },
+  { id=26, label="low_income_2maint", value=-0.478859232159 },
+  { id=32, label="med_income_2maint", value=0.221176435332 },
+  { id=38, label="high_income_2maint", value=0.337677044595 },
+  { id=50, label="auto_insuff_2maint", value=-0.261758128985 },
+  { id=56, label="female_2maint", value=0.0900918704222 },
+  { id=62, label="univ_tours_2maint", value=-0.616436709841 },
+  { id=68, label="dist30_univ_2maint", value=-0.573246133283 },
+  { id=74, label="hhsize1_2maint", value=0.416574552369 },
+  { id=80, label="hhsize2_2maint", value=0.650513450067 },
+  { id=86, label="driving_age_2maint", value=0.590900299932 },
+  { id=92, label="nondrive_age_2maint", value=-0.783156648502 },
+  { id=98, label="preschool_2maint", value=2.0631354884 },
+  { id=102, label="base_maint", value=0.12 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 discretionary tour
+purpose = 5  # discretionary
+segment = 5
+coefficients = [
+  { id=19, label="const_1disc", value=-0.739178590828 },
+  { id=27, label="low_income_1disc", value=-0.983492861949 },
+  { id=33, label="med_income_1disc", value=-0.844319288276 },
+  { id=39, label="high_income_1disc", value=-0.786132285677 },
+  { id=45, label="zero_auto_1disc", value=-0.486010294973 },
+  { id=51, label="auto_insuff_1disc", value=-0.114409304857 },
+  { id=57, label="female_1disc", value=-0.1007538599 },
+  { id=63, label="univ_tours_1disc", value=-0.420993118782 },
+  { id=69, label="dist30_univ_1disc", value=-0.590166496598 },
+  { id=75, label="hhsize1_1disc", value=0.793880185774 },
+  { id=81, label="hhsize2_1disc", value=0.461331946821 },
+  { id=87, label="driving_age_1disc", value=0.483564689665 },
+  { id=93, label="nondrive_age_1disc", value=0.433003731162 },
+  { id=99, label="preschool_1disc", value=-0.964881009994 },
+  { id=103, label="base_disc", value=-0.18 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 discretionary tours
+purpose = 5  # discretionary
+segment = 5
+coefficients = [
+  { id=20, label="const_2disc", value=-4.16732090387 },
+  { id=28, label="low_income_2disc", value=-0.539677111267 },
+  { id=34, label="med_income_2disc", value=-0.897333857399 },
+  { id=40, label="high_income_2disc", value=0.114816756182 },
+  { id=52, label="auto_insuff_2disc", value=-1.34919187689 },
+  { id=58, label="female_2disc", value=-1.09939257977 },
+  { id=64, label="univ_tours_2disc", value=-0.119959419636 },
+  { id=70, label="dist30_univ_2disc", value=-1.04052995028 },
+  { id=76, label="hhsize1_2disc", value=2.05410267345 },
+  { id=82, label="hhsize2_2disc", value=1.5201980004 },
+  { id=88, label="driving_age_2disc", value=0.0537407522153 },
+  { id=94, label="nondrive_age_2disc", value=0.697318486013 },
+  { id=100, label="preschool_2disc", value=1.47100253069 },
+  { id=103, label="base_disc", value=-0.18 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 99  # global total-tour corrections for this segment
+purpose = 0
+segment = 5
+coefficients = [
+  { id=21, label="total_2tours", value=0.117571319149 },
+  { id=22, label="total_3tours", value=0.20195499994 },
+  { id=23, label="total_4tours", value=0.971251928473 },
+]
+
+# ------------------------------------------
+# Segment 6: OtherStudent/SchoolStudent
+# ------------------------------------------
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 escort tour
+purpose = 3  # escort
+segment = 6
+coefficients = [
+  { id=14, label="const_1escort", value=-3.57171786654 },
+  { id=28, label="med_income_1escort", value=0.134650536699 },
+  { id=34, label="high_income_1escort", value=-0.114353702286 },
+  { id=40, label="zero_auto_1escort", value=-0.375569854409 },
+  { id=46, label="auto_insuff_1escort", value=-0.256717014875 },
+  { id=52, label="female_1escort", value=0.119750463266 },
+  { id=64, label="hhsize2_1escort", value=-0.501973207375 },
+  { id=70, label="driving_age_1escort", value=-0.0631752695203 },
+  { id=76, label="nondrive_age_1escort", value=0.937454824666 },
+  { id=82, label="preschool_1escort", value=0.553573332396 },
+  { id=88, label="school_tours_1escort", value=-1.72241787442 },
+  { id=23, label="low_income_escort", value=-0.038326572693 },
+  { id=94, label="base_escort", value=0.1201 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 escort tours
+purpose = 3  # escort
+segment = 6
+coefficients = [
+  { id=15, label="const_2escort", value=-6.58157666759 },
+  { id=29, label="med_income_2escort", value=-0.66758300491 },
+  { id=35, label="high_income_2escort", value=-0.813823885475 },
+  { id=41, label="zero_auto_2escort", value=0.406967605213 },
+  { id=47, label="auto_insuff_2escort", value=-0.634676354084 },
+  { id=53, label="female_2escort", value=-0.0155250117059 },
+  { id=71, label="driving_age_2escort", value=0.175975543282 },
+  { id=77, label="nondrive_age_2escort", value=1.59942643186 },
+  { id=83, label="preschool_2escort", value=1.0198376005 },
+  { id=89, label="school_tours_2escort", value=-2.32467380372 },
+  { id=23, label="low_income_escort", value=-0.038326572693 },
+  { id=94, label="base_escort", value=0.1201 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 maintenance tour
+purpose = 4  # maintenance
+segment = 6
+coefficients = [
+  { id=16, label="const_1maint", value=-0.683747282176 },
+  { id=24, label="low_income_1maint", value=-0.163297244815 },
+  { id=30, label="med_income_1maint", value=-0.023439618125 },
+  { id=36, label="high_income_1maint", value=0.0418430814734 },
+  { id=42, label="zero_auto_1maint", value=0.233205213051 },
+  { id=48, label="auto_insuff_1maint", value=0.0509318535518 },
+  { id=54, label="female_1maint", value=0.104317007344 },
+  { id=66, label="hhsize2_1maint", value=-0.152146039872 },
+  { id=72, label="driving_age_1maint", value=-0.27345877187 },
+  { id=78, label="nondrive_age_1maint", value=-0.273065919198 },
+  { id=84, label="preschool_1maint", value=0.229582502237 },
+  { id=90, label="school_tours_1maint", value=-1.11137378859 },
+  { id=95, label="base_maint", value=0.5 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 maintenance tours
+purpose = 4  # maintenance
+segment = 6
+coefficients = [
+  { id=17, label="const_2maint", value=-3.12173445103 },
+  { id=25, label="low_income_2maint", value=0.240927753872 },
+  { id=31, label="med_income_2maint", value=-0.399730775677 },
+  { id=37, label="high_income_2maint", value=-0.226313130872 },
+  { id=43, label="zero_auto_2maint", value=0.0187414382909 },
+  { id=49, label="auto_insuff_2maint", value=0.611021948783 },
+  { id=55, label="female_2maint", value=-0.0876159323827 },
+  { id=67, label="hhsize2_2maint", value=0.200106032274 },
+  { id=73, label="driving_age_2maint", value=0.221803919964 },
+  { id=79, label="nondrive_age_2maint", value=-0.114101172189 },
+  { id=91, label="school_tours_2maint", value=-2.32897169526 },
+  { id=95, label="base_maint", value=0.5 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 1  # 1 discretionary tour
+purpose = 5  # discretionary
+segment = 6
+coefficients = [
+  { id=18, label="const_1disc", value=-0.858054192061 },
+  { id=26, label="low_income_1disc", value=-0.360377234578 },
+  { id=32, label="med_income_1disc", value=-0.315696407259 },
+  { id=38, label="high_income_1disc", value=-0.0673364733011 },
+  { id=44, label="zero_auto_1disc", value=-0.0782508811236 },
+  { id=50, label="auto_insuff_1disc", value=0.123356326258 },
+  { id=56, label="female_1disc", value=-0.059260396091 },
+  { id=68, label="hhsize2_1disc", value=-0.164613085101 },
+  { id=74, label="driving_age_1disc", value=0.109816731912 },
+  { id=80, label="nondrive_age_1disc", value=0.427820901964 },
+  { id=86, label="preschool_1disc", value=-0.446344672623 },
+  { id=92, label="school_tours_1disc", value=-0.796568774239 },
+  { id=96, label="base_disc", value=0.4 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 2  # 2 discretionary tours
+purpose = 5  # discretionary
+segment = 6
+coefficients = [
+  { id=19, label="const_2disc", value=-1.48299952915 },
+  { id=27, label="low_income_2disc", value=-1.00350031526 },
+  { id=33, label="med_income_2disc", value=-0.340186185141 },
+  { id=39, label="high_income_2disc", value=0.167029033301 },
+  { id=45, label="zero_auto_2disc", value=-0.289667330846 },
+  { id=51, label="auto_insuff_2disc", value=-0.18168997963 },
+  { id=57, label="female_2disc", value=-0.15855431717 },
+  { id=69, label="hhsize2_2disc", value=-0.545607603293 },
+  { id=75, label="driving_age_2disc", value=0.560196496598 },
+  { id=81, label="nondrive_age_2disc", value=0.334929855059 },
+  { id=93, label="school_tours_2disc", value=-1.65492972632 },
+  { id=96, label="base_disc", value=0.4 },
+]
+
+[[nonmand_freq.alternatives]]
+alt = 99  # global total-tour corrections for this segment
+purpose = 0
+segment = 6
+coefficients = [
+  { id=20, label="total_2tours", value=-0.605925612026 },
+  { id=21, label="total_3tours", value=-0.97342966295 },
+  { id=22, label="total_4tours", value=-2.72571055629 },
+]

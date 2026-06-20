@@ -1,0 +1,359 @@
+﻿# SDT Model — tour_mode coefficients
+# Auto-split from resident_coefficients.toml
+
+[tour_mode]
+model_name  = "tour_mode"
+description = "4-level nested logit: 14/15 alternatives, 7 purposes"
+version     = "2.0"
+
+# Purpose codes: 0=Work 1=University 2=School 3=Escort 4=Maint 5=Disc 6=AtWork
+# Permanently unavailable modes (DA_PAY, S2PAY, S3PAY, transit 8-13) are not
+# listed — they stay at kUnavail from resetUtils. Distance/zero-auto unavailability
+# for DA_FREE is applied in applyAvailability, not via TOML coefficients.
+# calib_0car = UEC row7 (hhAutos==0), calib_def = row8 (0<autos<adults), calib_suf = row9
+
+# ── Work (purpose=0) ────────────────────────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 0
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 0
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  0.09181215296360908 },
+  { label="calib_suf",  value= -0.6252114515214929 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 0
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value=  0.15301329718395087 },
+  { label="calib_def",  value= -0.563011753790012 },
+  { label="calib_suf",  value= -1.3556682359456362 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 0
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  4.547801279714144 },
+  { label="calib_def",  value=  2.973353802617147 },
+  { label="calib_suf",  value=  1.1360949923250356 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 0
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  3.8865953071899257 },
+  { label="calib_def",  value=  2.1210252802637917 },
+  { label="calib_suf",  value= -0.047954879048815624 },
+]
+
+# ── University (purpose=1) ──────────────────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 1
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 1
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  2.032732294249754 },
+  { label="calib_suf",  value=  0.9054460588855736 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 1
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value=  2.78841636766118 },
+  { label="calib_def",  value=  1.211089873739851 },
+  { label="calib_suf",  value=  0.7195905489271459 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 1
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  5.875622968951796 },
+  { label="calib_def",  value=  4.150459304437708 },
+  { label="calib_suf",  value=  2.7501553654958024 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 1
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  5.295617701125183 },
+  { label="calib_def",  value=  4.234701349251644 },
+  { label="calib_suf",  value=  2.0897165983095225 },
+]
+
+# ── School (purpose=2) ─────────────────────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 2
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 2
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  7.55830041039061 },
+  { label="calib_suf",  value=  3.291010638214452 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 2
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value=  1.2814198105848613 },
+  { label="calib_def",  value=  7.5513795736975675 },
+  { label="calib_suf",  value=  4.025858839747787 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 2
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  5.527962366509622 },
+  { label="calib_def",  value= 10.574519747966004 },
+  { label="calib_suf",  value=  5.710915186361412 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 2
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  4.358527471879614 },
+  { label="calib_def",  value=  8.782318167413411 },
+  { label="calib_suf",  value=  5.613181298672248 },
+]
+[[tour_mode.alternatives]]
+alt = 14
+purpose = 2
+segment = -1
+coefficients = [
+  { label="constant",   value= -2.0 },
+  { label="calib_0car", value=  3.9409617563739006 },
+  { label="calib_def",  value=  8.947153789508684 },
+  { label="calib_suf",  value=  4.670656485072648 },
+]
+
+# ── Escort (purpose=3) ─────────────────────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 3
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 3
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  5.013927527758679 },
+  { label="calib_suf",  value=  4.505762615133646 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 3
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value=  0.6940989215122155 },
+  { label="calib_def",  value=  4.573456884833663 },
+  { label="calib_suf",  value=  4.474093003356758 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 3
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  4.3331489458803825 },
+  { label="calib_def",  value=  6.474944430760455 },
+  { label="calib_suf",  value=  5.875712137385477 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 3
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  3.3204538409850652 },
+  { label="calib_def",  value=  4.7471473253389584 },
+  { label="calib_suf",  value=  3.9437443582240506 },
+]
+
+# ── Maintenance (purpose=4) ────────────────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 4
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 4
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  2.204125910045439 },
+  { label="calib_suf",  value=  0.9932704132595015 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 4
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value= -0.7804777951564674 },
+  { label="calib_def",  value=  1.124234898034376 },
+  { label="calib_suf",  value=  0.3672791597712238 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 4
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  5.062635552609866 },
+  { label="calib_def",  value=  4.206090262315565 },
+  { label="calib_suf",  value=  4.085674476675639 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 4
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  3.2155921428406984 },
+  { label="calib_def",  value=  3.0360411997004007 },
+  { label="calib_suf",  value=  1.8029346135953155 },
+]
+
+# ── Discretionary (purpose=5) ──────────────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 5
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 5
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  2.2620174059294227 },
+  { label="calib_suf",  value=  1.4996771719237996 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 5
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value= -0.2384908673902389 },
+  { label="calib_def",  value=  1.600345508819121 },
+  { label="calib_suf",  value=  1.4773100788154307 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 5
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  6.5601944638019605 },
+  { label="calib_def",  value=  6.036686387437606 },
+  { label="calib_suf",  value=  5.225411936520117 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 5
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  4.666141584769796 },
+  { label="calib_def",  value=  4.4438198915763705 },
+  { label="calib_suf",  value=  3.994859533127853 },
+]
+
+# ── AtWork / Work-Based (purpose=6) ───────────────────────────────────
+[[tour_mode.alternatives]]
+alt = 0
+purpose = 6
+segment = -1
+coefficients = [
+  { label="constant", value=0.0 },
+]
+[[tour_mode.alternatives]]
+alt = 2
+purpose = 6
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_def",  value=  0.5092918098225172 },
+  { label="calib_suf",  value=  0.2718680040559447 },
+]
+[[tour_mode.alternatives]]
+alt = 4
+purpose = 6
+segment = -1
+coefficients = [
+  { label="constant",   value= -1.0 },
+  { label="calib_0car", value= -1.667549692293054 },
+  { label="calib_def",  value= -0.5626881548795926 },
+  { label="calib_suf",  value= -0.22476703327553596 },
+]
+[[tour_mode.alternatives]]
+alt = 6
+purpose = 6
+segment = -1
+coefficients = [
+  { label="constant",   value= -4.0 },
+  { label="calib_0car", value=  3.5619275417911114 },
+  { label="calib_def",  value=  4.77787485162108 },
+  { label="calib_suf",  value=  3.79906051507407 },
+]
+[[tour_mode.alternatives]]
+alt = 7
+purpose = 6
+segment = -1
+coefficients = [
+  { label="constant",   value= -5.0 },
+  { label="calib_0car", value=  0.9090142201907108 },
+  { label="calib_def",  value= -0.0589329758591029 },
+  { label="calib_suf",  value=  1.3910193755766171 },
+]

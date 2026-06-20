@@ -1,0 +1,14 @@
+﻿# SDT Model — vis_tour_tod visitor coefficients
+
+[vis_tour_tod]
+model_name  = "vis_tour_tod"
+description = "Joint depart/arrive period; uniform over feasible pairs"
+version     = "1.0"
+# Uniform distribution — all period constants are 0.0, so no alternatives needed.
+# Empty array suppresses the CoeffTable 'no alternatives' warning.
+alternatives = []
+
+# â”€â”€ Visitor Tour Destination Choice (SOA) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Source: VisitorTourDestinationChoiceSOA__*.csv
+# Weight = exp(dist_coef Ã— dist + log_dist_coef Ã— LN(dist) + dist_sq_coef Ã— distÂ²) Ã— sizeTerm
+# Distance cutoff: work=100mi, recreate/shop/eatout=50mi

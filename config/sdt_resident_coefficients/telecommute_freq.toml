@@ -1,0 +1,72 @@
+﻿# SDT Model — telecommute_freq coefficients
+# Auto-split from resident_coefficients.toml
+
+[telecommute_freq]
+model_name  = "telecommute_freq"
+description = "MNL: telecommute frequency (5 alternatives)"
+version     = "1.0"
+source_file = "ResidentTelecommuteFrequency__telecommute_freq.csv"
+
+[[telecommute_freq.alternatives]]
+alt = 0  # <1 day/week (reference)
+purpose = -1
+segment = -1
+coefficients = [{ id=1, label="constant", value=0.0 }]
+
+[[telecommute_freq.alternatives]]
+alt = 1  # 1 day/week
+purpose = -1
+segment = -1
+coefficients = [
+  { id=4,  label="children_0_5",        value= 0.0 },
+  { id=5,  label="one_adult_hh",        value= 0.230798763869585 },
+  { id=7,  label="part_time",           value=-0.164765705464798 },
+  { id=8,  label="income_60_100k",      value= 0.354958213898335 },
+  { id=9,  label="autos_1",             value=-0.203712629630474 },
+  { id=10, label="autos_3plus",         value=-0.236654825812298 },
+  { id=11, label="dist_to_work",        value= 0.0065817284180437 },
+  { id=56, label="constant",            value=-2.54887072156132 },
+]
+
+[[telecommute_freq.alternatives]]
+alt = 2  # 2 days/week
+purpose = -1
+segment = -1
+coefficients = [
+  { id=4,  label="children_0_5",        value=-0.328269717501872 },
+  { id=7,  label="part_time",           value=-0.164765705464798 },
+  { id=10, label="autos_3plus",         value=-0.267343171343732 },
+  { id=11, label="dist_to_work",        value= 0.011270292473366 },
+  { id=56, label="constant",            value=-1.53396207342891 },
+]
+
+[[telecommute_freq.alternatives]]
+alt = 3  # 3 days/week
+purpose = -1
+segment = -1
+coefficients = [
+  { id=4,  label="children_0_5",        value=-0.328269717501872 },
+  { id=7,  label="part_time",           value=-0.164765705464798 },
+  { id=10, label="autos_3plus",         value=-0.267343171343732 },
+  { id=11, label="dist_to_work",        value= 0.011270292473366 },
+  { id=56, label="constant",            value=-2.3020282821315265 },
+]
+
+[[telecommute_freq.alternatives]]
+alt = 4  # 4+ days/week
+purpose = -1
+segment = -1
+coefficients = [
+  { id=4,  label="children_0_5",        value=-0.328269717501872 },
+  { id=7,  label="part_time",           value=-0.164765705464798 },
+  { id=10, label="autos_3plus",         value=-0.508628185131639 },
+  { id=11, label="dist_to_work",        value= 0.011270292473366 },
+  { id=56, label="constant",            value=-2.715968358893447 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MANDATORY TOUR FREQUENCY
+# Source: ResidentMandatoryTourFrequency__Model.csv
+# Single-alternative model (Alt FILE): each row contributes to chosen alt utility.
+# Encoded here as ASCs per tour-pattern alternative.
+# ═══════════════════════════════════════════════════════════════════════════════

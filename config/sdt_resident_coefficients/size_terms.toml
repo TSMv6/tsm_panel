@@ -1,0 +1,269 @@
+# SDT Model — size_terms coefficients
+# Auto-split from resident_coefficients.toml
+#
+# LOOKUP NOTE: SizeTerms::loadCoeffs() calls ct.value(alt, -1, -1, label).
+# CoeffTable::get() matches stored key (alt, purpose, segment) against query
+# (alt, -1, -1) using: p_match = (k.purpose == query_purpose || k.purpose == -1).
+# Because query_purpose = -1, only entries stored with purpose = -1 (wildcard)
+# will match. Same for segment. The purpose/segment of each alternative is
+# encoded SOLELY by its alt index, per the kMap in SizeTerms.cpp:
+#   alt 0  = Work  seg 0 (income <$25k)
+#   alt 1  = Work  seg 1 (income $25k-$50k)
+#   alt 2  = Work  seg 2 (income $50k-$75k)
+#   alt 3  = Work  seg 3 (income $75k-$100k)
+#   alt 4  = Work  seg 4 (income >=$100k)
+#   alt 5  = University
+#   alt 6  = School
+#   alt 7  = Escort
+#   alt 8  = Maintenance
+#   alt 9  = Discretionary
+#   alt 10 = AtWork
+
+[size_terms]
+model_name  = "size_terms"
+description = "Log-linear size term employment weights by purpose (from UEC Size sheet)"
+version     = "1.0"
+source_file = "ResidentTourDestinationChoiceSOA__Size.csv"
+
+# Work segment 0 (income < $25k)  —  kMap alt=0
+[[size_terms.alternatives]]
+alt     = 0
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="pubademp",  value= 0.08545868551174256 },
+  { id=2,  label="accomemp",  value= 0.9512022578719704 },
+  { id=3,  label="agricemp",  value= 0.11441161949256833 },
+  { id=4,  label="mininemp",  value= 0.0020338533414883974 },
+  { id=5,  label="wholeemp",  value= 0.1086932492280937 },
+  { id=6,  label="utiliemp",  value= 0.013301106091980281 },
+  { id=7,  label="transemp",  value= 0.2606943103689675 },
+  { id=8,  label="manufemp",  value= 0.2219921446099202 },
+  { id=9,  label="inforemp",  value= 0.07276184019513202 },
+  { id=10, label="finanemp",  value= 0.10903959381885442 },
+  { id=11, label="oservemp",  value= 0.5629794477646035 },
+  { id=12, label="profeemp",  value= 0.20868366948409395 },
+  { id=13, label="managemp",  value= 0.0005232014030640442 },
+  { id=14, label="adminemp",  value= 0.5917113107300502 },
+  { id=15, label="realeemp",  value= 0.16562640472207688 },
+  { id=16, label="retaiemp",  value= 1.0 },
+  { id=17, label="constemp",  value= 0.5003426600738378 },
+  { id=18, label="medicemp",  value= 0.6999992630966154 },
+  { id=19, label="enteremp",  value= 0.21821183024693636 },
+  { id=20, label="educaemp",  value= 0.36521668644024086 },
+]
+
+# Work segment 1 (income $25k-$50k)  —  kMap alt=1
+[[size_terms.alternatives]]
+alt     = 1
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="pubademp",  value= 0.22881109866722824 },
+  { id=2,  label="accomemp",  value= 0.7591055719878624 },
+  { id=3,  label="agricemp",  value= 0.08028218897471978 },
+  { id=4,  label="mininemp",  value= 0.0037810259502819017 },
+  { id=5,  label="wholeemp",  value= 0.152064248724502 },
+  { id=6,  label="utiliemp",  value= 0.029594106066552443 },
+  { id=7,  label="transemp",  value= 0.2878333923620085 },
+  { id=8,  label="manufemp",  value= 0.3006186843305989 },
+  { id=9,  label="inforemp",  value= 0.09431505996994324 },
+  { id=10, label="finanemp",  value= 0.21678839336709135 },
+  { id=11, label="oservemp",  value= 0.42943201651526614 },
+  { id=12, label="profeemp",  value= 0.25555268389027685 },
+  { id=13, label="managemp",  value= 0.002223945221389439 },
+  { id=14, label="adminemp",  value= 0.49129406809675596 },
+  { id=15, label="realeemp",  value= 0.16542387374883138 },
+  { id=16, label="retaiemp",  value= 1.0 },
+  { id=17, label="constemp",  value= 0.5565797828382901 },
+  { id=18, label="medicemp",  value= 0.788549713312083 },
+  { id=19, label="enteremp",  value= 0.19838740040905278 },
+  { id=20, label="educaemp",  value= 0.40786900101146434 },
+]
+
+# Work segment 2 (income $50k-$75k)  —  kMap alt=2
+[[size_terms.alternatives]]
+alt     = 2
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="pubademp",  value= 0.3430740394983464 },
+  { id=2,  label="accomemp",  value= 0.6805395743325879 },
+  { id=3,  label="agricemp",  value= 0.0637343233248663 },
+  { id=5,  label="wholeemp",  value= 0.2000209866626141 },
+  { id=7,  label="transemp",  value= 0.3440473864368266 },
+  { id=8,  label="manufemp",  value= 0.363232090778171 },
+  { id=9,  label="inforemp",  value= 0.12929231526309315 },
+  { id=10, label="finanemp",  value= 0.29783330800460256 },
+  { id=11, label="oservemp",  value= 0.38171120904887 },
+  { id=12, label="profeemp",  value= 0.3796487266885218 },
+  { id=14, label="adminemp",  value= 0.4446060658691735 },
+  { id=15, label="realeemp",  value= 0.19339209598865273 },
+  { id=16, label="retaiemp",  value= 0.9179744116450997 },
+  { id=17, label="constemp",  value= 0.5567146465194706 },
+  { id=18, label="medicemp",  value= 0.9224144793498478 },
+  { id=19, label="enteremp",  value= 0.2292105396467004 },
+  { id=20, label="educaemp",  value= 0.5324352489090554 },
+]
+
+# Work segment 3 (income $75k-$100k)  —  kMap alt=3
+[[size_terms.alternatives]]
+alt     = 3
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="pubademp",  value= 0.45082531307675466 },
+  { id=2,  label="accomemp",  value= 0.5824739580617916 },
+  { id=5,  label="wholeemp",  value= 0.2202120892985621 },
+  { id=7,  label="transemp",  value= 0.35658947061092977 },
+  { id=8,  label="manufemp",  value= 0.38899721593693626 },
+  { id=9,  label="inforemp",  value= 0.15890535228303598 },
+  { id=10, label="finanemp",  value= 0.39379894268166793 },
+  { id=11, label="oservemp",  value= 0.3391082656434105 },
+  { id=12, label="profeemp",  value= 0.5147492779162278 },
+  { id=14, label="adminemp",  value= 0.3877042428286915 },
+  { id=15, label="realeemp",  value= 0.20131278479296788 },
+  { id=16, label="retaiemp",  value= 0.9179744116450997 },
+  { id=17, label="constemp",  value= 0.5297018862809296 },
+  { id=18, label="medicemp",  value= 1.0 },
+  { id=19, label="enteremp",  value= 0.24105085346652347 },
+  { id=20, label="educaemp",  value= 0.6659280731572527 },
+]
+
+# Work segment 4 (income >= $100k)  —  kMap alt=4
+[[size_terms.alternatives]]
+alt     = 4
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="pubademp",  value= 0.41056293673346916 },
+  { id=2,  label="accomemp",  value= 0.393076240211467 },
+  { id=5,  label="wholeemp",  value= 0.2159279702835265 },
+  { id=7,  label="transemp",  value= 0.29167224594448493 },
+  { id=8,  label="manufemp",  value= 0.39284810974067513 },
+  { id=9,  label="inforemp",  value= 0.16254791979726144 },
+  { id=10, label="finanemp",  value= 0.4746130460873144 },
+  { id=11, label="oservemp",  value= 0.24532952454634271 },
+  { id=12, label="profeemp",  value= 0.7323682422547225 },
+  { id=14, label="adminemp",  value= 0.2822271485178958 },
+  { id=15, label="realeemp",  value= 0.2284156338803505 },
+  { id=16, label="retaiemp",  value= 0.7023170120859555 },
+  { id=17, label="constemp",  value= 0.37337766999439587 },
+  { id=18, label="medicemp",  value= 1.0 },
+  { id=19, label="enteremp",  value= 0.19407951834714512 },
+  { id=20, label="educaemp",  value= 0.5712535769370013 },
+]
+
+# University  —  kMap alt=5
+[[size_terms.alternatives]]
+alt     = 5
+purpose = -1
+segment = -1
+coefficients = [
+  { id=20, label="educaemp",  value= 8.627 },
+  { id=21, label="UnivEnr",   value= 1.0 },
+]
+
+# School  —  kMap alt=6
+[[size_terms.alternatives]]
+alt     = 6
+purpose = -1
+segment = -1
+coefficients = [
+  { id=21, label="SchoolEnr",  value= 1.0 },
+  { id=22, label="TotHH",      value= 0.2061 },
+]
+
+# Escort  —  kMap alt=7
+[[size_terms.alternatives]]
+alt     = 7
+purpose = -1
+segment = -1
+coefficients = [
+  { id=9,  label="inforemp",  value= 0.3601 },
+  { id=10, label="finanemp",  value= 0.3601 },
+  { id=11, label="oservemp",  value= 0.2832 },
+  { id=12, label="profeemp",  value= 0.0223 },
+  { id=14, label="adminemp",  value= 0.3601 },
+  { id=15, label="realeemp",  value= 0.3755 },
+  { id=16, label="retaiemp",  value= 1.0 },
+  { id=18, label="medicemp",  value= 0.3833 },
+  { id=19, label="enteremp",  value= 0.3601 },
+  { id=20, label="educaemp",  value= 2.2087 },
+  { id=22, label="TotHH",     value= 0.0 },
+  # UEC row 38 (SchoolEnr): Escort also uses school enrollment = 1.0 (escort to/from school)
+  { id=23, label="SchoolEnr", value= 1.0 },
+]
+
+# Maintenance  —  kMap alt=8
+[[size_terms.alternatives]]
+alt     = 8
+purpose = -1
+segment = -1
+coefficients = [
+  { id=9,  label="inforemp",  value= 0.0526 },
+  { id=10, label="finanemp",  value= 0.806 },
+  { id=11, label="oservemp",  value= 0.1071 },
+  { id=12, label="profeemp",  value= 0.0251 },
+  { id=14, label="adminemp",  value= 0.0245 },
+  { id=15, label="realeemp",  value= 0.1136 },
+  { id=16, label="retaiemp",  value= 1.0 },
+  { id=18, label="medicemp",  value= 0.5352 },
+  { id=19, label="enteremp",  value= 0.0457 },
+  { id=20, label="educaemp",  value= 0.0 },
+]
+
+# Discretionary  —  kMap alt=9
+[[size_terms.alternatives]]
+alt     = 9
+purpose = -1
+segment = -1
+coefficients = [
+  { id=2,  label="accomemp",  value= 8.7526 },
+  { id=9,  label="inforemp",  value= 5.573 },
+  { id=10, label="finanemp",  value= 0.0 },
+  { id=11, label="oservemp",  value= 2.8595 },
+  { id=12, label="profeemp",  value= 1.9499 },
+  { id=13, label="managemp",  value= 21.0838 },
+  { id=14, label="adminemp",  value= 4.2802 },
+  { id=15, label="realeemp",  value= 3.2667 },
+  { id=16, label="retaiemp",  value= 1.0 },
+  { id=18, label="medicemp",  value= 1.4323 },
+  { id=19, label="enteremp",  value= 9.4487 },
+  { id=20, label="educaemp",  value= 0.7366 },
+  { id=23, label="Beaches",    value= 8.9155 },
+  { id=24, label="StateParks", value= 8.9155 },
+  # Special generators: UEC row 43 coeff=1000 for specialGen (=magic_kingdom+epcot+animal)
+  # C++ loads getV("specialGen") × 1000; so TOML value must be 1.0 (not 1000) to avoid double-multiply
+  { id=31, label="specialGen",        value= 1.0 },
+  { id=26, label="universal",         value= 1000.0 },
+  { id=27, label="seaworld",          value= 1000.0 },
+  { id=28, label="busch_garden",      value= 1000.0 },
+  { id=22, label="TotHH",     value= 7.0723 },
+]
+
+# AtWork  —  kMap alt=10
+[[size_terms.alternatives]]
+alt     = 10
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="pubademp",  value= 0.0966 },
+  { id=9,  label="inforemp",  value= 0.6863 },
+  { id=10, label="finanemp",  value= 0.6379 },
+  { id=11, label="oservemp",  value= 0.0811 },
+  { id=12, label="profeemp",  value= 0.3395 },
+  { id=13, label="managemp",  value= 7.7309 },
+  { id=14, label="adminemp",  value= 7.7309 },
+  { id=16, label="retaiemp",  value= 1.0 },
+  { id=18, label="medicemp",  value= 0.3373 },
+  { id=20, label="educaemp",  value= 0.1043 },
+  { id=22, label="TotHH",     value= 0.3514 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TOUR MODE CHOICE
+# Source: ResidentTourModeChoice__Work.csv (and Univ/School/Escort/Maint/Disc)
+# Nest structure defined in TourModeChoice.cpp (from Model_Structure sheet)
+# 14 alternatives: DRIVEALONEFREE..PNR_FML (no SCH_BUS for non-school tours)
+# ═══════════════════════════════════════════════════════════════════════════════

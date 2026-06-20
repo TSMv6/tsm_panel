@@ -1,0 +1,27 @@
+﻿# SDT Model — vis_stop_loc visitor coefficients
+
+[vis_stop_loc]
+model_name  = "vis_stop_loc"
+description = "SOA detour-weighted stop location via deviation distance and ratio"
+version     = "1.0"
+source_file = "VisitorStopLocationChoice__All.csv"
+# Coefficients below are reference-only; VisitorStopLocationChoice uses SOA_BETA
+# constant from Constants.hpp (-0.339550558837). CoeffTable not called at runtime.
+alternatives = []
+
+[vis_stop_loc.generic]
+dev_dist             = -0.047608           # deviation distance (mi)
+log_dev_dist         = -0.644798961864     # LN(dev_dist) if dev_dist > 0
+ratio_dist           = -6.21909133076      # originâ†’stop / total detour path
+dev_2nd_stop         = -0.0303642791694    # dev_dist when stop number == 2
+dev_3rd_stop         = -0.0304817040873    # dev_dist when stop number == 3
+dev_dist_x_stops     =  0.013010724876     # dev_dist Ã— num_stops_on_half_tour
+ratio_first_outbound =  0.127150588005     # ratio Ã— (inbound==0) Ã— (snumber==1)
+ratio_first_inbound  =  1.01195506723      # ratio Ã— (inbound==1) Ã— (snumber==1)
+
+# â”€â”€ Visitor Trip Mode Choice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Source: VisitorTripModeChoice__trip_mode.csv
+# 18-alternative MNL constrained by tour mode (same availability rules as tour mode).
+# WALK has purpose-specific ASCs; others are set by availability constraints only.
+# Row 20-23 use formula=0.5: utility contribution = 0.5 Ã— coefficient.
+# Row 24 (FL calibration) uses formula=1: utility += coefficient directly.

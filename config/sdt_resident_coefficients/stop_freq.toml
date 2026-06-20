@@ -1,0 +1,75 @@
+﻿# SDT Model — stop_freq coefficients
+# Auto-split from resident_coefficients.toml
+
+[stop_freq]
+model_name  = "stop_freq"
+description = "MNL: 0-3 intermediate stops per tour half; by purpose"
+version     = "1.0"
+
+[[stop_freq.alternatives]]
+alt = 0
+purpose = -1
+segment = -1
+coefficients = [{ id=1, label="constant", value=0.0 }]
+
+[[stop_freq.alternatives]]
+alt = 1
+purpose = 0
+segment = -1# 1 stop, work tours
+coefficients = [
+  { id=1, label="constant",   value=-1.5 },
+  { id=2, label="tour_dist",  value= 0.002 },
+]
+
+[[stop_freq.alternatives]]
+alt = 2
+purpose = 0
+segment = -1# 2 stops
+coefficients = [
+  { id=1, label="constant",   value=-3.0 },
+  { id=2, label="tour_dist",  value= 0.003 },
+]
+
+[[stop_freq.alternatives]]
+alt = 3
+purpose = 0
+segment = -1# 3 stops
+coefficients = [
+  { id=1, label="constant",   value=-5.0 },
+]
+
+[[stop_freq.alternatives]]
+alt = 1
+purpose = 5
+segment = -1# 1 stop, discretionary
+coefficients = [
+  { id=1, label="constant",   value=-1.2 },
+  { id=2, label="tour_dist",  value= 0.003 },
+]
+
+[[stop_freq.alternatives]]
+alt = 2
+purpose = 5
+segment = -1
+coefficients = [
+  { id=1, label="constant",   value=-2.8 },
+]
+
+[[stop_freq.alternatives]]
+alt = 3
+purpose = 5
+segment = -1
+coefficients = [
+  { id=1, label="constant",   value=-5.5 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TRIP MODE CHOICE
+# Source: ResidentTripModeChoice__*.csv (one file per purpose)
+# Modal consistency constants: penalties applied to drive-alone and walk-transit
+# trip alternatives based on the *tour* mode. The C++ implementation adds:
+#   tMode_tour==S2:  DA += s2_da_const;  WT += s2_wt_const
+#   tMode_tour==S3:  DA += s3_da_const;  S3PAY += s3_pay_const; WT += s3_wt_const
+# Plus FL TSM calibration adjustments on top.
+# purposes: 0=Work, 1=University, 2=School, 3=Escort, 4=Maintenance, 5=Disc, 6=AtWork
+# ═══════════════════════════════════════════════════════════════════════════════

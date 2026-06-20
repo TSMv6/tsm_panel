@@ -1,0 +1,19 @@
+# calibration_constants.toml
+# Rewritten by calibrate.py each MSA iteration — do not hand-edit.
+#
+# Each [[adjust]] entry adds 'delta' to the specified coefficient after
+# estimated values are loaded.  Use index=0 to apply to all segments.
+#
+# model  = base model name (matches the .toml filename without extension)
+# index  = segment index (1-based); 0 = all segments
+# coef   = coefficient id number
+# delta  = additive adjustment (positive = shift utility up)
+# note   = optional human label (ignored by engine)
+#
+# Example:
+# [[adjust]]
+# model = "mode_choice"
+# index = 3          # leisure
+# coef  = 401        # air ASC
+# delta = -0.25
+# note  = "air ASC, leisure — iteration 4"

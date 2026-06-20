@@ -1,0 +1,129 @@
+# SDT Model — vis_tour_mode visitor coefficients
+# Visitor tour mode: constants-only nested logit, 18 alternatives.
+# ASC values = Java base + FL calibration combined into single id=1.
+# id=2..5 (dist, time, vot, party_size) all zero → constants-only model.
+# Availability: DA_PAY(1), S2_PAY(3), S3_PAY(5), all transit(8-13), SCH_BUS(14),
+#               TROLLEY(15), TOUR_BUS(16), TAXI(17) set to -999 (unavailable).
+# n_vehicles=0 additionally blocks auto+KNR+PNR in applyAvailability().
+
+[vis_tour_mode]
+model_name  = "vis_tour_mode"
+description = "Nested logit 18 alts; constants-only with combined base+FL ASCs"
+version     = "1.1"
+
+# alt=0  DRIVEALONEFREE — reference (ASC=0)
+[[vis_tour_mode.alternatives]]
+alt=0
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=0.0}]
+
+# alt=1  DRIVEALONEPAY — unavailable for visitors
+[[vis_tour_mode.alternatives]]
+alt=1
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+# alt=2  SHARED2GP — ASC = -1.0 + 1.1588 = +0.1588
+[[vis_tour_mode.alternatives]]
+alt=2
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=0.1588}]
+
+# alt=3  SHARED2PAY — unavailable
+[[vis_tour_mode.alternatives]]
+alt=3
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+# alt=4  SHARED3GP — ASC = -1.0 + 0.5154 = -0.4846
+[[vis_tour_mode.alternatives]]
+alt=4
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-0.4846}]
+
+# alt=5  SHARED3PAY — unavailable
+[[vis_tour_mode.alternatives]]
+alt=5
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+# alt=6  WALK — ASC = -4.0 + 3.7616 = -0.2384
+[[vis_tour_mode.alternatives]]
+alt=6
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-0.2384}]
+
+# alt=7  BIKE — ASC = -5.0 + 0.0 = -5.0
+[[vis_tour_mode.alternatives]]
+alt=7
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-5.0}]
+
+# alt=8..17 — all unavailable for visitors
+[[vis_tour_mode.alternatives]]
+alt=8
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=9
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=10
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=11
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=12
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=13
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=14
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=15
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=16
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_tour_mode.alternatives]]
+alt=17
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]

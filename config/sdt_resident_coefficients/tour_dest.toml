@@ -1,0 +1,85 @@
+﻿# SDT Model — tour_dest coefficients
+# Auto-split from resident_coefficients.toml
+
+[tour_dest]
+model_name  = "tour_dest"
+description = "SOA destination choice; size = log(employment/enrollment weighted sum)"
+version     = "1.0"
+source_file = "ResidentTourDestinationChoiceSOA__*.csv"
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 0  # Work
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.12063519898 },
+  { id=3, label="max_dist_mi", value=100.0 },
+]
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 1  # University
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.112 },
+  { id=3, label="max_dist_mi", value=100.0 },
+]
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 2  # School
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.2918019255 },
+  { id=3, label="max_dist_mi", value= 50.0 },
+]
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 3  # Escort
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.312951370875 },
+  { id=3, label="max_dist_mi", value= 50.0 },
+]
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 4  # Maintenance
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.28721725115 },
+  { id=3, label="max_dist_mi", value= 50.0 },
+]
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 5  # Discretionary
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.248326746135 },
+  { id=3, label="max_dist_mi", value= 50.0 },
+]
+
+[[tour_dest.alternatives]]
+alt = 0
+purpose = 6  # AtWork
+segment = -1
+coefficients = [
+  { id=1, label="size_term",   value= 1.0 },
+  { id=2, label="distance",    value=-0.292515666017 },
+  { id=3, label="max_dist_mi", value= 50.0 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SIZE TERMS — destination choice attraction weights by employment category
+# Source: ResidentTourDestinationChoiceSOA__Size.csv
+# Indexed: [purpose][employment_field] → weight
+# coef_id matches employment field column (1=pubademp, 2=accomemp, ... per UEC rows 11-43)
+# ═══════════════════════════════════════════════════════════════════════════════

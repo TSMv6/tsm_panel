@@ -1,0 +1,86 @@
+# SDT Model — vis_tour_dest visitor coefficients
+# Source: VisitorTourDestinationChoiceSOA__*.csv / Size.csv
+
+[vis_tour_dest]
+model_name  = "vis_tour_dest"
+description = "SOA destination choice: exp-distance x purpose size term"
+version     = "1.0"
+
+# ── Size terms ────────────────────────────────────────────────────────────────
+# SizeTerms::loadCoeffs() reads ct.value(alt, -1, -1, label).
+# AltMap in SizeTerms: alt=0..4 -> purpose=0(work segments),
+#                      alt=5 -> purpose=1(vis_recreate),
+#                      alt=6 -> purpose=2(vis_shop),
+#                      alt=7 -> purpose=3(vis_eatout)
+
+# alts 0-4: work (all income segments use totemp)
+[[vis_tour_dest.alternatives]]
+alt = 0
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1, label="totemp", value=1.0 },
+]
+
+[[vis_tour_dest.alternatives]]
+alt = 1
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1, label="totemp", value=1.0 },
+]
+
+[[vis_tour_dest.alternatives]]
+alt = 2
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1, label="totemp", value=1.0 },
+]
+
+[[vis_tour_dest.alternatives]]
+alt = 3
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1, label="totemp", value=1.0 },
+]
+
+[[vis_tour_dest.alternatives]]
+alt = 4
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1, label="totemp", value=1.0 },
+]
+
+# alt=5 -> recreate (purpose=1): retailers, accommodation, other services
+[[vis_tour_dest.alternatives]]
+alt = 5
+purpose = -1
+segment = -1
+coefficients = [
+  { id=11, label="oservemp",  value=0.5   },
+  { id=16, label="retaiemp",  value=0.75  },
+  { id=2,  label="accomemp",  value=1.884 },
+]
+
+# alt=6 -> shop (purpose=2): retail + other services
+[[vis_tour_dest.alternatives]]
+alt = 6
+purpose = -1
+segment = -1
+coefficients = [
+  { id=16, label="retaiemp", value=1.0 },
+  { id=11, label="oservemp", value=0.3 },
+]
+
+# alt=7 -> eatout (purpose=3): accommodation + other services
+[[vis_tour_dest.alternatives]]
+alt = 7
+purpose = -1
+segment = -1
+coefficients = [
+  { id=2,  label="accomemp", value=1.0 },
+  { id=11, label="oservemp", value=0.5 },
+]

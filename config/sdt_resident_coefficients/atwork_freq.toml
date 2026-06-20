@@ -1,0 +1,41 @@
+﻿# SDT Model — atwork_freq coefficients
+# Auto-split from resident_coefficients.toml
+
+[atwork_freq]
+model_name  = "atwork_freq"
+description = "MNL: at-work subtour frequency (0/1/2 subtours)"
+version     = "1.0"
+source_file = "ResidentAtWorkSubTourFrequency__AtWork_Subtour_Freq.csv"
+
+[[atwork_freq.alternatives]]
+alt = 0  # 0 subtours (reference)
+purpose = 6
+segment = -1
+coefficients = [{ id=1, label="constant", value=0.0 }]
+
+[[atwork_freq.alternatives]]
+alt = 1  # 1 subtour
+purpose = 6
+segment = -1
+coefficients = [
+  { id=11, label="constant",           value=-1.66723482883 },
+  { id=12, label="part_time_adj",      value=-0.767716622512 },
+  { id=13, label="univ_student_adj",   value=-1.36426120111 },
+]
+
+[[atwork_freq.alternatives]]
+alt = 2  # 2 subtours
+purpose = 6
+segment = -1
+coefficients = [
+  { id=11, label="constant",           value=-3.57257754893 },
+  { id=12, label="part_time_adj",      value=-0.644948810947 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TOUR DESTINATION CHOICE — SOA distance coefficients
+# Source: ResidentTourDestinationChoiceSOA__*.csv
+# coef_id=1: size term (1.0 = use log(sizeTerm))
+# coef_id=2: distance coefficient
+# coef_id=3: max distance cutoff (miles)
+# ═══════════════════════════════════════════════════════════════════════════════

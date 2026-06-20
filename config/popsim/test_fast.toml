@@ -1,0 +1,26 @@
+# test_fast.toml — debug run with fast convergence settings
+[runtime]
+threads   = 1
+log_level = "info"
+profile   = "HH"
+hh_flag   = 1
+
+[paths]
+seed_households = "C:/TSM_NextGen_v6/Base/popsim_test/data/seed_hh_prepped.csv"
+seed_persons    = "C:/TSM_NextGen_v6/PopSim/Florida/Setup/data/seed_persons_Y5_2022_1D_NAICS_OCC.csv"
+se_data         = "C:/TSM_NextGen_v6/Base/sdt_test/tsm_landuse.csv"
+geo_crosswalk   = "C:/TSM_NextGen_v6/PopSim/Florida/Setup/data/TSM_geo_Crosswalk.csv"
+controls        = "C:/TSM_NextGen_v6/PopSim/Florida/Setup/configs/HH/controls_standard.csv"
+output_dir      = "C:/TSM_NextGen_v6/Base/popsim_test/output/HH"
+weight_column   = "WGTP"
+hh_id_column    = "hh_id"
+puma_column     = "PUMA"
+
+[balancer]
+max_iterations  = 500
+convergence_tol = 1.0e-4
+gamma_lb        = 1.0e-6
+gamma_ub        = 1.0e6
+
+[integerizer]
+lp_timeout_ms   = 60000

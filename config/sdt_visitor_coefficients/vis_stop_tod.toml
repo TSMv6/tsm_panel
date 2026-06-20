@@ -1,0 +1,14 @@
+﻿# SDT Model — vis_stop_tod visitor coefficients
+
+[vis_stop_tod]
+model_name  = "vis_stop_tod"
+description = "Period-specific constant within tour window; uniform (all zeros)"
+version     = "1.0"
+# Uniform within tour window — all constants 0.0; runtime enforces tour time bounds.
+alternatives = []
+
+# â”€â”€ Visitor Stop Location Choice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Source: VisitorStopLocationChoice__All.csv
+# SOA detour: weight = exp(utility) where utility encodes deviation distance and ratio.
+# deviation_distance = (originâ†’stop + stopâ†’dest) âˆ’ (originâ†’dest)
+# ratio_distance     = originâ†’stop / (originâ†’stop + stopâ†’dest)

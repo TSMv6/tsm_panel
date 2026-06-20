@@ -1,0 +1,78 @@
+﻿# SDT Model — auto_own coefficients
+# Auto-split from resident_coefficients.toml
+
+[auto_own]
+model_name  = "auto_own"
+description = "MNL: 0-3+ vehicles (4 alternatives; 0 is reference)"
+version     = "1.0"
+source_file = "ResidentAutoOwnership__Auto_Ownership.csv"
+
+[[auto_own.alternatives]]
+alt = 0  # 0 vehicles — reference (all coefficients = 0)
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1, label="constant", value=0.0 },
+]
+
+[[auto_own.alternatives]]
+alt = 1  # 1 vehicle
+purpose = -1
+segment = -1
+coefficients = [
+  { id=16, label="const_1adult",        value=-1.7812 },
+  { id=17, label="const_2adult",        value=-2.0295 },
+  { id=18, label="const_3plus_adult",   value=-1.5624 },
+  { id=19, label="income_lt25k",        value= 1.2515 },
+  { id=20, label="income_gt100k",       value=-0.3401 },
+  { id=21, label="workers_per_adult",   value=-1.093  },
+  { id=23, label="retirees_per_adult",  value=-0.6354 },
+  { id=24, label="single_family",       value=-0.4811 },
+  { id=25, label="ln_total_density",    value= 0.151296412822 },
+  { id=26, label="mix_entropy",         value=-1.0620057206 },
+  { id=27, label="fl_tsm_calib",        value=-0.2768263656806153 },
+]
+
+[[auto_own.alternatives]]
+alt = 2  # 2 vehicles
+purpose = -1
+segment = -1
+coefficients = [
+  { id=16, label="const_1adult",        value=-1.7748 },
+  { id=17, label="const_2adult",        value= 0.6041 },
+  { id=18, label="const_3plus_adult",   value= 0.6494 },
+  { id=19, label="income_lt25k",        value=-0.6736 },
+  { id=20, label="income_gt100k",       value= 0.927  },
+  { id=21, label="workers_per_adult",   value= 0.3257 },
+  { id=22, label="predrive_per_adult",  value= 0.4451 },
+  { id=23, label="retirees_per_adult",  value=-0.737  },
+  { id=24, label="single_family",       value= 0.7542 },
+  { id=25, label="ln_total_density",    value=-0.143791818575 },
+  { id=26, label="mix_entropy",         value= 1.05938985825 },
+  { id=27, label="fl_tsm_calib",        value=-0.341544260126019 },
+]
+
+[[auto_own.alternatives]]
+alt = 3  # 3+ vehicles
+purpose = -1
+segment = -1
+coefficients = [
+  { id=16, label="const_1adult",        value=-3.256  },
+  { id=17, label="const_2adult",        value=-0.8298 },
+  { id=18, label="const_3plus_adult",   value= 1.1363 },
+  { id=19, label="income_lt25k",        value=-1.0167 },
+  { id=20, label="income_gt100k",       value= 1.1867 },
+  { id=21, label="workers_per_adult",   value= 0.5095 },
+  { id=22, label="predrive_per_adult",  value= 0.4451 },
+  { id=23, label="retirees_per_adult",  value=-1.3423 },
+  { id=24, label="single_family",       value= 1.3229 },
+  { id=25, label="ln_total_density",    value=-0.293879509965 },
+  { id=26, label="mix_entropy",         value= 1.9998529333 },
+  { id=27, label="fl_tsm_calib",        value=-0.7136500127899835 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TELECOMMUTE FREQUENCY
+# Source: ResidentTelecommuteFrequency__telecommute_freq.csv
+# 5 alternatives: <1day/wk (ref=0), 1day, 2days, 3days, 4+days
+# ═══════════════════════════════════════════════════════════════════════════════

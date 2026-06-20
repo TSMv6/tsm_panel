@@ -1,0 +1,23 @@
+﻿# SDT Model — veh_alloc coefficients
+# Auto-split from resident_coefficients.toml
+
+[veh_alloc]
+model_name  = "veh_alloc"
+description = "MNL: assign household vehicle to tour (5 alts incl. non-HH)"
+version     = "1.0"
+source_file = "ResidentVehicleAllocation__VehicleAllocation.csv"
+
+[[veh_alloc.alternatives]]
+alt = 4
+purpose = -1
+segment = -1# non-HH vehicle (reference/default)
+coefficients = [{ id=1, label="constant", value=0.0 }]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STOP LOCATION CHOICE
+# Source: ResidentStopLocationChoice__All.csv
+# Single-alternative model: weights SOA candidates via detour distance/ratio.
+# deviation_distance = (origin→stop + stop→dest) − (origin→dest)  [capped at 30mi]
+# ratio_distance     = origin→stop / (origin→stop + stop→dest)
+# Applied to all purposes; purpose-specific terms add onto generic base.
+# ═══════════════════════════════════════════════════════════════════════════════

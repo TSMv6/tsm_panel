@@ -1,0 +1,31 @@
+# popsim-run.toml — PopSim C++ EXE configuration
+# Mirrors the Python populationsim settings.yaml + controls_standard.csv
+# Run: popsim-run.exe popsim-run.toml
+
+[runtime]
+threads   = 0          # 0 = hardware_concurrency (recommended)
+log_level = "info"     # trace | debug | info | warn | error
+profile   = "HH"       # "HH" or "GQ"
+hh_flag   = 1          # written to HH column in output: 1=HH, 0=GQ
+
+[paths]
+seed_households = "data/seed_households_Y5_2022_updatePUMA.csv"
+seed_persons    = "data/seed_persons_Y5_2022_1D_NAICS_OCC.csv"
+se_data         = "data/SE_data.csv"
+geo_crosswalk   = "data/TSM_geo_crosswalk.csv"
+controls        = "configs/HH/controls_standard.csv"
+output_dir      = "output/HH"
+
+# Column names in seed CSV (change to GQWGTP for GQ profile)
+weight_column   = "WGTP"
+hh_id_column    = "household_id"
+puma_column     = "PUMA"
+
+[balancer]
+max_iterations  = 500
+convergence_tol = 1.0e-4
+gamma_lb        = 1.0e-6   # minimum gamma clamp (avoid divide-by-zero)
+gamma_ub        = 1.0e6    # maximum gamma clamp
+
+[integerizer]
+lp_timeout_ms   = 60000    # CBC solver time limit per zone (60 seconds)

@@ -1,0 +1,90 @@
+﻿# SDT Model — wfh coefficients
+# Auto-split from resident_coefficients.toml
+
+[wfh]
+model_name  = "wfh"
+description = "Binary MNL: office (alt0, reference) vs. work-from-home (alt1)"
+version     = "1.0"
+source_file = "ResidentWorkFromHome__work_from_home.csv"
+
+[[wfh.alternatives]]
+alt = 0  # work_away_from_home — reference, all zeros
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="constant",          value= 0.0 },
+]
+
+[[wfh.alternatives]]
+alt = 1  # work_at_home
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="part_time_worker",         value=-1.4513809 },
+  { id=5,  label="age_35_44",                value= 0.353530241 },
+  { id=6,  label="age_45_54",                value= 0.468133972 },
+  { id=7,  label="age_55_64",                value= 0.495172418 },
+  { id=8,  label="age_65_79",                value= 1.243578944 },
+  { id=9,  label="age_80plus",               value= 0.770722144 },
+  { id=10, label="income_lt15k",             value= 0.613583177 },
+  { id=11, label="income_150k_249k",         value= 0.419020695 },
+  { id=13, label="industry_utilities_const", value=-0.4475703944668717 },
+  { id=14, label="industry_manufacturing",   value=-0.1349885075 },
+  { id=15, label="industry_wholesale",       value=-0.1700816971 },
+  { id=16, label="industry_retail",          value=-0.9790111456 },
+  { id=17, label="industry_transport",       value=-0.5124583487 },
+  { id=18, label="industry_info_finance",    value= 0.4826797696 },
+  { id=19, label="industry_professional",    value= 0.6050696663 },
+  { id=20, label="industry_admin",           value= 0.2322333062 },
+  { id=21, label="industry_education_health",value=-0.5658193375 },
+  { id=22, label="industry_arts_rec",        value=-0.4998848747 },
+  { id=23, label="industry_accommodation",   value=-1.0536758624 },
+  { id=24, label="industry_other_public",    value=-0.4375779610 },
+  { id=25, label="occ_mgmt_finance",         value= 0.4248995451 },
+  { id=26, label="occ_computer_engineering", value= 0.5974377912 },
+  { id=28, label="occ_healthcare",           value=-0.4736993369 },
+  { id=29, label="occ_service",              value=-0.9387078368 },
+  { id=30, label="occ_sales",                value= 0.2511051590 },
+  { id=31, label="occ_office_admin",         value= 0.1367111941 },
+  { id=32, label="occ_nat_resources_const",  value=-0.9522315684 },
+  { id=33, label="occ_production_transport", value=-1.0565230794 },
+  { id=34, label="constant",                 value=-1.1546960647 },
+]
+
+# ── WFH Scenario constants ──────────────────────────────────────────────────
+# Applied ADDITIONALLY to the base coefficients above.
+# Select active scenario via model.toml [wfh] share = X.XX
+# UEC: ResidentWorkFromHome.xls rows 42-49 (Alternative specific constants)
+# Filter: FT = isPartTime==0 applied for ft_constant; PT = isPartTime==1 for pt_constant
+
+[[wfh.scenarios]]
+share = 0.07
+ft_constant = -0.9992925858321757   # UEC row 42 (FT, share==0.07)
+pt_constant =  1.3073468619547857   # UEC row 43 (PT, share==0.07)
+
+[[wfh.scenarios]]
+share = 0.10
+ft_constant = -0.6488582027873538   # UEC row 44 (FT, share==0.10)
+pt_constant =  1.6822094129403267   # UEC row 45 (PT, share==0.10)
+
+[[wfh.scenarios]]
+share = 0.15  # Baseline — no additional constant; model runs at its natural calibrated rate
+ft_constant =  0.0
+pt_constant =  0.0
+
+[[wfh.scenarios]]
+share = 0.20
+ft_constant =  0.16295658300779267  # UEC row 46 (FT, share==0.20)
+pt_constant =  2.5773455569088646   # UEC row 47 (PT, share==0.20)
+
+[[wfh.scenarios]]
+share = 0.25
+ft_constant =  0.443050409844472    # UEC row 48 (FT, share==0.25)
+pt_constant =  2.9181623777620462   # UEC row 49 (PT, share==0.25)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AUTO OWNERSHIP
+# Source: ResidentAutoOwnership__Auto_Ownership.csv
+# 4 alternatives: 0_car(ref), 1_car, 2_cars, 3+_cars
+# Decision unit: household
+# ═══════════════════════════════════════════════════════════════════════════════

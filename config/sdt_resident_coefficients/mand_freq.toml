@@ -1,0 +1,201 @@
+﻿# SDT Model — mand_freq coefficients
+# Auto-split from resident_coefficients.toml
+
+[mand_freq]
+model_name  = "mand_freq"
+description = "MNL: mandatory tour frequency patterns (person-level)"
+version     = "1.0"
+source_file = "ResidentMandatoryTourFrequency__Model.csv"
+
+# Alternatives indexed by (purpose, segment) pairs matching MandatoryTourFrequency.cpp
+
+[[mand_freq.alternatives]]  # FT worker: 1 work tour
+alt = 1  # 1W
+purpose = 0  # work
+segment = 1  # full-time worker
+coefficients = [
+  { id=31, label="const_ft_1work",     value= 2.30306167808 },
+  { id=47, label="female_ft_1work",    value= 0.205489436012 },
+  { id=52, label="no_cars_work",       value=-0.141108118424 },
+  { id=53, label="low_income_work",    value=-1.09661458294 },
+  { id=54, label="med_income_work",    value=-0.661860926112 },
+  { id=55, label="emp_density",        value=-5.09552766863e-06 },
+  # Java UEC row 62: (workTours>0)*fullTime → +0.5414272581 (POSITIVE — increases work tours)
+  # Was previously wrong sign/magnitude (-0.2). Root cause of the −17.1% work tour deficit.
+  { id=56, label="fl_calib_ft",        value= 0.5414272581098771 },
+]
+
+[[mand_freq.alternatives]]  # FT worker: 2 work tours
+alt = 2  # 2W
+purpose = 0
+segment = 1
+coefficients = [
+  { id=32, label="const_ft_2work",     value=-0.272872269996 },
+  { id=48, label="female_ft_2work",    value=-0.0857786358291 },
+  { id=52, label="no_cars_work",       value=-0.141108118424 },
+  { id=56, label="fl_calib_ft",        value= 0.5414272581098771 },
+]
+
+[[mand_freq.alternatives]]  # PT worker: 1 work tour
+alt = 1
+purpose = 0
+segment = 2  # part-time worker
+coefficients = [
+  { id=33, label="const_pt_1work",     value= 1.24773720027 },
+  { id=49, label="female_pt_1work",    value= 0.216456300037 },
+  { id=52, label="no_cars_work",       value=-0.141108118424 },
+  # Java UEC row 63: (workTours>0)*partTime → +0.5914272581 (POSITIVE — increases work tours)
+  # Was previously wrong sign/magnitude (-0.15).
+  { id=57, label="fl_calib_pt",        value= 0.5914272581098772 },
+]
+
+[[mand_freq.alternatives]]  # PT worker: 2 work tours
+alt = 2
+purpose = 0
+segment = 2
+coefficients = [
+  { id=34, label="const_pt_2work",     value=-1.470432543 },
+  { id=57, label="fl_calib_pt",        value= 0.5914272581098772 },
+]
+
+[[mand_freq.alternatives]]  # University student: 1 university tour (pure, totalTours==1)
+alt = 1
+purpose = 1  # university
+segment = 3  # university student
+coefficients = [
+  { id=36, label="const_univ_1univ",       value= 2.37199389448 },
+  # Java UEC row 43: (universityTours>=1)*(workTours>=1)*universityStudent — NO totalTours constraint
+  # Fires only when is_combined=true (1W+1U alternative); skipped for pure 1U
+  { id=39, label="combined_bonus_univ",    value= 1.43221480861 },
+]
+
+[[mand_freq.alternatives]]  # University student: 2 university tours (pure, totalTours==2)
+# Java UEC: NO base constant for 2U → utility = 0 for male UnivStudents.
+# Row 55 (UEC#51): (universityTours==2)*(totalTours==2)*universityStudent*female → -1.92690296385
+# NOTE: Row 54 (universityTours>1)*(workTours>=1)*universityStudent*female = -1.41187444544
+#       would apply to 2U+Work combos but no such alt exists in kMandatoryAlts — not implemented.
+alt = 2
+purpose = 1  # university
+segment = 3  # university student
+coefficients = [
+  # No const_* entry: Java utility = 0 for male UnivStudents on pure 2U alt
+  { id=55, label="female_univ_2univ",   value=-1.92690296385 },
+]
+
+[[mand_freq.alternatives]]  # University student: 1 work tour component (Option A — non-exclusive DMU)
+# Java UEC fires BOTH: (workTours==1)*(totalTours==1)*universityStudent [row 35, val=0.3639]
+#                  AND (workTours==1)*(totalTours==1)*fullTime [row 31, val=2.3031] or partTime [row 33]
+# Java DMU flags are non-exclusive: an employed UnivStudent accumulates both constants simultaneously.
+# Option A replicates this by pre-combining into single FT/PT constants dispatched in C++.
+alt = 1
+purpose = 0  # work
+segment = 3  # university student
+coefficients = [
+  # FT combined: 0.363946867608 (univ_1W) + 2.30306167808 (ft_1W) = +2.667008545688
+  { id=37, label="const_univ_1work_ft",     value= 2.667008545688 },
+  # PT combined: 0.363946867608 (univ_1W) + 1.24773720027 (pt_1W) = +1.611684067878
+  { id=37, label="const_univ_1work_pt",     value= 1.611684067878 },
+  { id=52, label="no_cars_work",            value=-0.141108118424 },
+  { id=53, label="low_income_work",         value=-1.09661458294 },
+  { id=54, label="med_income_work",         value=-0.661860926112 },
+  { id=55, label="emp_density",             value=-5.09552766863e-06 },
+  # Female conditional on FT/PT: Java (female*fullTime*workTours==1) and (female*partTime*workTours==1)
+  { id=51, label="female_univ_1work_ft",    value= 0.205489436012 },
+  { id=53, label="female_univ_1work_pt",    value= 0.216456300037 },
+  # fl_calib_das_ft/pt removed for Run 24 (Option A — no student fl_calib; combined constants already absorb base worker constant)
+]
+
+[[mand_freq.alternatives]]  # Driving-age student: 1 school tour (pure, totalTours==1)
+alt = 1
+purpose = 2  # school
+segment = 4  # driving-age student
+coefficients = [
+  { id=40, label="const_das_1school",      value= 2.00337793974 },
+  # Java UEC row 44: (schoolTours>=1)*(workTours>=1)*drivingAgeStudent — NO totalTours constraint
+  # Fires only when is_combined=true (1W+1S alternative); skipped for pure 1S
+  { id=44, label="combined_penalty_das",   value=-0.444308347122 },
+]
+
+[[mand_freq.alternatives]]  # Driving-age student: 2 school tours
+# Java UEC row 43: (schoolTours==2)*(totalTours==2)*drivingAgeStudent
+alt = 2
+purpose = 2  # school
+segment = 4  # driving-age student
+coefficients = [
+  { id=41, label="const_das_2school",      value=-0.480034577691 },
+]
+
+[[mand_freq.alternatives]]  # Driving-age student: 1 work tour component (Option A — non-exclusive DMU)
+# Java UEC fires BOTH: (workTours==1)*(totalTours==1)*drivingAgeStudent [row 38, val=-0.7078]
+#                  AND (workTours==1)*(totalTours==1)*fullTime [row 31] or partTime [row 33]
+# Option A: pre-combine into FT/PT constants; C++ dispatches via const_das_1work_ft/pt labels.
+alt = 1
+purpose = 0  # work
+segment = 4  # driving-age student
+coefficients = [
+  # FT combined: -0.707775394619 (das_1W) + 2.30306167808 (ft_1W) = +1.595286283461
+  { id=40, label="const_das_1work_ft",   value= 1.595286283461 },
+  # PT combined: -0.707775394619 (das_1W) + 1.24773720027 (pt_1W) = +0.539961805651
+  { id=40, label="const_das_1work_pt",   value= 0.539961805651 },
+  { id=52, label="no_cars_work",         value=-0.141108118424 },
+  { id=53, label="low_income_work",      value=-1.09661458294 },
+  { id=54, label="med_income_work",      value=-0.661860926112 },
+  { id=55, label="emp_density",          value=-5.09552766863e-06 },
+  # Female conditional on FT/PT (Java rows 47/49: female*fullTime vs female*partTime)
+  { id=51, label="female_das_1work_ft",  value= 0.205489436012 },
+  { id=53, label="female_das_1work_pt",  value= 0.216456300037 },
+  # fl_calib_das_ft/pt removed for Run 24 (Option A — no student fl_calib)
+]
+
+[[mand_freq.alternatives]]  # Driving-age student: 2 work tours component (Option A — non-exclusive DMU)
+# Java UEC fires BOTH: (workTours==2)*(totalTours==2)*drivingAgeStudent [row 39, val=-3.4644]
+#                  AND (workTours==2)*(totalTours==2)*fullTime [row 32] or partTime [row 34]
+alt = 2
+purpose = 0  # work
+segment = 4  # driving-age student
+coefficients = [
+  # FT combined: -3.46444432653 (das_2W) + (-0.272872269996) (ft_2W) = -3.737316596526
+  { id=41, label="const_das_2work_ft",   value=-3.737316596526 },
+  # PT combined: -3.46444432653 (das_2W) + (-1.470432543) (pt_2W) = -4.934876869530
+  { id=41, label="const_das_2work_pt",   value=-4.934876869530 },
+  { id=52, label="no_cars_work",         value=-0.141108118424 },
+  { id=53, label="low_income_work",      value=-1.09661458294 },
+  { id=54, label="med_income_work",      value=-0.661860926112 },
+  { id=55, label="emp_density",          value=-5.09552766863e-06 },
+  # Female FT only: Java row 48 (female*fullTime*workTours==2); no female*PT*2work row in UEC
+  { id=52, label="female_das_2work_ft",  value=-0.0857786358291 },
+  # fl_calib_das_ft/pt removed for Run 24 (Option A — no student fl_calib)
+]
+
+[[mand_freq.alternatives]]  # Non-driving-age student: 1 school tour
+alt = 1
+purpose = 2
+segment = 5  # non-driving-age student
+coefficients = [
+  { id=43, label="const_ndas_1school",     value= 2.25408318278 },
+]
+
+[[mand_freq.alternatives]]  # Non-driving-age student: 2 school tours
+# Java UEC row 46: (schoolTours==2)*(totalTours==2)*nonDrivingAgeStudent
+alt = 2
+purpose = 2
+segment = 5  # non-driving-age student
+coefficients = [
+  { id=46, label="const_ndas_2school",     value=-0.836384423375 },
+]
+
+[[mand_freq.alternatives]]  # Preschool child: 1 school/childcare tour
+# Java UEC row 47: (schoolTours==1)*(totalTours==1)*preSchoolChild
+alt = 1
+purpose = 2  # school
+segment = 6  # preschool child
+coefficients = [
+  { id=47, label="const_preschool_1school", value= 0.91112338034 },
+]
+# Note: preschool 2S = -999 in Java UEC (unavailable); no alt=2 entry needed
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NON-MANDATORY TOUR FREQUENCY
+# Source: ResidentNonMandatoryTourFrequency__FullTimeWorker.csv (and other segments)
+# Segment: 1=FTWorker, 2=PTWorker, 3=NonWorkAdult, 4=Retiree, 5=UnivStudent, 6=Student
+# ═══════════════════════════════════════════════════════════════════════════════

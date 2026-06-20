@@ -1,0 +1,166 @@
+# SDT Model — vis_trip_mode visitor coefficients
+# MNL trip mode, 18 alternatives, constrained by tour mode.
+# Combined effective ASC = Java base UEC value + FL calibration (all in id=1).
+# id=2/3/4 (dist/time/vot) set to 0 — constants-only model.
+# Availability blocks:
+#   transit(8-13), SCH_BUS(14), TROLLEY(15), TOUR_BUS(16), TAXI(17) → -999
+# Pay variants (DAPay=1, S2Pay=3, S3Pay=5) have ASC = Free counterpart ASC
+#   → produces ~50/50 Free/Pay split within each auto occupancy class.
+#   Source: Java visitorTrips_1.csv shows DAFree≈DAPay, S2GP≈S2Pay, S3GP≈S3Pay (~50/50).
+# applyTourModeConstraint() additionally enforces tour-mode consistency at runtime.
+
+[vis_trip_mode]
+model_name  = "vis_trip_mode"
+description = "MNL 18 alts; constants-only; WALK purpose-specific; Pay=Free ASC for 50/50 split"
+version     = "2.0"
+
+# Reference values used to compute effective ASCs below (documentation only):
+#   fl_calib.daf  = -2.214036348401503
+#   fl_calib.s2gp =  0.0
+#   fl_calib.s3gp =  1.2334722152507298
+#   fl_calib.bike =  0.0
+#   walk base     =  0.5 * 1.847 = 0.9235 (generic) + 0.5 * purpose_adj
+#   walk fl_calib = -3.042173023768041
+#
+#   walk_asc.work     = 0.5*1.847 + 0.5*(-0.01859) + (-3.042173) = -2.127968
+#   walk_asc.recreate = 0.5*1.847 + 0.0            + (-3.042173) = -2.118673
+#   walk_asc.shop     = 0.5*1.847 + 0.5*0.6231     + (-3.042173) = -1.807123
+#   walk_asc.eatout   = 0.5*1.847 + 0.5*1.306      + (-3.042173) = -1.465673
+
+# alt=0  DRIVEALONEFREE — effective ASC = 0.0 + fl_calib.daf = -2.214036
+[[vis_trip_mode.alternatives]]
+alt=0
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-2.2140363484015030}]
+
+# alt=1  DRIVEALONEPAY — ASC = DAFree ASC → 50/50 Free/Pay split within DA class
+[[vis_trip_mode.alternatives]]
+alt=1
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-2.2140363484015030}]
+
+# alt=2  SHARED2GP — effective ASC = 0.0 + fl_calib.s2gp = 0.0
+[[vis_trip_mode.alternatives]]
+alt=2
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=0.0}]
+
+# alt=3  SHARED2PAY — ASC = S2GP ASC → 50/50 Free/Pay split within S2 class
+[[vis_trip_mode.alternatives]]
+alt=3
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=0.0}]
+
+# alt=4  SHARED3GP — effective ASC = 0.0 + fl_calib.s3gp = +1.233472
+[[vis_trip_mode.alternatives]]
+alt=4
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=1.2334722152507298}]
+
+# alt=5  SHARED3PAY — ASC = S3GP ASC → 50/50 Free/Pay split within S3 class
+[[vis_trip_mode.alternatives]]
+alt=5
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=1.2334722152507298}]
+
+# alt=6  WALK — purpose-specific effective ASC (base + purpose_adj + fl_calib)
+[[vis_trip_mode.alternatives]]
+alt=6
+purpose=0
+segment=-1
+coefficients=[{id=1, label="asc", value=-2.1279680237680412}]
+
+[[vis_trip_mode.alternatives]]
+alt=6
+purpose=1
+segment=-1
+coefficients=[{id=1, label="asc", value=-2.1186730237680413}]
+
+[[vis_trip_mode.alternatives]]
+alt=6
+purpose=2
+segment=-1
+coefficients=[{id=1, label="asc", value=-1.8071230237680412}]
+
+[[vis_trip_mode.alternatives]]
+alt=6
+purpose=3
+segment=-1
+coefficients=[{id=1, label="asc", value=-1.4656730237680413}]
+
+# alt=7  BIKE — strongly negative (fl_calib.bike=0; base ≈ -3.0)
+[[vis_trip_mode.alternatives]]
+alt=7
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-3.0}]
+
+# alt=8..14 — transit + school bus: unavailable for visitors
+[[vis_trip_mode.alternatives]]
+alt=8
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_trip_mode.alternatives]]
+alt=9
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_trip_mode.alternatives]]
+alt=10
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_trip_mode.alternatives]]
+alt=11
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_trip_mode.alternatives]]
+alt=12
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_trip_mode.alternatives]]
+alt=13
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+[[vis_trip_mode.alternatives]]
+alt=14
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+# alt=15  TROLLEY — unavailable for standard visitors
+[[vis_trip_mode.alternatives]]
+alt=15
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+# alt=16  TOUR_BUS — unavailable
+[[vis_trip_mode.alternatives]]
+alt=16
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]
+
+# alt=17  TAXI — unavailable
+[[vis_trip_mode.alternatives]]
+alt=17
+purpose=-1
+segment=-1
+coefficients=[{id=1, label="asc", value=-999.0}]

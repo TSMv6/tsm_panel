@@ -1,0 +1,98 @@
+# SDT Model — vis_tour_gen visitor coefficients
+# Purpose probability distributions for one-tour-per-party generation.
+# Replicates Java VisitorTourGenerationModel: draw ONE purpose per party from
+# a lodging-type distribution.
+#
+# VisitorTourGenerator looks up: ct_.value(alt=purpose, purpose=0, segment=party_seg, id=1)
+#   segment=0 → Hotel visitor
+#   segment=1 → VacationRental visitor
+#   segment=2 → Household/visiting-friends visitor
+#
+# Source: Java visitorTours_1.csv reference output — purpose shares by lodging segment:
+#   Hotel:        Work=2.01%  Recreate=45.59%  Shop=22.65%  Eatout=29.75%
+#   VacRental:    Work=1.27%  Recreate=55.90%  Shop=17.74%  Eatout=25.09%
+#   Household:    Work=2.47%  Recreate=45.83%  Shop=18.24%  Eatout=33.47%
+#
+# NOTE: The prior version used vis_type (0=business, 1=personal) as the segment axis,
+# which produced Work=4.7% and Eatout=20.6% vs Java's 2.15% and 31.24%.
+# Java uses lodging type as the segmentation axis for tour purpose generation.
+
+[vis_tour_gen]
+model_name  = "vis_tour_gen"
+description = "Purpose probability by party_seg (segment=0=Hotel, 1=VacRental, 2=Household)"
+version     = "3.0"
+
+# ── Hotel visitor (segment=0 = party_seg=0) ───────────────────────────────────
+[[vis_tour_gen.alternatives]]
+alt     = 0         # VIS_PURPOSE_WORK
+purpose = -1        # wildcard
+segment = 0         # Hotel
+coefficients = [{id=1, label="prob", value=0.0201}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 1         # VIS_PURPOSE_RECREATE
+purpose = -1
+segment = 0
+coefficients = [{id=1, label="prob", value=0.4559}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 2         # VIS_PURPOSE_SHOP
+purpose = -1
+segment = 0
+coefficients = [{id=1, label="prob", value=0.2265}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 3         # VIS_PURPOSE_EATOUT
+purpose = -1
+segment = 0
+coefficients = [{id=1, label="prob", value=0.2975}]
+
+# ── VacationRental visitor (segment=1 = party_seg=1) ──────────────────────────
+[[vis_tour_gen.alternatives]]
+alt     = 0         # VIS_PURPOSE_WORK
+purpose = -1
+segment = 1         # VacationRental
+coefficients = [{id=1, label="prob", value=0.0127}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 1         # VIS_PURPOSE_RECREATE
+purpose = -1
+segment = 1
+coefficients = [{id=1, label="prob", value=0.5590}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 2         # VIS_PURPOSE_SHOP
+purpose = -1
+segment = 1
+coefficients = [{id=1, label="prob", value=0.1774}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 3         # VIS_PURPOSE_EATOUT
+purpose = -1
+segment = 1
+coefficients = [{id=1, label="prob", value=0.2509}]
+
+# ── Household/visiting-friends visitor (segment=2 = party_seg=2) ──────────────
+[[vis_tour_gen.alternatives]]
+alt     = 0         # VIS_PURPOSE_WORK
+purpose = -1
+segment = 2         # Household
+coefficients = [{id=1, label="prob", value=0.0247}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 1         # VIS_PURPOSE_RECREATE
+purpose = -1
+segment = 2
+coefficients = [{id=1, label="prob", value=0.4583}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 2         # VIS_PURPOSE_SHOP
+purpose = -1
+segment = 2
+coefficients = [{id=1, label="prob", value=0.1824}]
+
+[[vis_tour_gen.alternatives]]
+alt     = 3         # VIS_PURPOSE_EATOUT
+purpose = -1
+segment = 2
+coefficients = [{id=1, label="prob", value=0.3346}]

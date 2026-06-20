@@ -1,0 +1,125 @@
+# SDT Model — vis_stop_purpose visitor coefficients
+# MNL over stop purposes {work=0, recreate=1, shop=2, eatout=3}.
+# Work (alt=0) is always set to kUnavail in VisitorStopPurpose.cpp
+# (0 work-stop observations in Java visitorTours.csv across all tour types).
+#
+# ASCs calibrated from Java visitorTours.csv empirical stop purpose frequencies,
+# expressed relative to eatout (reference = 0.0):
+#
+#   Tour Work    outbound/inbound: recreate=13.5%, shop=5.2%,  eatout=81.3%
+#   Tour Recreate               : recreate=52.9%, shop=11.9%, eatout=35.1%
+#   Tour Shop                   : recreate=6.4%,  shop=51.8%, eatout=41.8%
+#   Tour Eatout                 : recreate=2.2%,  shop=0.0%,  eatout=97.8%
+#
+# Log-odds vs eatout reference:
+#   Work   tour: recreate=-1.80, shop=-2.75
+#   Recr   tour: recreate=+0.41, shop=-1.08
+#   Shop   tour: recreate=-1.88, shop=+0.21
+#   Eatout tour: recreate=-3.79, shop=-10.0 (effectively unavailable)
+#
+# Lookup key: ct_.value(alt=stop_purpose, purpose=tour_purpose, segment=0, id=1)
+
+[vis_stop_purpose]
+model_name  = "vis_stop_purpose"
+description = "Stop purpose ASC by tour purpose; eatout=reference=0.0; work always kUnavail"
+version     = "2.0"
+
+# ── Work tour (purpose=0) ───────────────────────────────────────────────────────
+[[vis_stop_purpose.alternatives]]
+alt     = 0
+purpose = 0
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # work stop — always kUnavail in code
+
+[[vis_stop_purpose.alternatives]]
+alt     = 1
+purpose = 0
+segment = -1
+coefficients = [{id=1, label="asc", value=-1.80}]  # recreate stop on work tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 2
+purpose = 0
+segment = -1
+coefficients = [{id=1, label="asc", value=-2.75}]  # shop stop on work tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 3
+purpose = 0
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # eatout stop on work tour (reference)
+
+# ── Recreate tour (purpose=1) ───────────────────────────────────────────────────
+[[vis_stop_purpose.alternatives]]
+alt     = 0
+purpose = 1
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # work stop — always kUnavail in code
+
+[[vis_stop_purpose.alternatives]]
+alt     = 1
+purpose = 1
+segment = -1
+coefficients = [{id=1, label="asc", value=0.41}]  # recreate stop on recreate tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 2
+purpose = 1
+segment = -1
+coefficients = [{id=1, label="asc", value=-1.08}]  # shop stop on recreate tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 3
+purpose = 1
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # eatout stop on recreate tour (reference)
+
+# ── Shop tour (purpose=2) ───────────────────────────────────────────────────────
+[[vis_stop_purpose.alternatives]]
+alt     = 0
+purpose = 2
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # work stop — always kUnavail in code
+
+[[vis_stop_purpose.alternatives]]
+alt     = 1
+purpose = 2
+segment = -1
+coefficients = [{id=1, label="asc", value=-1.88}]  # recreate stop on shop tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 2
+purpose = 2
+segment = -1
+coefficients = [{id=1, label="asc", value=0.21}]  # shop stop on shop tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 3
+purpose = 2
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # eatout stop on shop tour (reference)
+
+# ── Eatout tour (purpose=3) ─────────────────────────────────────────────────────
+[[vis_stop_purpose.alternatives]]
+alt     = 0
+purpose = 3
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # work stop — always kUnavail in code
+
+[[vis_stop_purpose.alternatives]]
+alt     = 1
+purpose = 3
+segment = -1
+coefficients = [{id=1, label="asc", value=-3.79}]  # recreate stop on eatout tour
+
+[[vis_stop_purpose.alternatives]]
+alt     = 2
+purpose = 3
+segment = -1
+coefficients = [{id=1, label="asc", value=-10.0}]  # shop stop on eatout tour (effectively unavailable)
+
+[[vis_stop_purpose.alternatives]]
+alt     = 3
+purpose = 3
+segment = -1
+coefficients = [{id=1, label="asc", value=0.0}]  # eatout stop on eatout tour (reference)

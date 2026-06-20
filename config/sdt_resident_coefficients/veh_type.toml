@@ -1,0 +1,26 @@
+﻿# SDT Model — veh_type coefficients
+# Auto-split from resident_coefficients.toml
+
+[veh_type]
+model_name  = "veh_type"
+description = "MNL over vehicle type alternatives (requires vehicle alternatives CSV)"
+version     = "1.0"
+source_file = "ResidentVehicleTypeChoice__VehicleTypeChoice.csv"
+
+[[veh_type.alternatives]]
+alt = 0
+purpose = -1
+segment = -1
+coefficients = [
+  { id=1,  label="vehicle_age_coef",         value= 0.0 },
+  { id=2,  label="ln_price",                 value= 0.0 },
+  { id=3,  label="sedan_body",               value= 0.0 },
+  { id=4,  label="gasoline_fuel",            value= 0.0 },
+  { id=5,  label="dist_to_work_coef",        value= 0.0 },
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEHICLE ALLOCATION
+# Source: ResidentVehicleAllocation__VehicleAllocation.csv
+# 5 alternatives: veh1, veh2, veh3, veh4, nonHHVehicle
+# ═══════════════════════════════════════════════════════════════════════════════

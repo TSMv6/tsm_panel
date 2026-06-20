@@ -1,0 +1,95 @@
+﻿# SDT Model — trip_mode coefficients
+# Auto-split from resident_coefficients.toml
+
+[trip_mode]
+model_name  = "trip_mode"
+description = "MNL: 14 alternatives; constrained by tour mode; modal consistency constants"
+version     = "1.0"
+
+# ── Work (purpose=0) ─── ResidentTripModeChoice__Work.csv ──────────────────
+[trip_mode.work]
+s2_da_const   = -0.39265870063247454
+s2_wt_const   = -2.893944503776069
+s3_da_const   = -0.4307855753097668
+s3_pay_const  = -0.6423950496178227
+s3_wt_const   = -3.2465480336635384
+fl_s2_da      =  0.10004675656525559
+fl_s3_da      = -0.06630547022897798
+fl_s3_pay     = -0.5553272394160995
+
+# ── University (purpose=1) ─── ResidentTripModeChoice__University.csv ───────
+[trip_mode.university]
+s2_da_const   = -1.241285403541979
+s2_wt_const   = -4.615767431082995
+s3_da_const   = -1.4806764666116616
+s3_pay_const  = -1.0979161521972545
+s3_wt_const   = -2.9345070347220394
+fl_s2_da      = -0.04754941018880059
+fl_s3_da      = -0.18368934834129713
+fl_s3_pay     = -0.4774370579293421
+
+# ── School (purpose=2) ─── ResidentTripModeChoice__School.csv ───────────────
+[trip_mode.school]
+s2_da_const   = -0.39265870063247454
+s2_wt_const   = -2.893944503776069
+s3_da_const   = -0.4307855753097668
+s3_pay_const  = -0.6423950496178227
+s3_wt_const   = -3.2465480336635384
+fl_s2_da      = -2.4762803443789267
+fl_s3_da      = -4.1238483936524535
+fl_s3_pay     = -1.1103616122973803
+# School bus tour mode (tMode==14): additional penalties on shared/walk modes
+schbus_s2_penalty  = -2.232496035584847
+schbus_s3_penalty  = -1.7331008417530405
+schbus_walk_bonus  =  1.3375282283095624
+
+# ── Escort (purpose=3) ─── ResidentTripModeChoice__Escort.csv ───────────────
+[trip_mode.escort]
+s2_da_const   = -1.0129418308488296
+s2_wt_const   = -4.850807056574079
+s3_da_const   = -1.7298147214642952
+s3_pay_const  = -1.2534486044495503
+s3_wt_const   = -4.751409654544013
+fl_s2_da      =  0.6628066420160288
+fl_s3_da      =  0.4295443084513517
+fl_s3_pay     =  0.22784824390037595
+
+# ── Maintenance (purpose=4) ─── ResidentTripModeChoice__Maint.csv ───────────
+[trip_mode.maintenance]
+s2_da_const   = -1.0129418308488296
+s2_wt_const   = -4.850807056574079
+s3_da_const   = -1.7298147214642952
+s3_pay_const  = -1.2534486044495503
+s3_wt_const   = -4.751409654544013
+fl_s2_da      = -1.2829593985542527
+fl_s3_da      = -0.6507517562146823
+fl_s3_pay     = -0.7642534635504709
+
+# ── Discretionary (purpose=5) ─── ResidentTripModeChoice__Disc.csv ──────────
+[trip_mode.discretionary]
+s2_da_const   = -2.269464952153455
+s2_wt_const   = -4.203803809448888
+s3_da_const   = -3.0802939278755623
+s3_pay_const  = -1.7643604950399405
+s3_wt_const   = -3.465445837533008
+fl_s2_da      =  0.14469099170080857
+fl_s3_da      =  0.47357957682223034
+fl_s3_pay     = -0.24082973211028305
+
+# ── At-Work Subtour (purpose=6) ─── ResidentTripModeChoice__Work-Based.csv ──
+[trip_mode.atwork]
+s2_da_const   = -1.3927314168330536
+s2_wt_const   = -3.8396229756195805
+s3_da_const   = -1.4303631117390156
+s3_pay_const  = -2.2261644463590446
+s3_wt_const   = -2.792559921279846
+fl_s2_da      = -0.32711971663171974
+fl_s3_da      = -0.62582043846131
+fl_s3_pay     = -0.27278556259252945
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VEHICLE TYPE CHOICE — placeholder (uses alternative file with vehicle attributes)
+# Source: ResidentVehicleTypeChoice__VehicleTypeChoice.csv
+# Coefficients are vehicle-attribute-based (age, price, body_type, fuel_type)
+# Full implementation requires vehicle alternatives CSV as input data.
+# ═══════════════════════════════════════════════════════════════════════════════

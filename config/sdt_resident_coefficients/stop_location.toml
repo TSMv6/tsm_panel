@@ -1,0 +1,56 @@
+﻿# SDT Model — stop_location coefficients
+# Auto-split from resident_coefficients.toml
+
+[stop_location]
+model_name  = "stop_location"
+description = "SOA detour weighting: deviation distance, ratio, time, cost by purpose"
+version     = "1.0"
+source_file = "ResidentStopLocationChoice__All.csv"
+
+# ── Generic coefficients (purpose-independent) ───────────────────────────────
+[stop_location.generic]
+dev_dist             = -0.173647974288     # deviation distance (mi)
+dev_dist_sq          =  0.00456923020512   # deviation distance squared
+log_dev_dist         = -0.0106040098573    # LN(0.001 + dev_dist) if dev_dist>0
+time_coef            = -0.0403417736971    # osTime + sdTime (auto time, min)
+cost_coef            = -0.215528301818     # osCost + sdCost (auto cost, $)
+cost_low_income      =  0.175792769165     # cost × (income < $25K)
+cost_high_income     =  0.0313814716098    # cost × (income ≥ $100K)
+ratio_dist           = -8.27832729351      # distance ratio
+ratio_dist_sq        =  6.45262058078      # distance ratio squared
+dev_2nd_stop         = -0.0104603658289    # dev_dist when snumber ≥ 2
+dev_dist_x_stops     = -2.28985106347e-05  # dev_dist × num_stops_on_half_tour
+ratio_first_outbound =  0.506918692377     # ratio × (inbound==0) × (snumber==1)
+ratio_first_inbound  =  1.33840780656      # ratio × (inbound==1) × (snumber==1)
+ratio_mandatory_out  = -0.836411420816     # ratio × (inbound==0) × (tpurpose<3)
+ratio_mandatory_in   = -0.583508974447     # ratio × (inbound==1) × (tpurpose<3)
+
+# ── Purpose-specific deviation distance adjustments ──────────────────────────
+[stop_location.purpose_adjustments]
+# dev_dist additional multiplier per tour purpose (tpurpose index 0=Work..6=AtWork)
+escort_dev_dist      =  0.0252156282207    # stop purpose==3 (escort)
+disc_dev_dist        =  0.00407455438248   # stop purpose==5 (discretionary)
+univ_tour_dev        = -0.0440074919307    # tpurpose==1 (university tour)
+school_tour_dev      = -0.0352705306878    # tpurpose==2 (school tour)
+escort_tour_dev      = -0.0734981371732    # tpurpose==3 (escort tour)
+maint_tour_dev       = -0.0516522541414    # tpurpose==4 (maintenance tour)
+disc_tour_dev        = -0.0661228574467    # tpurpose==5 (discretionary tour)
+atwork_tour_dev      = -0.109810254517     # tpurpose==6 (at-work subtour)
+low_income_dev       = -0.0401386002252    # dev_dist × (income < $25K)
+young_dev            = -0.00567928782488   # dev_dist × (age < 25)
+
+# ── FL TSM calibration adjustments (additive to dev_dist coefficient) ────────
+[stop_location.fl_calibration]
+# Applied as: dev_dist_coef += fl_dev_dist[tpurpose]
+work_dev             =  0.172921           # tpurpose==0
+univ_dev             =  0.075              # tpurpose==1
+school_dev           =  0.075             # tpurpose==2
+escort_dev           =  0.12              # tpurpose==3
+maint_dev            =  0.076565          # tpurpose==4
+disc_dev             =  0.083             # tpurpose==5
+# Near-zone intercepts (when deviation ∈ [0,1) mile):
+work_near            =  0.2
+univ_near            = -0.12401702583518982
+school_near          =  0.09693613499799991
+escort_near          =  0.09224925646950088
+disc_near            =  0.28923934176061955
