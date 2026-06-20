@@ -153,6 +153,28 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
             self.textBrowser.setPlainText(md)
 
     @staticmethod
+    def _ensure_np_column(se_data):
+        """Add an 'NP' column (= ResPOP, resident population) to the se_data CSV for
+        PopSim's res_pop control. No-op if NP already present. Writes LF endings."""
+        import csv
+        with open(se_data, newline="") as f:
+            rows = list(csv.reader(f))
+        if not rows:
+            return
+        header = rows[0]
+        if "NP" in header:
+            return
+        if "ResPOP" not in header:
+            raise ValueError("se_data has neither 'NP' nor 'ResPOP'")
+        ri = header.index("ResPOP")
+        header.append("NP")
+        for r in rows[1:]:
+            r.append(r[ri] if ri < len(r) else "")
+        with open(se_data, "w", newline="") as f:
+            csv.writer(f, lineterminator="\n").writerows(rows)
+        print(f"Added NP column (= ResPOP) to {se_data}")
+
+    @staticmethod
     def _generate_toml(template_path, out_path, scenario_dir, threads, tsm_location=""):
         """Fill {scenario_dir}, {threads} and {tsm_location} in a template TOML.
         se_data + output stay per-scenario; shared seeds/crosswalk/controls live
@@ -271,8 +293,15 @@ class PopulatioSIMDialog(QDialog, Ui_Dialog_PopulationSIM):
             QMessageBox.critical(self, "Error", f"Error building PopSim land-use: {e}")
             return False
 
-        # (PopSim's res_pop control reads the existing 'ResPOP' column -- the
-        # controls file maps control_field=ResPOP, so no NP column is needed.)
+        # 1b) The res_pop control_field is 'NP' -- popsim needs it in BOTH the se_data
+        # marginal AND the seed (the NP-aware swap corrector reads it from the seed,
+        # where NP is the PUMS household size). The seed already has NP; se_aggregate
+        # emits resident population as 'ResPOP', so alias NP = ResPOP in the se_data.
+        try:
+            self._ensure_np_column(se_data)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not add NP column to land use: {e}")
+            return False
 
         # 2) Generate the HH + GQ TOMLs into the config folder
         config_popsim = os.path.join(tsm_location, "config", "popsim")
