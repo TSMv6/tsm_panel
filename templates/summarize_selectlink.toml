@@ -1,0 +1,25 @@
+# Select-link loaded volume (single volume file). One total column (SL_VOL); no
+# pivots/metrics. Plugin fills @...@ at run time.
+name = "selectlink"
+group_by = ["A", "B"]
+sum_cols = [
+  "LDT_Air_AccEgr25M", "LDT_Res_Air", "LDT_Res_Hig", "LDT_Res_Med",
+  "LDT_Vis_Air", "LDT_Vis_Hig", "LDT_Vis_Med", "SDT_Res_Hig",
+  "SDT_Res_Low", "SDT_Res_Med", "SDT_Vis_Hig", "SDT_Vis_Low",
+  "SDT_Vis_Med", "heavy", "light", "medium", "LDT_Res_Low", "LDT_Vis_Low"
+]
+total_col = "SL_VOL"
+emit_class_sums = false
+
+[input]
+format = "csv"
+path = "@VOL@"
+
+[join]
+format = "gpkg"
+path = "@LINK@"
+rename = [@RENAME@]
+
+[output]
+csv = "@OUT_CSV@"
+gpkg = "@OUT_GPKG@"

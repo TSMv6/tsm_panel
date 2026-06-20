@@ -505,12 +505,9 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
             return False
         
         # ====================================================================================
-        # Loaded network
-        r_exe_path = settings.get("r_exe_path") 
-        r_script_path = os.path.join(plugin_dir, "Rscripts/Summarise_Loaded_Volumes.R")
-        r_script_sl_path = os.path.join(plugin_dir, "Rscripts/Summarise_SelectLink_Loaded_Volumes.R")
+        # Loaded network -- C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
+        from summarize_runner import run_summary
 
-        bool_str_subarea = "FALSE"
         link_layer_path = self.get_layer_path(self.comboBox_linkLayer.currentData())
         volume_file = settings.get("volume_file")
         loadedOut_file = settings.get("volume_file").replace(".csv", ".gpkg")
@@ -518,13 +515,10 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         print("link_layer_path:", link_layer_path)
         print("volume_file:", volume_file)
         print("loadedOut_file:", loadedOut_file)
-        bool_str_subarea = "FALSE"
-        bool_validation_stats = "FALSE"
-        validationStats_file = "None"
         loaded_qml_file = os.path.join(plugin_dir, "qgis_styles/TSM_Loaded_Symbology.qml").replace("\\","/")
 
-        try: 
-            result4 = subprocess.run([r_exe_path, r_script_path, link_layer_path,  volume_file, loadedOut_file, bool_str_subarea, bool_validation_stats, validationStats_file]) 
+        try:
+            result4 = run_summary("summarize_loaded.toml", link_layer_path, volume_file, loadedOut_file, subarea=False)
       
             if result4.returncode == 0:  # Check if the R script ran successfully
                 print("loaded network volumes script ran successfully.")
@@ -537,12 +531,12 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
                     if not settings.get("SL_AB2"):
                         sl_vol_file = os.path.join(settings.get("SLOuputDir"), "Select_Link_Volume.csv")
                         sl_loadedOut_file = os.path.join(settings.get("SLOuputDir"), "Select_Link_Volume.gpkg")
-                        subprocess.run([r_exe_path, r_script_sl_path, link_layer_path,  sl_vol_file, "None", sl_loadedOut_file, bool_str_subarea]) 
+                        run_summary("summarize_selectlink.toml", link_layer_path, sl_vol_file, sl_loadedOut_file, subarea=False, include_speed_ff=False)
                     else:
                         sl_vol_file_1 = os.path.join(settings.get("SLOuputDir"), "Select_Link_1_Volume.csv")
                         sl_vol_file_2 = os.path.join(settings.get("SLOuputDir"), "Select_Link_2_Volume.csv")
                         sl_loadedOut_file = os.path.join(settings.get("SLOuputDir"), "Select_Link_Volume.gpkg")
-                        subprocess.run([r_exe_path, r_script_sl_path, link_layer_path,  sl_vol_file_1, sl_vol_file_2, sl_loadedOut_file, bool_str_subarea]) 
+                        run_summary("summarize_selectlink2.toml", link_layer_path, sl_vol_file_1, sl_loadedOut_file, subarea=False, vol2=sl_vol_file_2, include_speed_ff=False)
                 return True
             else:
                 print("error running loaded networks or validation.")

@@ -654,12 +654,9 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             self.close()
 
         # ====================================================================================
-        # Loaded network
-        r_exe_path = settings.get("r_exe_path") 
-        r_script_path = os.path.join(plugin_dir, "Rscripts/Summarise_Loaded_Volumes.R")
-        r_script_sl_path = os.path.join(plugin_dir, "Rscripts/Summarise_SelectLink_Loaded_Volumes.R")
+        # Loaded network -- C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
+        from summarize_runner import run_summary
 
-        bool_str_subarea = "FALSE"
         sub_link_layer_path = self.get_layer_path(self.comboBox_linkLayer.currentData())
         sub_volume_file = settings.get("sub_volume_file")
         sub_loadedOut_file = settings.get("sub_volume_file").replace(".csv", ".gpkg")
@@ -667,12 +664,9 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
         print("sub_link_layer_path:", sub_link_layer_path)
         print("sub_volume_file:", sub_volume_file)
         print("sub_loadedOut_file:", sub_loadedOut_file)
-        bool_str_subarea = "TRUE"
-        bool_validation_stats = "FALSE"
-        validationStats_file = "None"
 
-        try: 
-            result4 = subprocess.run([r_exe_path, r_script_path, sub_link_layer_path,  sub_volume_file, sub_loadedOut_file, bool_str_subarea, bool_validation_stats, validationStats_file]) 
+        try:
+            result4 = run_summary("summarize_loaded.toml", sub_link_layer_path, sub_volume_file, sub_loadedOut_file, subarea=True)
             print("result4.returncode", result4.returncode)
             if result4.returncode == 0:  # Check if the R script ran successfully
                 print("loaded network volumes script ran successfully.")
@@ -693,12 +687,12 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
                     if not settings.get("SL_AB2"):
                         sl_vol_file = os.path.join(settings.get("SLOuputDir"), "Select_Link_Volume.csv")
                         sl_loadedOut_file = os.path.join(settings.get("SLOuputDir"), "Select_Link_Volume.gpkg")
-                        subprocess.run([r_exe_path, r_script_sl_path, sub_link_layer_path,  sl_vol_file, "None", sl_loadedOut_file, bool_str_subarea]) 
+                        run_summary("summarize_selectlink.toml", sub_link_layer_path, sl_vol_file, sl_loadedOut_file, subarea=True, include_speed_ff=False)
                     else:
                         sl_vol_file_1 = os.path.join(settings.get("SLOuputDir"), "Select_Link_1_Volume.csv")
                         sl_vol_file_2 = os.path.join(settings.get("SLOuputDir"), "Select_Link_2_Volume.csv")
                         sl_loadedOut_file = os.path.join(settings.get("SLOuputDir"), "Select_Link_Volume.gpkg")
-                        subprocess.run([r_exe_path, r_script_sl_path, sub_link_layer_path,  sl_vol_file_1, sl_vol_file_2, sl_loadedOut_file, bool_str_subarea]) 
+                        run_summary("summarize_selectlink2.toml", sub_link_layer_path, sl_vol_file_1, sl_loadedOut_file, subarea=True, vol2=sl_vol_file_2, include_speed_ff=False)
                 
                 QMessageBox.information(self, "Success", "Subarea Assignment ran successfully.")
 

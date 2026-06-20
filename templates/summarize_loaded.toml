@@ -1,0 +1,37 @@
+# Loaded-volume summary (template). Edit the class list / pivots / metrics here to
+# change WHAT is summarized -- no code change needed. The plugin fills the @...@
+# placeholders (paths + the subarea-dependent column rename) at run time.
+name = "loaded"
+group_by = ["A", "B"]
+sum_cols = [
+  "LDT_Air_AccEgr25M", "LDT_Res_Air", "LDT_Res_Hig", "LDT_Res_Med",
+  "LDT_Vis_Air", "LDT_Vis_Hig", "LDT_Vis_Med", "SDT_Res_Hig",
+  "SDT_Res_Low", "SDT_Res_Med", "SDT_Vis_Hig", "SDT_Vis_Low",
+  "SDT_Vis_Med", "heavy", "light", "medium", "LDT_Res_Low", "LDT_Vis_Low"
+]
+total_col = "Total"
+emit_class_sums = true
+metrics = ["VMT", "VHT", "VHD", "Delay"]
+
+[input]
+format = "csv"
+path = "@VOL@"
+
+[join]
+format = "gpkg"
+path = "@LINK@"
+rename = [@RENAME@]
+
+[[pivot]]
+value = "Total"
+by = "START"
+prefix = "VOL_"
+
+[[pivot]]
+value = "SPEED"
+by = "START"
+prefix = "SPD_"
+
+[output]
+csv = "@OUT_CSV@"
+gpkg = "@OUT_GPKG@"

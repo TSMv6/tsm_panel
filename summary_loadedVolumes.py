@@ -209,29 +209,19 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             QMessageBox.warning(self, "Warning", "Link layer path not found.")
             return
         
-        r_exe_path = settings.get("r_exe_path") 
-        r_script_path = os.path.join(plugin_dir, "Rscripts/Summarise_Loaded_Volumes.R")
-        
-        if settings.get("isSubareaLevel"):
-            bool_str_subarea = "TRUE"
-        else:
-            bool_str_subarea = "FALSE"
+        from summarize_runner import run_summary
+        is_subarea = bool(settings.get("isSubareaLevel"))
 
         print("link_layer_path:", link_layer_path)
         print("volume_file:", volume_file)
         print("loadedOut_file:", loadedOut_file)
-        print("validationStats:", validationStats)
-        print("validationStats_file:", validationStats_file)
-        print("bool_validation_stats:", bool_validation_stats)
-        print("bool_str_subarea:", bool_str_subarea)
-        print("r_exe_path:", r_exe_path)
-        print("r_script_path:", r_script_path)
-        print([r_exe_path, r_script_path, link_layer_path,  volume_file, loadedOut_file, bool_str_subarea, bool_validation_stats, validationStats_file])
+        print("is_subarea:", is_subarea)
 
         loaded_qml_file = os.path.join(plugin_dir, "qgis_styles/TSM_Loaded_Symbology.qml").replace("\\","/")
 
-        try: 
-            result1 = subprocess.run([r_exe_path, r_script_path, link_layer_path,  volume_file, loadedOut_file, bool_str_subarea, bool_validation_stats, validationStats_file]) #capture_output=True, text=True)
+        try:
+            # C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
+            result1 = run_summary("summarize_loaded.toml", link_layer_path, volume_file, loadedOut_file, subarea=is_subarea)
       
             if result1.returncode == 0:  # Check if the R script ran successfully
                 print("loaded entwork volumes script ran successfully.")
