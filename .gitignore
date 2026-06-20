@@ -12,3 +12,11 @@ Thumbs.db
 
 # QGIS / local runtime
 *.log
+
+# R session artifacts
+.Rhistory
+**/.Rhistory
+
+# Bundled executables (model engines + data utilities + their GDAL DLLs).
+# Large binaries are shipped via GitHub Releases, not committed to source.
+Apps/

@@ -393,21 +393,25 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         # self.export_GPKG_to_csv(node_file, node_csv_file)  # Built-in option is slow
 
         # ""
-        r_exe_path = settings.get("r_exe_path") 
-        plugin_dir = settings.get("plugin_dir")
-        r_script_path = os.path.join(plugin_dir, "Rscripts/gpkg_to_csv.R")
+        # Export the link/node GeoPackages to CSV with gpkgcsv.exe (C++ port of
+        # the old Rscripts/gpkg_to_csv.R) -- attributes only, no column renames.
+        gpkgcsv_exe = settings.app_exe("utilities/gpkgcsv.exe")
+        if not os.path.exists(gpkgcsv_exe):
+            QMessageBox.critical(self, "Error", f"gpkgcsv.exe not found at: {gpkgcsv_exe}")
+            self.close()
+            return
 
          # STEP 1: Generate PopulationSIM input files
-        try: 
-            result1 = subprocess.run([r_exe_path, r_script_path, self.get_layer_path(self.comboBox_linkLayer.currentData()),  os.path.join(scenario_dir, "LINK.csv"), "false"]) #capture_output=True, text=True)
-            result2 = subprocess.run([r_exe_path, r_script_path, self.get_layer_path(self.comboBox_nodeLayer.currentData()),  os.path.join(scenario_dir, "NODE.csv"), "false"]) 
-            if result1.returncode == 0 and result2.returncode == 0:  # Check if the R script ran successfully
+        try:
+            result1 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"])
+            result2 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"])
+            if result1.returncode == 0 and result2.returncode == 0:  # Check if the conversion ran successfully
                     print("Link and node file are exported to csv")
             else:
                 print("Link or node file are failed to export to csv.")
         except Exception as e:
             print("Error running PopulationSIM:", e)
-            QMessageBox.critical(self, "Error", f"Error exporting GPKG to CSV format in STEP 1: {e}") 
+            QMessageBox.critical(self, "Error", f"Error exporting GPKG to CSV format in STEP 1: {e}")
             self.close()
         
         # Run a subprocess to call R and convert network to Link or Node file (note user can update the file in GGIS and so export attrabuties)

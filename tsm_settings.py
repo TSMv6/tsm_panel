@@ -22,6 +22,15 @@ class Config:
 
     def get_all(self):
         return self.settings.copy()
+
+    def app_exe(self, rel):
+        """Resolve a bundled executable shipped inside the plugin's Apps/ folder.
+
+        The Apps/ tree (model engines + data utilities + their GDAL DLLs) lives
+        beside the plugin so users install nothing separately. `rel` is the path
+        under Apps/, e.g. "utilities/gpkgcsv.exe" or "ldt/ldt-run.exe".
+        """
+        return os.path.join(self.get("plugin_dir"), "Apps", rel).replace("\\", "/")
     
     def save_to_file(self, file_path):
             """Save the configuration settings to a JSON file."""
