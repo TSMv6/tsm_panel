@@ -249,37 +249,38 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
         # sub_link_file = self.get_layer_path(sub_link_layer_name) + #"|layername=" + sub_link_layer_name
         sub_link_file = self.get_layer_path(self.comboBox_linkLayer.currentData())
         print("subarea link file:", sub_link_file)
-        plugin_dir = settings.get("plugin_dir")
-        r_script_path = os.path.join(plugin_dir, "Rscripts", "Generate_ODME_Counts.R").replace("\\","/")
-        r_exe_path = settings.get("r_exe_path")
+        odme_exe = settings.app_exe("utilities/odme.exe")
         count_file = os.path.join(settings.get("scenarioDir"), "ODME_Counts.csv").replace("\\","/")
         settings.set("ODMECounts", count_file)
         settings.set("sub_link_file", sub_link_file)
-     
+
         self.lineEdit_ODMECounts.setText(count_file)
+        if not os.path.exists(odme_exe):
+            QMessageBox.critical(self, "Error", f"odme.exe not found at: {odme_exe}")
+            return
         try:
-            result = subprocess.run([r_exe_path, r_script_path, sub_link_file, count_file]) #capture_output=True, text=True)
-            print("Output:", result.stdout)
-            print("Error:", result.stderr)
-            if result.returncode == 0:  # Check if the R script ran successfully
+            # odme counts (C++ port of Generate_ODME_Counts.R): subarea link gpkg -> ODME target counts
+            result = subprocess.run([odme_exe, "counts", sub_link_file, count_file])
+            if result.returncode == 0:
                 print("ODME Target Counts file generated successfully")
-                # self.self.lineEdit_ODMECounts.setText(count_file)
             else:
                 print("ODME Target Counts file generation failed.")
         except Exception as e:
-            print("Error running R script:", e)
+            print("Error running odme.exe:", e)
 
     def generate_count_corrections(self):
         settings = Config()
         odme_correct_file = settings.get("ODME_Corrections")
         base_tt_file = settings.get("sub_triptable_file")
         odme_tt_file = settings.get("ODMETT")
-        r_exe_path = settings.get("r_exe_path")
-        plugin_dir = settings.get("plugin_dir")
-        r_script_path = os.path.join(plugin_dir, "Rscripts", "Develop_ODME_Correction_factors.R").replace("\\","/")
-        try: 
-            result = subprocess.run([r_exe_path, r_script_path, base_tt_file, odme_tt_file, odme_correct_file]) #capture_output=True, text=True)
-            if result.returncode == 0:  # Check if the R script ran successfully
+        odme_exe = settings.app_exe("utilities/odme.exe")
+        if not os.path.exists(odme_exe):
+            QMessageBox.critical(self, "Error", f"odme.exe not found at: {odme_exe}")
+            return
+        try:
+            # odme develop (C++ port of Develop_ODME_Correction_factors.R)
+            result = subprocess.run([odme_exe, "develop", base_tt_file, odme_tt_file, odme_correct_file])
+            if result.returncode == 0:
                 print("Successfully computed ODME correction factors")
                 QMessageBox.information(self, "Success", "Successfully computed ODME correction factors.")
             else:
@@ -612,17 +613,20 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             update_keys["TRIP_FILE"] = settings.get("ODME_FUT_TT").replace("/", "\\")
             keys_to_remove = list(set(keys_to_remove))
             
-            # run r script to compute future ODME trip table file
-            odme_corr_fac = settings.get("ODME_Corrections_2") 
+            # compute future ODME trip table file
+            odme_corr_fac = settings.get("ODME_Corrections_2")
             fut_odme_file = settings.get("ODME_FUT_TT")
             fut_sub_file = settings.get("sub_triptable_file")
-            r_exe_path = settings.get("r_exe_path")
-            plugin_dir = settings.get("plugin_dir")
             node_replacement_file = settings.get("NodeReplacementFile")
 
-            r_script_path = os.path.join(plugin_dir, "Rscripts", "Apply_ODME_Correction_factors.R").replace("\\","/")
-            result1 = subprocess.run([r_exe_path, r_script_path,  fut_sub_file, fut_odme_file, odme_corr_fac, node_replacement_file]) 
-            if( result1.returncode == 0):  # Check if the R script ran successfully
+            # odme apply (C++ port of Apply_ODME_Correction_factors.R). Node
+            # replacement is optional -- pass it only when the file exists.
+            odme_exe = settings.app_exe("utilities/odme.exe")
+            apply_args = [odme_exe, "apply", fut_sub_file, fut_odme_file, odme_corr_fac]
+            if node_replacement_file and os.path.exists(node_replacement_file):
+                apply_args.append(node_replacement_file)
+            result1 = subprocess.run(apply_args)
+            if( result1.returncode == 0):
                 print("Successfully applied ODME correction factors")
             else:
                 print("Applying ODME correction factors failed.")
