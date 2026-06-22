@@ -325,7 +325,7 @@ QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: 
                        <bool>false</bool>
                       </property>
                       <property name="title">
-                       <string>Network Modeler</string>
+                       <string>Network Models</string>
                       </property>
                       <property name="flat">
                        <bool>false</bool>
@@ -445,7 +445,7 @@ QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: 
                           <bool>false</bool>
                          </property>
                          <property name="text">
-                          <string>1. Population SIM</string>
+                          <string>1. PopSyn</string>
                          </property>
                         </widget>
                        </item>
@@ -664,7 +664,8 @@ QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: 
                           <bool>false</bool>
                          </property>
                          <property name="text">
-                          <string>8. agentPlans (List -&gt; Table)</string>
+                          <string>8. agentPlans
+(List -&gt; Table| Plans)</string>
                          </property>
                         </widget>
                        </item>
@@ -688,7 +689,7 @@ QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: 
                      </size>
                     </property>
                     <property name="title">
-                     <string>Route Choice Models</string>
+                     <string>Routing Models</string>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
                      <item row="0" column="0">
@@ -903,7 +904,7 @@ QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: 
               </size>
              </property>
              <property name="title">
-              <string>Messages</string>
+              <string>History</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_msg">
               <property name="leftMargin">
@@ -924,7 +925,7 @@ QLabel, QCheckBox { font-family: 'MS Shell Dlg 2'; font-size: 8pt; font-weight: 
                  <bool>true</bool>
                 </property>
                 <property name="placeholderText">
-                 <string>Status messages from the Black Box steps appear here…</string>
+                 <string>Your actions across the TSM tools are logged here…</string>
                 </property>
                </widget>
               </item>

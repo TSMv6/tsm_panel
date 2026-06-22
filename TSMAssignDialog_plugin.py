@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model
+from .model_run import run_gated_model, begin_run_console
 # from .helper_functions import HelperFun 
 
 import processing
@@ -373,11 +373,17 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         plugin_dir = settings.get("plugin_dir")
         tsm_location = settings.get("tsm_location")
         scenario_dir = settings.get("scenarioDir")
+        # One live-tail window for the whole TSM assignment run (no per-step black windows).
+        begin_run_console(os.path.join(scenario_dir, "TSMAssign.log"), "TSM Assignment - run log")
         eltod_template = os.path.join(plugin_dir, "templates", "ELToD_template.ctl")
         etlod_temp_scenario = os.path.join(scenario_dir, "ELToD_temp.ctl")
         etlod_scenario = os.path.join(scenario_dir, "ELToD.ctl")
         self.generate_controls_from_template("{tsm_loc}", tsm_location, eltod_template, etlod_temp_scenario)
         self.generate_controls_from_template("{scenario_loc}", scenario_dir, etlod_temp_scenario, etlod_temp_scenario)
+        # ELToD EL parameter files (toll/turn/closer) ship with the plugin, not under
+        # tsm_location/Parameters: {config_loc} -> plugin_dir/config/eltod_el_parameters.
+        eltod_param_dir = os.path.join(plugin_dir, "config", "eltod_el_parameters")
+        self.generate_controls_from_template("{config_loc}", eltod_param_dir, etlod_temp_scenario, etlod_temp_scenario)
 
         # Export Link GPKG to Link.csv
         link_file = self.get_layer_path(self.comboBox_linkLayer.currentData()) + "|layername=" + settings.get("link_layer_name")
@@ -402,16 +408,17 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
             self.close()
             return
 
-         # STEP 1: Generate PopulationSIM input files
+         # STEP 1: Generate PopSyn input files
         try:
-            result1 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"], env=Config().app_env(gpkgcsv_exe))
-            result2 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"], env=Config().app_env(gpkgcsv_exe))
+            convert_log = os.path.join(scenario_dir, "TSMAssign_convert.log")
+            result1 = Config().run_app([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"], log_path=convert_log, console=True)
+            result2 = Config().run_app([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"], log_path=convert_log, console=True, append=True)
             if result1.returncode == 0 and result2.returncode == 0:  # Check if the conversion ran successfully
                     print("Link and node file are exported to csv")
             else:
                 print("Link or node file are failed to export to csv.")
         except Exception as e:
-            print("Error running PopulationSIM:", e)
+            print("Error running PopSyn:", e)
             QMessageBox.critical(self, "Error", f"Error exporting GPKG to CSV format in STEP 1: {e}")
             self.close()
         
@@ -488,12 +495,13 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         os.remove(etlod_temp_scenario)
 
         # Run ELToD  (shipped under the plugin's Apps/ELToD; was tsm_location/Apps)
-        eltod_exe_path = Config().app_exe("ELToD/ELToD5_23.exe")
+        eltod_exe_path = Config().app_exe("ELToD/ELToD.exe")
         etlod_scenario 
 
         # Run ELToD via the shared gated runner (captures output; reports
         # token/offline/model errors in a message box instead of the console).
-        if not run_gated_model(self, [eltod_exe_path, etlod_scenario], "ELToD assignment"):
+        if not run_gated_model(self, [eltod_exe_path, etlod_scenario], "ELToD assignment",
+                               log_path=os.path.join(scenario_dir, "ELToD.log"), console=True):
             return False
         print("TSM Assignment ran successfully")
         if show_message:

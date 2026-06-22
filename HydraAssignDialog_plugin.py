@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model
+from .model_run import run_gated_model, begin_run_console
 
 from .hydra_ui import Ui_DialogHydra
 
@@ -38,17 +38,20 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.textBrowser.setOpenExternalLinks(True)
         self._load_help_doc(os.path.join(plugin_dir, "docs", "HYDRA.md"))
 
-        # Threads default from General Configuration
+        # Threads default from General Configuration (num_processors) but stay editable
+        # for a one-off run. Not persisted as a HyDRA setting -- it re-seeds from
+        # General Configuration each time the dialog opens.
         self.lineEdit_Threads.setText(str(settings.get("num_processors") or "0"))
+        self.lineEdit_Threads.setToolTip("Defaults from General Configuration (number of "
+                                         "processors). Edit for this run only; not saved.")
 
         # Link/Node are GeoPackage layers loaded in QGIS; converted to CSV at run
         # time via gpkgcsv.exe.
         self.populate_layer_combobox(self.comboBox_LinkLayer, "LineString")
         self.populate_layer_combobox(self.comboBox_NodeLayer, "Point")
 
-        scen = settings.get("scenarioDir")
-        if scen:
-            self.lineEdit_OutDir.setText(scen)
+        # HyDRA always writes to the scenario directory (no separate output field).
+        self._out_dir = (settings.get("scenarioDir") or "").replace("\\", "/")
         if settings.get("link_layer_name"):
             self._select_combo(self.comboBox_LinkLayer, settings.get("link_layer_name"))
         if settings.get("node_layer_name"):
@@ -57,14 +60,58 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Connections
         self.browse_TripFile.clicked.connect(lambda: self.select_file(self.lineEdit_TripFile, "Trip list (*.csv.gz *.csv)"))
         self.browse_TollPolicy.clicked.connect(lambda: self.select_file(self.lineEdit_TollPolicy, "CSV (*.csv)"))
-        self.browse_OutDir.clicked.connect(self.select_out_dir)
+        self.browse_SegParams.clicked.connect(lambda: self.select_file(self.lineEdit_SegParams, "CSV (*.csv)"))
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
         self.run_Hydra.clicked.connect(lambda: self.run_hydra(show_message=True))
         self.buttonBox.accepted.connect(self.update_settings)
         self.buttonBox.rejected.connect(self.reject)
 
+        # Restore everything the Save button persists, so the dialog reopens with
+        # the user's last HyDRA settings (not just the defaults).
+        def _b(key):
+            v = settings.get(key)
+            return str(v).lower() in ("true", "1", "yes") if v is not None else False
+
+        if settings.get("hydra_macro"):
+            self._select_combo(self.comboBox_Macro, settings.get("hydra_macro"))
+        if settings.get("hydra_iters"):
+            self.lineEdit_Iters.setText(str(settings.get("hydra_iters")))
+        if settings.get("hydra_gap"):
+            self.lineEdit_Gap.setText(str(settings.get("hydra_gap")))
+        if settings.get("hydra_chunks"):
+            self.lineEdit_Chunks.setText(str(settings.get("hydra_chunks")))
+        if settings.get("hydra_trip_file"):
+            self.lineEdit_TripFile.setText(settings.get("hydra_trip_file"))
+        if settings.get("hydra_toll_policy"):
+            self.lineEdit_TollPolicy.setText(settings.get("hydra_toll_policy"))
+        if settings.get("hydra_segment_params"):
+            self.lineEdit_SegParams.setText(settings.get("hydra_segment_params"))
+        # Advanced numeric keys (each falls back to the .ui default if unset).
+        for key, edit in (("hydra_reroute_fraction", self.lineEdit_RerouteFraction),
+                          ("hydra_reroute_threshold", self.lineEdit_RerouteThreshold),
+                          ("hydra_ltm_spillback", self.lineEdit_LtmSpillback),
+                          ("hydra_jam_density", self.lineEdit_JamDensity),
+                          ("hydra_max_trips", self.lineEdit_MaxTrips),
+                          ("hydra_sample_every", self.lineEdit_SampleEvery)):
+            if settings.get(key) not in (None, ""):
+                edit.setText(str(settings.get(key)))
+        if settings.get("hydra_micro_ftypes"):
+            self.lineEdit_MicroFtypes.setText(settings.get("hydra_micro_ftypes"))
+        if settings.get("hydra_coupling"):
+            self._select_combo(self.comboBox_Coupling, settings.get("hydra_coupling"))
+        if settings.get("hydra_micro_choice"):
+            self._select_combo(self.comboBox_MicroChoice, settings.get("hydra_micro_choice"))
+        self.checkBox_Micro.setChecked(_b("hydra_micro_enabled"))
+        self.checkBox_AgentPlans.setChecked(_b("hydra_agent_plans"))
+        self.checkBox_AgentPaths.setChecked(_b("hydra_agent_paths"))
+        self.checkBox_DuckDB.setChecked(_b("hydra_duckdb"))
+
+        # apply_macro_preset() overwrites Meso FTYPEs from the preset, so restore the
+        # saved override AFTER it; toggle_micro() applies the enable state.
         self.apply_macro_preset(self.comboBox_Macro.currentText())
+        if settings.get("hydra_meso_ftypes"):
+            self.lineEdit_MesoFtypes.setText(settings.get("hydra_meso_ftypes"))
         self.toggle_micro(self.checkBox_Micro.isChecked())
 
     # ------------------------------------------------------------------
@@ -94,11 +141,6 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if path:
             line_edit.setText(path)
 
-    def select_out_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Select Output Directory")
-        if d:
-            self.lineEdit_OutDir.setText(d)
-
     def populate_layer_combobox(self, combobox, geom_type):
         combobox.clear()
         combobox.addItem("Select a layer", None)
@@ -117,11 +159,35 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
 
     def update_settings(self):
         settings = Config()
+        # Equilibrium / run mode
         settings.set("hydra_macro", self.comboBox_Macro.currentText())
         settings.set("hydra_iters", self.lineEdit_Iters.text())
         settings.set("hydra_gap", self.lineEdit_Gap.text())
+        settings.set("hydra_chunks", self.lineEdit_Chunks.text())
+        # Threads are NOT persisted here -- they come from General Configuration.
+        # Inputs / outputs (output dir is always the scenario directory)
+        settings.set("hydra_trip_file", self.lineEdit_TripFile.text())
         settings.set("link_layer_name", self.comboBox_LinkLayer.currentText())
         settings.set("node_layer_name", self.comboBox_NodeLayer.currentText())
+        # Meso / Micro
+        settings.set("hydra_meso_ftypes", self.lineEdit_MesoFtypes.text())
+        settings.set("hydra_micro_enabled", self.checkBox_Micro.isChecked())
+        settings.set("hydra_micro_ftypes", self.lineEdit_MicroFtypes.text())
+        settings.set("hydra_coupling", self.comboBox_Coupling.currentText())
+        settings.set("hydra_micro_choice", self.comboBox_MicroChoice.currentText())
+        settings.set("hydra_toll_policy", self.lineEdit_TollPolicy.text())
+        # Generalized cost + advanced (afdta) tuning
+        settings.set("hydra_segment_params", self.lineEdit_SegParams.text())
+        settings.set("hydra_reroute_fraction", self.lineEdit_RerouteFraction.text())
+        settings.set("hydra_reroute_threshold", self.lineEdit_RerouteThreshold.text())
+        settings.set("hydra_ltm_spillback", self.lineEdit_LtmSpillback.text())
+        settings.set("hydra_jam_density", self.lineEdit_JamDensity.text())
+        settings.set("hydra_max_trips", self.lineEdit_MaxTrips.text())
+        settings.set("hydra_sample_every", self.lineEdit_SampleEvery.text())
+        # Output toggles
+        settings.set("hydra_agent_plans", self.checkBox_AgentPlans.isChecked())
+        settings.set("hydra_agent_paths", self.checkBox_AgentPaths.isChecked())
+        settings.set("hydra_duckdb", self.checkBox_DuckDB.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "HyDRA settings have been updated.")
 
@@ -133,10 +199,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         link_layer = self.comboBox_LinkLayer.currentData()
         node_layer = self.comboBox_NodeLayer.currentData()
         trip_file = self.lineEdit_TripFile.text().strip()
-        out_dir = self.lineEdit_OutDir.text().strip()
+        out_dir = (settings.get("scenarioDir") or "").replace("\\", "/")
         if not (link_layer and node_layer and trip_file and out_dir):
-            QMessageBox.critical(self, "Error", "Please select the Link layer, Node layer, Trip list, and Output directory.")
+            QMessageBox.critical(self, "Error", "Please select the Link layer, Node layer, and Trip list (output goes to the scenario directory).")
             return False
+        # One live-tail window for the whole Hydra run (no per-step black windows).
+        begin_run_console(os.path.join(out_dir, "Hydra.log"), "AgentFlow / Hydra - run log")
 
         macro = self.comboBox_Macro.currentText()
         macro_model, _, signals = MACRO_PRESETS.get(macro, ("DTA_PointQueue", "", False))
@@ -155,11 +223,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             return False
         link_csv = os.path.join(out_dir, "Link_hydra.csv")
         node_csv = os.path.join(out_dir, "Node_hydra.csv")
+        convert_log = os.path.join(out_dir, "Hydra_convert.log")
         try:
-            for src_layer, dst, label in ((link_layer, link_csv, "link"), (node_layer, node_csv, "node")):
+            for i, (src_layer, dst, label) in enumerate(((link_layer, link_csv, "link"), (node_layer, node_csv, "node"))):
                 src = self.get_layer_path(src_layer)
-                r = subprocess.run([gpkgcsv, "to-csv", src, dst, "--drop-geom"],
-                                   env=Config().app_env(gpkgcsv))
+                r = Config().run_app([gpkgcsv, "to-csv", src, dst, "--drop-geom"],
+                                     log_path=convert_log, console=True, append=(i > 0))
                 if r.returncode != 0 or not os.path.exists(dst):
                     QMessageBox.critical(self, "Error", f"Failed to convert {label} layer to CSV.")
                     return False
@@ -186,6 +255,20 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     f.write("SIGNAL_MODEL          YES\n")
                 if toll_policy:
                     f.write(f"TOLL_POLICY_FILE      {toll_policy}\n")
+                # Generalized-cost segment params (beta_time/beta_cost/distance per
+                # market segment). Without it afdta falls back to time-only GC.
+                seg_params = self.lineEdit_SegParams.text().strip()
+                if seg_params:
+                    f.write(f"SEGMENT_PARAM_FILE    {seg_params}\n")
+                # Rerouting controls
+                f.write(f"REROUTE_FRACTION_MIN  {self.lineEdit_RerouteFraction.text().strip() or '0.05'}\n")
+                f.write(f"REROUTE_THRESHOLD_MIN {self.lineEdit_RerouteThreshold.text().strip() or '0.01'}\n")
+                # LTM / spillback (used by the LTM macro models)
+                f.write(f"LTM_MAX_SPILLBACK_MIN {self.lineEdit_LtmSpillback.text().strip() or '20'}\n")
+                f.write(f"JAM_DENSITY           {self.lineEdit_JamDensity.text().strip() or '240'}\n")
+                # Sampling / limits
+                f.write(f"MAX_TRIPS             {self.lineEdit_MaxTrips.text().strip() or '0'}\n")
+                f.write(f"SAMPLE_EVERY          {self.lineEdit_SampleEvery.text().strip() or '1'}\n")
                 if self.checkBox_Micro.isChecked():
                     micro_ft = self.lineEdit_MicroFtypes.text().strip()
                     f.write("MICRO_CORRIDOR        YES\n")
@@ -209,9 +292,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             QMessageBox.critical(self, "Error", f"Error writing hydra_run.ctl: {e}")
             return False
 
+        hydra_log = os.path.join(out_dir, "Hydra.log")
         print(f"afdta   : {afdta}")
         print(f"control : {ctl}")
-        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA (AgentFlow-DTA)"):
+        print(f"log     : {hydra_log}")
+        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA (AgentFlow-DTA)",
+                               log_path=hydra_log, console=True):
             return False
 
         if show_message:

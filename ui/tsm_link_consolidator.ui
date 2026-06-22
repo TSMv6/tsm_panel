@@ -382,6 +382,31 @@
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_Capacities">
+           <item>
+            <widget class="QLabel" name="label_Capacities">
+             <property name="text">
+              <string>Capacities File</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEdit_Capacities">
+             <property name="toolTip">
+              <string>QLOS capacities lookup (FTYPE|lanes -&gt; capacity) used to set ELToD link capacities. Default: {tsm_location}/Inputs/netPrep/QLOS_capacities.csv</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="browse_Capacities">
+             <property name="text">
+              <string>Browse</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_3">
            <item>
             <widget class="QLabel" name="label_Run">

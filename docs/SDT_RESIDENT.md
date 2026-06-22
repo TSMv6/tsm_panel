@@ -7,7 +7,7 @@ each tour as a sequence of **trips** linked by **stops**. Because travel is mode
 per person and per tour, it responds realistically to household structure, auto
 availability, time of day, tolls, and value of time.
 
-**Inputs:** synthetic households + persons (from PopulationSIM), zonal land use
+**Inputs:** synthetic households + persons (from PopSyn), zonal land use
 (`tsm_landuse.csv`), and the distance/level-of-service skim. **Outputs:** household,
 person, tour, and trip records that feed the trip-table and assignment steps.
 

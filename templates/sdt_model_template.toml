@@ -7,7 +7,7 @@ mode        = "desktop"
 threads     = {threads}
 sample_rate = 1.0
 sample_seed = 198761
-iteration   = 3
+iteration   = 1
 log_level   = "info"
 
 [paths]
@@ -23,10 +23,15 @@ tour_tod_dist             = "config/sdt_parameters/ResidentTourTimeOfDayDistribu
 stop_purpose_dist         = "config/sdt_parameters/ResidentStopPurposeDistributions.csv"
 stop_tod_outbound_dist    = "config/sdt_parameters/ResidentOutboundStopDurationDistributions.csv"
 stop_tod_inbound_dist     = "config/sdt_parameters/ResidentInboundStopDurationDistributions.csv"
-vehicle_type_alts          = "config/sdt_parameters/ResidentVehicleTypeAlts.csv"
-visitor_vehicle_type_alts  = "config/sdt_parameters/VisitorVehicleTypeAlts.csv"
+vehicle_type_alts          = "{tsm_location}/Inputs/vehTypeChoice/ResidentVehicleTypeAlts.csv"
+visitor_vehicle_type_alts  = "{tsm_location}/Inputs/vehTypeChoice/VisitorVehicleTypeAlts.csv"
 visitor_tour_tod_dist      = "config/sdt_parameters/VisitorTourTimeOfDayDistributions_revised.csv"
-visitor_params_dir         = "Parameters/java_parameters"
+visitor_params_dir         = "config/sdt_parameters"
+visitor_tour_freq_business = "config/sdt_parameters/VisitorTourFrequencyDistributionBusiness.csv"
+visitor_tour_freq_personal = "config/sdt_parameters/VisitorTourFrequencyDistributionPersonal.csv"
+visitor_hotel_party_size   = "config/sdt_parameters/HotelVisitorPartySizeFrequencyDistributionsPerDistrict.csv"
+visitor_vr_party_size      = "config/sdt_parameters/VacationRentalVisitorPartySizeFrequencyDistributionsPerDistrict.csv"
+visitor_house_party_size   = "config/sdt_parameters/HouseVisitorPartySizeFrequencyDistributionsPerDistrict.csv"
 
 [skims]
 tile_path       = ""

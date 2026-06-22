@@ -1,0 +1,39 @@
+target,geography,seed_table,importance,control_field,expression
+num_hh,TAZ,households,1000000,TotHH,(households.WGTP > 0) & (households.WGTP < np.inf)
+hh_size_1,TAZ,households,5000,person_1_HH,households.NP == 1
+hh_size_2,TAZ,households,5000,person_2_HH,households.NP == 2
+hh_size_3,TAZ,households,5000,person_3_HH,households.NP == 3
+hh_size_4,TAZ,households,5000,person_4_HH,households.NP == 4
+hh_size_5,TAZ,households,5000,person_5_HH,households.NP == 5
+hh_size_6,TAZ,households,5000,person_6_HH,households.NP == 6
+hh_size_7m,TAZ,households,5000,person_7_plus_HH,households.NP >=7
+hh_unit_single,TAZ,households,5000,Units_structure_detached,"households.BLD.isin([2,3])"
+hh_unit_multi,TAZ,households,5000,Units_structure_attached,"households.BLD.isin([4,5,6,7,8,9])"
+hh_unit_mobile,TAZ,households,5000,Units_structure_mobile_homes,"households.BLD.isin([1,10])"
+hh_kid,TAZ,households,5000,Household_with_Kids,households.KID ==1
+hh_no_kid,TAZ,households,5000,Household_without_Kids,households.KID == 0
+hhage_15_24,TAZ,households,20000,age_15_to_24_HH,(households.AGEHOH >=15)&(households.AGEHOH <=24)
+hhage_25_54,TAZ,households,20000,age_25_to_54_HH,(households.AGEHOH >=25)&(households.AGEHOH <=54)
+hhage_55_64,TAZ,households,20000,age_55_to_64_HH,(households.AGEHOH >=55)&(households.AGEHOH <=64)
+hhage_65_plus,TAZ,households,20000,age_65_plus_HH,households.AGEHOH >=65
+hh_wrks_0,TAZ,households,20000,worker_0_HH,households.workers == 0
+hh_wrks_1,TAZ,households,20000,worker_1_HH,households.workers == 1
+hh_wrks_2,TAZ,households,20000,worker_2_HH,households.workers == 2
+hh_wrks_3m,TAZ,households,20000,worker_3_plus_HH,households.workers >= 3
+hh_inc_0_15,TAZ,households,20000,Annual_household_income_k0_to_k14999,(households.HHINCADJ > -999999999) & (households.HHINCADJ <= 14999)
+hh_inc_15_25,TAZ,households,20000,Annual_household_income_k15000_to_k24999,(households.HHINCADJ > 14999) & (households.HHINCADJ <= 24999)
+hh_inc_25_35,TAZ,households,20000,Annual_household_income_k25000_to_k34999,(households.HHINCADJ >24999) & (households.HHINCADJ <= 34999)
+hh_inc_35_45,TAZ,households,20000,Annual_household_income_k35000_to_k44999,(households.HHINCADJ > 34999) & (households.HHINCADJ <= 44999)
+hh_inc_45_60,TAZ,households,20000,Annual_household_income_k45000_to_k59999,(households.HHINCADJ > 44999) & (households.HHINCADJ <= 59999)
+hh_inc_60_100,TAZ,households,20000,Annual_household_income_k60000_to_k99999,(households.HHINCADJ > 59999) & (households.HHINCADJ <= 99999)
+hh_inc_100_150,TAZ,households,20000,Annual_household_income_k100000_to_k149999,(households.HHINCADJ > 99999) & (households.HHINCADJ <= 149999)
+hh_inc_150_plus,TAZ,households,20000,Annual_household_income_over_k149999,(households.HHINCADJ > 149999)
+hh_pop_age_0_4,TAZ,households,100000,age_0_to_4,households['age_0_to_4']
+hh_pop_age_5_17,TAZ,households,100000,age_5_to_17,households['age_5_to_17']
+hh_pop_age_18_24,TAZ,households,100000,age_18_to_24,households['age_18_to_24']
+hh_pop_age_25_54,TAZ,households,100000,age_25_to_54,households['age_25_to_54']
+hh_pop_age_55_64,TAZ,households,100000,age_55_to_64,households['age_55_to_64']
+hh_pop_age_65_plus,TAZ,households,100000,age_65_plus,households['age_65_plus']
+hh_pop_male,TAZ,households,100000,person_male,households['person_male']
+hh_pop_female,TAZ,households,100000,person_female,households['person_female']
+res_pop,TAZ,households,1000000000,NP,households.NP

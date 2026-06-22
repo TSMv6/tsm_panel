@@ -156,14 +156,14 @@
          <item row="0" column="0">
           <widget class="QLabel" name="label_tileGeo">
            <property name="text">
-            <string>Tile Geo File</string>
+            <string>Tile Geo File (Input)</string>
            </property>
           </widget>
          </item>
          <item row="0" column="1">
           <widget class="QLineEdit" name="lineEdit_tileGeo">
            <property name="toolTip">
-            <string>zones_county_model_lookup.csv</string>
+            <string>INPUT: zone → county/model lookup (e.g. zones_county_model_lookup.csv). Decides which tile each origin zone belongs to.</string>
            </property>
           </widget>
          </item>
@@ -177,12 +177,16 @@
          <item row="1" column="0">
           <widget class="QLabel" name="label_tileDir">
            <property name="text">
-            <string>Tile Directory</string>
+            <string>Tile Directory (Output)</string>
            </property>
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QLineEdit" name="lineEdit_tileDir"/>
+          <widget class="QLineEdit" name="lineEdit_tileDir">
+           <property name="toolTip">
+            <string>OUTPUT: county/model tiles (&lt;tile_id&gt;.h5) are written directly into this folder (created if missing). No sub-folder is added.</string>
+           </property>
+          </widget>
          </item>
          <item row="1" column="2">
           <widget class="QPushButton" name="browse_tileDir">
@@ -194,14 +198,14 @@
          <item row="2" column="0">
           <widget class="QLabel" name="label_tileIndex">
            <property name="text">
-            <string>Tile Index File</string>
+            <string>Tile Index File (Output)</string>
            </property>
           </widget>
          </item>
          <item row="2" column="1">
           <widget class="QLineEdit" name="lineEdit_tileIndex">
            <property name="toolTip">
-            <string>tile_index.json</string>
+            <string>OUTPUT: tile_index.json locating each tile by zone (stores absolute tile paths, so it can live anywhere). Defaults to &lt;Tile Directory&gt;/tile_index.json.</string>
            </property>
           </widget>
          </item>

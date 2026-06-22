@@ -1,0 +1,9 @@
+policy_id,type,start_time,end_time,toll,density_min,density_max,toll_min,toll_max,increment
+1,fixed,,,1.50
+2,tod,06:00:00,09:00:00,2.00
+2,tod,09:00:00,15:30:00,1.00
+2,tod,15:30:00,19:00:00,2.50
+3,density,,,,1,18,0.50,0.50,0
+3,density,,,,19,26,0.75,0.75,0
+3,density,,,,27,35,0.75,1.50,0.25
+3,density,,,,35,999,1.50,1.50,0

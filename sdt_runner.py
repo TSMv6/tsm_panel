@@ -11,7 +11,7 @@ step for now; it produces tsm_landuse.csv that the model reads as taz_data.
 import os
 import subprocess
 from .tsm_settings import Config
-from .model_run import run_gated_model_result
+from .model_run import run_gated_model_result, begin_run_console
 
 TELEWORK_TO_SHARE = {"7%": "0.07", "10%": "0.10", "15%": "0.15", "20%": "0.20", "25%": "0.25"}
 
@@ -38,6 +38,9 @@ def run_sdt_models(flags):
     if not tsm_location:
         return False, "No TSM location set (General Configuration)."
 
+    # One live-tail window for the whole SDT run (no per-step black windows).
+    begin_run_console(os.path.join(scenario_dir, "SDT.log"), "SDT - run log")
+
     landuse_layer_path = settings.get("landuse_layer_path")
     skim_file = settings.get("skim_file")
     if not landuse_layer_path:
@@ -49,12 +52,14 @@ def run_sdt_models(flags):
     # se_aggregate.exe replaces SDT_resident_LUPrep.R (args: gpkg, out, default).
     se_exe = settings.app_exe("utilities/se_aggregate.exe")
     tsm_landuse = os.path.join(scenario_dir, "tsm_landuse.csv")
-    tsm_landuse_default = os.path.join(plugin_dir, "Rscripts", "tsm_landuse_default.csv")
+    # Default land-use table is a MODEL input ({tsm_location}/Inputs/landuse), not a plugin asset.
+    tsm_landuse_default = os.path.join(settings.get("tsm_location") or "", "Inputs", "landuse",
+                                       "tsm_landuse_default.csv").replace("\\", "/")
     if not os.path.exists(se_exe):
         return False, f"Land-use prep utility not found: {se_exe}"
     try:
-        r = subprocess.run([se_exe, landuse_layer_path, tsm_landuse, tsm_landuse_default],
-                           env=Config().app_env(se_exe))
+        r = settings.run_app([se_exe, landuse_layer_path, tsm_landuse, tsm_landuse_default],
+                             log_path=os.path.join(scenario_dir, "SDT_landuse.log"), console=True)
         if r.returncode != 0 or not os.path.exists(tsm_landuse):
             return False, "Land-use prep (26k -> 8.7k) failed."
     except Exception as e:
@@ -69,7 +74,11 @@ def run_sdt_models(flags):
     threads = settings.get("num_processors") or "0"
 
     repl = {
-        "{project_dir}": _fwd(tsm_location).rstrip("/") + "/",
+        # SDT coefficient/parameter dirs (config/...) are shipped IN the plugin and
+        # resolved relative to project_dir, so point project_dir at the plugin folder.
+        "{project_dir}": _fwd(plugin_dir).rstrip("/") + "/",
+        # vehicle-type-choice alts are year/scenario inputs under Inputs/vehTypeChoice.
+        "{tsm_location}": _fwd(tsm_location).rstrip("/"),
         "{syn_hh}": _fwd(syn_hh),
         "{syn_per}": _fwd(syn_per),
         "{tsm_landuse}": _fwd(tsm_landuse),
@@ -90,8 +99,10 @@ def run_sdt_models(flags):
         "{run_visitor_veh}": "true" if flags.get("visitor_veh") else "false",
     }
 
+    # Write the generated model.toml under the PLUGIN's config (next to the
+    # coefficient/parameter dirs it references), not under tsm_location.
     template = os.path.join(plugin_dir, "templates", "sdt_model_template.toml")
-    config_sdt = os.path.join(tsm_location, "config", "sdt")
+    config_sdt = os.path.join(plugin_dir, "config", "sdt")
     model_toml = os.path.join(config_sdt, "model.toml")
     try:
         with open(template, "r", encoding="utf-8") as f:
@@ -109,10 +120,16 @@ def run_sdt_models(flags):
     sdt_exe = settings.app_exe("sdt/sdt-run.exe")
     if not os.path.exists(sdt_exe):
         return False, f"sdt-run.exe not found at: {sdt_exe}"
-    # Run via the shared gated runner (captures output; builds the real reason —
-    # token missing/invalid/expired/revoked, offline, or model error — for the caller
-    # to show in a message box).
-    ok, _title, msg = run_gated_model_result([sdt_exe, "--config", model_toml], "SDT model")
+    # Run via the shared gated runner in its own console window (live output,
+    # interruptible) with the output tee'd to a per-model log so a resident run and
+    # a visitor run don't overwrite each other's log:
+    #   resident only -> SDT_resident.log,  visitor only -> SDT_visitor.log,
+    #   both          -> SDT_resident_visitor.log
+    which = "_".join(m for m, on in (("resident", run_resident), ("visitor", run_visitor)) if on) or "sdt"
+    sdt_log = os.path.join(scenario_dir, f"SDT_{which}.log")
+    label = f"SDT {which.replace('_', '+')} model"
+    ok, _title, msg = run_gated_model_result([sdt_exe, "--config", model_toml], label,
+                                             log_path=sdt_log, console=True)
     if not ok:
         return False, msg
 

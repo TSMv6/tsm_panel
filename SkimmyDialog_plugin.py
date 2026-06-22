@@ -2,7 +2,7 @@ import os
 import csv
 import subprocess
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
-from .model_run import run_gated_model
+from .model_run import run_gated_model, begin_run_console
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -48,7 +48,7 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
         self.browse_debugFile.clicked.connect(lambda: self.select_file(self.lineEdit_debugOut, "save", "CSV (*.csv)"))
         self.browse_disconnected.clicked.connect(lambda: self.select_file(self.lineEdit_disconnected, "save", "CSV (*.csv)"))
         self.browse_tileGeo.clicked.connect(lambda: self.select_file(self.lineEdit_tileGeo, "open", "CSV (*.csv)"))
-        self.browse_tileDir.clicked.connect(lambda: self.select_directory(self.lineEdit_tileDir))
+        self.browse_tileDir.clicked.connect(self._pick_tile_dir)
         self.browse_tileIndex.clicked.connect(lambda: self.select_file(self.lineEdit_tileIndex, "save", "JSON (*.json)"))
         self.button_run_Skimmy.clicked.connect(lambda: self.run_Skimmy(show_message=True))
         self.button_SaveCancel.accepted.connect(self.update_settings)
@@ -61,9 +61,42 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
         if settings.get("node_layer_name"):
             self._select_combo_text(self.comboBox_Nodelayer, settings.get("node_layer_name"))
 
-        # Start from the settings file, then sync the tiled-field enabled state.
+        # Start from the legacy settings file, then overlay the saved project
+        # settings (Config / settings.json) which the Save button writes -- Config
+        # wins where it has a value -- then sync the tiled-field enabled state.
         self.load_from_settings_file()
+        if settings.get("output_format"):
+            self.comboBox_Format.setCurrentText(settings.get("output_format"))
+        if settings.get("skim_file"):
+            self.lineEdit_OutSkimFile.setText(settings.get("skim_file"))
+        if settings.get("cost_coeff"):
+            self.lineEdit_costCoeff.setText(str(settings.get("cost_coeff")))
+        if settings.get("dist_coeff"):
+            self.lineEdit_distCoeff.setText(str(settings.get("dist_coeff")))
+        if settings.get("time_coeff"):
+            self.lineEdit_timeCoeff.setText(str(settings.get("time_coeff")))
+        for key, edit in (("tile_geo_file", self.lineEdit_tileGeo),
+                          ("tile_dir", self.lineEdit_tileDir),
+                          ("tile_index_file", self.lineEdit_tileIndex),
+                          ("disconnected_file", self.lineEdit_disconnected),
+                          ("skim_trace_origin", self.lineEdit_DebugStart),
+                          ("skim_trace_dest", self.lineEdit_DebugEnd),
+                          ("skim_trace_path", self.lineEdit_debugOut)):
+            if settings.get(key):
+                edit.setText(str(settings.get(key)))
+        if settings.get("skim_trace_enabled") is not None:
+            self.path_traceGB.setChecked(self._str2bool(settings.get("skim_trace_enabled")))
         self.toggle_tiled_fields()
+
+    def _pick_tile_dir(self):
+        """Pick the tile output directory; default the index to <dir>/tile_index.json
+        when it's empty (the index normally lives inside the tile directory)."""
+        directory = QFileDialog.getExistingDirectory(self, "Select Tile Directory")
+        if not directory:
+            return
+        self.lineEdit_tileDir.setText(directory)
+        if not self.lineEdit_tileIndex.text().strip():
+            self.lineEdit_tileIndex.setText(os.path.join(directory, "tile_index.json").replace("\\", "/"))
 
     # ------------------------------------------------------------------
     # Settings-file helpers
@@ -144,6 +177,17 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
         settings.set("cost_coeff", self.lineEdit_costCoeff.text())
         settings.set("dist_coeff", self.lineEdit_distCoeff.text())
         settings.set("skim_file", self.lineEdit_OutSkimFile.text())
+        # Tiled-OMX + disconnected fields (previously only written to skimmy_settings.txt
+        # on Run, so Save lost them and View Settings never showed them).
+        settings.set("tile_geo_file", self.lineEdit_tileGeo.text())
+        settings.set("tile_dir", self.lineEdit_tileDir.text())
+        settings.set("tile_index_file", self.lineEdit_tileIndex.text())
+        settings.set("disconnected_file", self.lineEdit_disconnected.text())
+        # Path Trace (debug) fields -- previously not persisted, so they vanished on reload.
+        settings.set("skim_trace_enabled", self.path_traceGB.isChecked())
+        settings.set("skim_trace_origin", self.lineEdit_DebugStart.text())
+        settings.set("skim_trace_dest", self.lineEdit_DebugEnd.text())
+        settings.set("skim_trace_path", self.lineEdit_debugOut.text())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Skim settings have been updated.")
 
@@ -188,9 +232,9 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
                 return lower[c.lower()]
         return ""
 
-    def _gpkg_to_full_csv(self, gpkgcsv_exe, gpkg_path, out_csv):
-        r = subprocess.run([gpkgcsv_exe, "to-csv", gpkg_path, out_csv, "--drop-geom"],
-                           env=Config().app_env(gpkgcsv_exe))
+    def _gpkg_to_full_csv(self, gpkgcsv_exe, gpkg_path, out_csv, log_path=None, append=False):
+        r = Config().run_app([gpkgcsv_exe, "to-csv", gpkg_path, out_csv, "--drop-geom"],
+                             log_path=log_path, console=bool(log_path), append=append)
         return r.returncode == 0 and os.path.exists(out_csv)
 
     def _transform_links(self, full_csv, out_csv):
@@ -228,6 +272,9 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
         if not skim_file:
             QMessageBox.critical(self, "Error", "Please select an output skim file.")
             return False
+        # One live-tail window for the whole Skimmy run (no per-step black windows).
+        begin_run_console(os.path.join(os.path.dirname(skim_file) or ".", "Skimmy.log"),
+                          "Skimmy - run log")
         for coeff, label in ((self.lineEdit_costCoeff, "cost"),
                              (self.lineEdit_distCoeff, "distance"),
                              (self.lineEdit_timeCoeff, "time")):
@@ -260,11 +307,12 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
         node_full = os.path.join(output_dir, "_node_full.csv")
         link_csv = os.path.join(output_dir, "Link_skim.csv")
         node_csv = os.path.join(output_dir, "Node_skim.csv")
+        convert_log = os.path.join(output_dir, "Skimmy_convert.log")
         try:
-            if not self._gpkg_to_full_csv(gpkgcsv_exe, link_path, link_full):
+            if not self._gpkg_to_full_csv(gpkgcsv_exe, link_path, link_full, convert_log):
                 QMessageBox.critical(self, "Error", "Failed to export link layer to CSV.")
                 return False
-            if not self._gpkg_to_full_csv(gpkgcsv_exe, node_path, node_full):
+            if not self._gpkg_to_full_csv(gpkgcsv_exe, node_path, node_full, convert_log, append=True):
                 QMessageBox.critical(self, "Error", "Failed to export node layer to CSV.")
                 return False
             self._transform_links(link_full, link_csv)
@@ -302,11 +350,23 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
             QMessageBox.critical(self, "Error", f"Error writing skim settings: {e}")
             return False
 
-        # 3) Run PathSkim via the shared gated runner (captures output and reports the
-        #    real reason — token missing/invalid/expired/revoked, offline, or a
-        #    PathSkim error — in a message box).
-        if not run_gated_model(self, [pathskim_exe, settings_file], "Skimmy"):
+        # 3) Run PathSkim via the shared gated runner. Output streams live to a log
+        #    next to the skim output (the QGIS GUI has no console); failures still
+        #    report the real reason (token/offline/PathSkim error) in a message box.
+        log_path = os.path.join(output_dir, "Skimmy.log")
+        print(f"Skimmy: log -> {log_path}")
+        if not run_gated_model(self, [pathskim_exe, settings_file], "Skimmy",
+                               log_path=log_path, console=True):
             return False
+
+        # Clean up the intermediate CSVs: the raw gpkg dumps and the transformed
+        # PathSkim positional inputs (consumed by the run; not user outputs).
+        for tmp in (link_full, node_full, link_csv, node_csv):
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
 
         self.update_settings_silent()
         print("Path skim completed successfully.")

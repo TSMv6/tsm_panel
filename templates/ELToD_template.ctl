@@ -23,18 +23,18 @@ TRIP_FORMAT                             Comma_Delimited
 MINIMUM_TRIP_SPLIT                      0.01
 STORE_TRIPS_IN_MEMORY                   FALSE
 
-LINK_TOD_CLOSER_FILE                    {tsm_loc}\Parameters\ELToD_EL_parameters\Dummy_Link_TOD_Closer.csv
+LINK_TOD_CLOSER_FILE                    {config_loc}\Dummy_Link_TOD_Closer.csv
 LINK_TOD_CLOSER_FORMAT                  COMMA_DELIMITED
                                         
-TURN_PROHIBITION_FILE                   {tsm_loc}\Parameters\ELToD_EL_parameters\Dummy_Turn_Prohibit.csv
+TURN_PROHIBITION_FILE                   {config_loc}\Dummy_Turn_Prohibit.csv
 TURN_PROHIBITION_FORMAT                 COMMA_DELIMITED                                        
-TOLL_FILE                               {tsm_loc}\Parameters\ELToD_EL_parameters\Dummy_DMN_Toll_Policies.csv
+TOLL_FILE                               {config_loc}\Dummy_DMN_Toll_Policies.csv
 TOLL_FORMAT                             COMMA_DELIMITED
                                         
-TOD_TOLL_FILE                           {tsm_loc}\Parameters\ELToD_EL_parameters\Dummy_TOD_Toll.csv
+TOD_TOLL_FILE                           {config_loc}\Dummy_TOD_Toll.csv
 TOD_TOLL_FORMAT                         COMMA_DELIMITED
                                         
-TOLL_CONSTANT_FILE                      {tsm_loc}\Parameters\ELToD_EL_parameters\Dummy_DMN_Toll_Constants_HourClock.csv
+TOLL_CONSTANT_FILE                      {config_loc}\Dummy_DMN_Toll_Constants_HourClock.csv
 TOLL_CONSTANT_FORMAT                    COMMA_DELIMITED
 
 NUMBER_OF_THREADS                       100

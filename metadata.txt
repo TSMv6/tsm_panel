@@ -6,4 +6,4 @@ author=AmarSarvepalli
 email=Venkat.Sarvepalli@dot.state.fl.us
 description=A QGIS plugin to interface with Turnpike State Model (TSM)
 version=1.76
-icon=ui/TPK-mainline-logo.png
+icon=icons/FL_USA250 logo.png

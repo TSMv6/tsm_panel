@@ -1,9 +1,9 @@
 import os, shutil, subprocess, time
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
+from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QLabel, QLineEdit, QGridLayout, QPushButton
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model
+from .model_run import run_gated_model, open_log_console
 # from .helper_functions import HelperFun 
 
 from .LDT_resident_ui import Ui_Dialog_LDTRes
@@ -72,6 +72,72 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
             self.checkBox_nHH.setChecked(True)
             self.lineEdit_NumHH.setText(str(settings.get("LDT_resident_nHH")))
 
+        # Surface the SDT Resident dependency: LDT FL households are built
+        # (ldtprep synhh-convert) from the SDT synthetic HH + the SDT Resident
+        # Auto-Ownership output (sdt_resident_households_<iter>.csv). Show it read-only with a live
+        # found/missing status so the requirement is visible (not just a run-time error).
+        grid = self.findChild(QGridLayout, "gridLayout")
+        self.lineEdit_SDTAutoHH = QLineEdit()
+        self.lineEdit_SDTAutoHH.setToolTip(
+            "Auto-Ownership output of the SDT Resident model (households_1.csv). Defaults to the "
+            "Output Dir; browse to point at it if it lives elsewhere. LDT reads it to build "
+            "LDT_FL_Syn_hh.dat.")
+        self.browse_SDTAutoHH = QPushButton("...")
+        self.browse_SDTAutoHH.setFixedWidth(28)
+        self.browse_SDTAutoHH.setToolTip("Browse to the SDT Auto-Ownership households file (households_1.csv).")
+        if grid is not None:
+            grid.addWidget(QLabel("SDT Auto-Own HH"), 8, 0, 1, 2)
+            grid.addWidget(self.lineEdit_SDTAutoHH, 8, 2, 1, 3)
+            grid.addWidget(self.browse_SDTAutoHH, 8, 5)
+
+        # The path auto-tracks the Output Dir, but the user can browse to override it
+        # (e.g. households_1.csv kept elsewhere). Once overridden, changing Output Dir
+        # no longer clobbers the explicit pick.
+        self._sdt_auto_user_set = False
+        self.browse_SDTAutoHH.clicked.connect(self._browse_sdt_auto)
+        self.lineEdit_SDTAutoHH.textChanged.connect(self._update_sdt_status)
+        self.lineEdit_OutDir.textChanged.connect(self._refresh_sdt_dependency)
+
+        saved_auto = settings.get("LDT_resident_sdt_auto_hh")
+        if saved_auto:
+            self._sdt_auto_user_set = True
+            self.lineEdit_SDTAutoHH.setText(saved_auto)
+        else:
+            self._refresh_sdt_dependency()
+
+    def _browse_sdt_auto(self):
+        """Let the user point at the SDT Auto-Ownership households file directly."""
+        start = self.lineEdit_SDTAutoHH.text().strip()
+        start_dir = os.path.dirname(start) if start else (self.lineEdit_OutDir.text().strip() or "")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select SDT Auto-Ownership households file", start_dir,
+            "households (*.csv) ;; All Files (*)")
+        if file_path:
+            self._sdt_auto_user_set = True
+            self.lineEdit_SDTAutoHH.setText(file_path.replace("\\", "/"))
+
+    def _refresh_sdt_dependency(self):
+        """Default the SDT households_1.csv path from the Output Dir (unless the user
+        browsed to an explicit override), then refresh the found/missing status."""
+        if not self._sdt_auto_user_set:
+            out = self.lineEdit_OutDir.text().strip()
+            path = os.path.join(out, "households_1.csv").replace("\\", "/") if out else ""
+            self.lineEdit_SDTAutoHH.setText(path)  # triggers _update_sdt_status
+        else:
+            self._update_sdt_status()
+
+    def _update_sdt_status(self):
+        """Colour the field green/red by whether the SDT households file exists yet."""
+        path = self.lineEdit_SDTAutoHH.text().strip()
+        if not path:
+            self.lineEdit_SDTAutoHH.setStyleSheet("")
+            self.lineEdit_SDTAutoHH.setPlaceholderText("set Output Dir or browse to households_1.csv")
+            return
+        if os.path.exists(path):
+            self.lineEdit_SDTAutoHH.setStyleSheet("color:#137333;")  # green = found
+        else:
+            self.lineEdit_SDTAutoHH.setStyleSheet("color:#b00020;")  # red = missing
+
     def update_settings(self):
         settings = Config()
         settings.set("LDT_resident_InputDir", self.lineEdit_InputDir.text())
@@ -84,6 +150,7 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         settings.set("landuse_layer", landuse_layer.name())  
         settings.set("synHH_file", self.lineEdit_LDTSynHH.text())
         settings.set("scenarioDir", self.lineEdit_OutDir.text())
+        settings.set("LDT_resident_sdt_auto_hh", self.lineEdit_SDTAutoHH.text())
         # if self.checkBox_nHH.isChecked() and 
         self.lineEdit_NumHH.setText(str(settings.get("LDT_resident_nHH")))
         # self.close()
@@ -217,16 +284,24 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
             return False
 
         us_lu_file = settings.get("scenarioYear") + "_landuse.dat"
-        ldt_resident_default = os.path.join(settings.get("tsm_location"), "Inputs/LDT_Skims_LU_SynHH", us_lu_file).replace("\\","/")
+        # LDT reference inputs (landuse, vehicle_type_alts, ...) all live in the
+        # user-selected LDT Input Directory (panel field -> LDT_resident_InputDir,
+        # e.g. {tsm_location}/Inputs/LDT_Skims_LU_SynHH). NOT a hardcoded folder.
+        ldt_resident_default = os.path.join(settings.get("LDT_resident_InputDir"), us_lu_file).replace("\\","/")
         ldt_resident_updated = os.path.join(settings.get("scenarioDir"), "LDT_Landuse.dat").replace("\\","/")
         settings.set("LDT_resident_Landuse_updated", ldt_resident_updated)
         print(f"Updated Landuse file: {ldt_resident_updated}")
         print(f"Default Landuse file: {ldt_resident_default}")
         print(f"Landuse layer path: {landuse_layer_path}")
         print(f"ldtprep exe: {ldtprep_exe}")
+        # ONE live window for the whole LDT-resident run: open a console that tails
+        # this log; every step streams (appends) to it, windowless. (Pilot of the
+        # one-window-per-run model -- replaces a flashing console per step.)
+        ldt_log = os.path.join(settings.get("scenarioDir"), "LDT_resident.log")
+        open_log_console(ldt_log, title="LDT Resident - run log")
         try:
-            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
-                                     env=Config().app_env(ldtprep_exe))
+            result1 = Config().run_app([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
+                                       log_path=ldt_log, console=False, append=True)
             if result1.returncode == 0:
                 print(f"Running LDT Landuse updated successful: {ldt_resident_updated}")
             else:
@@ -240,9 +315,13 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
 
         # Generate updated synthetic household data file
         sdt_syn_hh = settings.get("synHH_file")
-        sdt_syn_auto = os.path.join(settings.get("scenarioDir"), "households_1.csv").replace("/", "\\")
+        # Use the SDT Auto-Own HH field (user override or Output-Dir default).
+        sdt_syn_auto = (self.lineEdit_SDTAutoHH.text().strip()
+                        or os.path.join(settings.get("scenarioDir"), "households_1.csv")).replace("/", "\\")
         if not os.path.exists(sdt_syn_auto):
-            QMessageBox.critical(self, "Error", "Please run the SDT Resident model first for households_1.csv which contains Auto Ownership results for FL residents.")
+            QMessageBox.critical(self, "Error", "SDT Auto-Ownership households file not found:\n"
+                                 f"{sdt_syn_auto}\n\nRun the SDT Resident model first to produce households_1.csv, "
+                                 "or use the SDT Auto-Own HH browse button to point to it.")
             return False
         LDT_households_template = os.path.join(settings.get("plugin_dir"), "templates", "ldt_syn_hh_template.dat")
         LDT_households_updated_basefile = "LDT_FL_Syn_hh.dat"
@@ -253,9 +332,17 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         print(f"SDT Syn Auto: {sdt_syn_auto}")
         print(f"LDT HH template: {LDT_households_template}")
         print(f"LDT HH updated: {LDT_households_updated}")
+        # --- syn-HH convert via Python (pandas), mirrors ldtprep synhh-convert ------
+        # SDT syn-HH + auto-ownership -> LDT template schema. QGIS ships pandas, so no
+        # extra install. ldtprep synhh-convert kept below, commented out (fallback).
+        import sys as _sys
+        qgis_py = os.path.join(_sys.exec_prefix, "python.exe")
+        if not os.path.exists(qgis_py):
+            qgis_py = _sys.executable
+        prep_script = os.path.join(settings.get("plugin_dir"), "ldt_synhh_prep.py")
         try:
-            result2 = subprocess.run([ldtprep_exe, "synhh-convert", sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated],
-                                     env=Config().app_env(ldtprep_exe))
+            result2 = Config().run_app([qgis_py, prep_script, "resident", sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated],
+                                       log_path=ldt_log, console=False, append=True)
             if result2.returncode == 0:
                 print(f"Running LDT HH from SDT successful: {LDT_households_updated}")
             else:
@@ -265,9 +352,19 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         except Exception as e:
             print(f"Running LDT Syn HH update: {e}")
             return False
+        # --- C++ ldtprep path (commented out per the python switch; kept for fallback) ---
+        # try:
+        #     result2 = Config().run_app([ldtprep_exe, "synhh-convert", sdt_syn_hh, sdt_syn_auto, LDT_households_template, LDT_households_updated],
+        #                                log_path=ldt_log, console=False, append=True)
+        #     if result2.returncode == 0:
+        #         print(f"Running LDT HH from SDT successful: {LDT_households_updated}")
+        #     else:
+        #         QMessageBox.critical(self, "Error", "LDT HH from SDT update failed."); return False
+        # except Exception as e:
+        #     print(f"Running LDT Syn HH update: {e}"); return False
         #------------------------------------------------------------------------------------
 
-        LDT_Parameters = os.path.join(settings.get("tsm_location"), "config", "ldt_coefficients_toml").replace("\\", "/")
+        LDT_Parameters = os.path.join(settings.get("plugin_dir"), "config", "ldt_coefficients_toml").replace("\\", "/")
 
         # Create LDT-resident properties file
         ldt_res_template = os.path.join(settings.get("plugin_dir"), "templates", "LDT_resident_control_template.txt")
@@ -281,7 +378,10 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
                 shutil.copy(settings.get("LDT_resident_RailSkim"), os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_RailSkim"))))
             if settings.get("LDT_resident_AirSkim"):
                 shutil.copy(settings.get("LDT_resident_AirSkim"), os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_AirSkim"))))
-            shutil.copy(os.path.join(settings.get("tsm_location"), "Inputs/LDT_Skims_LU_SynHH/vehicle_type_alts.csv"),
+            # Shared veh-type-choice set with SDT: Inputs/vehTypeChoice. Copied into
+            # the scenario dir (the engine reads it from cwd), so the source change
+            # needs no LDT.exe rebuild.
+            shutil.copy(os.path.join(settings.get("tsm_location"), "Inputs", "vehTypeChoice", "vehicle_type_alts.csv"),
                         os.path.join(settings.get("scenarioDir"),"vehicle_type_alts.csv"))
         except Exception as e:
             print(f"Error copying input files: {e}")
@@ -311,7 +411,8 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         # Run the LDT-resident model (ldt-run.exe) via the shared gated runner
         # (captures output, reports token/offline/model errors in a message box).
         if not run_gated_model(self, [ldt_exe, properties_file], "LDT-resident model",
-                               cwd=settings.get("scenarioDir")):
+                               cwd=settings.get("scenarioDir"),
+                               log_path=ldt_log, console=False, append=True):
             return False
         print(f"Running LDT-resident model successful: {properties_file}")
         if show_message:

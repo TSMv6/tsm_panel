@@ -364,9 +364,10 @@ class TsmSubareaExtDialogX(QDialog, Ui_Dialog):
             f.write(f"plugin_dir = {plugin_dir}\n")
 
         try:
-            result = subprocess.run([subarea_exe, "renumber", settings_file], env=settings.app_env(subarea_exe)) #capture_output=True, text=True)
-            print("Output:", result.stdout)
-            print("Error:", result.stderr)
+            # Live console + tee'd log next to the settings file (no captured stdout
+            # in console mode -- the console window IS the live output).
+            result = settings.run_app([subarea_exe, "renumber", settings_file],
+                                      log_path=os.path.splitext(settings_file)[0] + ".log", console=True)
 
             # If the script was successful, load the output layers
             if result.returncode == 0:  # Check if the R script ran successfully

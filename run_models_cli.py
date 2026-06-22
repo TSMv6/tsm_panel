@@ -20,7 +20,7 @@ if script_dir not in sys.path:
 
 # Import required modules from the TSM plugin
 from tsm_settings import Config
-from PopulationSIM_plugin import PopulatioSIMDialog
+from popsyn_plugin import PopSynDialog
 from SkimmyDialog_plugin import FLSkim
 from SDT_residentDialog_plugin import SDTResidentModel
 from SDT_visitorDialog_plugin import SDTVisitorModel
@@ -79,7 +79,7 @@ def run_model(model_name, logger):
             dialog = TsmNetManDialog()
             dialog.run_Many2One_script()
         elif model_name == 'PopSIM':
-            dialog = PopulatioSIMDialog()
+            dialog = PopSynDialog()
             result = dialog.run_popsim_script()
             if not result:
                 logger.error(f"Failed to run PopSIM")

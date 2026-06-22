@@ -17,8 +17,9 @@ import webbrowser  # Import webbrowser module
 # from .tsm_main_panel_ui import Ui_DockWidget
 from .tsm_panel_add_more_ui2 import Ui_DockWidget
 from .tsm_settings import Config
+from . import tsm_history
 
-# Import secondary dialog 
+# Import secondary dialog
 from .General_Configuration import GeneralConfigDialog
 from .Project_Settings import ProjectSpecsDialog
 from .configurationTable_plugin import ViewSettings
@@ -34,7 +35,7 @@ from .MSR_Dialog_plugin import MSR_Disaggregate
 
 # The "Black Box"
 
-from .PopulationSIM_plugin import PopulatioSIMDialog
+from .popsyn_plugin import PopSynDialog
 from .SkimmyDialog_plugin import FLSkim
 from .SDT_residentDialog_plugin import SDTResidentModel
 from .SDT_visitorDialog_plugin import SDTVisitorModel  
@@ -85,7 +86,7 @@ class TsmPanelPlugin():
         print("Plugin dir: ", plugin_dir)
         settings.set("plugin_dir", plugin_dir)  
 
-        icon = 'icons/TPK-mainline-logo.png'
+        icon = 'icons/FL_USA250 logo.png'
         icon_path = os.path.join(plugin_dir, icon)
         iface.mainWindow().setWindowIcon(QIcon(icon_path))
 
@@ -137,6 +138,7 @@ class TsmPanelPlugin():
             self.ui.setupUi(self.dock_widget)
             self._normalize_status_columns()
             self.connect_buttons()
+            tsm_history.set_message_box(self.ui.plainTextEdit_Messages)
             self._load_history()
             self.log_message("TSM panel ready.")
             
@@ -252,11 +254,22 @@ class TsmPanelPlugin():
         plugin_instance.run_tool()
 
 
+    def _sync_sdt_visitor_checkbox(self):
+        """If the SDT Resident dialog is set to run BOTH resident and visitor, the
+        visitor model is produced by the resident run — so clear the main-panel
+        'SDT Visitor' step to avoid running visitors twice."""
+        s = Config()
+        if bool(s.get("sdt_run_resident")) and bool(s.get("sdt_run_visitor")):
+            self.ui.checkBox_SDTVis.setChecked(False)
+
     def run_all_tools(self):
         """Run all tools with saved settings, stop if any step fails."""
         self.reset_all_step_labels()
         print("Running all tools with saved settings")
         self.log_message("Running selected models…")
+        # If SDT Resident is set to also run Visitor, drop the separate SDT Visitor
+        # step (visitors are produced by the resident run).
+        self._sync_sdt_visitor_checkbox()
         selected_tools = []
         if self.ui.checkBox_PopSIM.isChecked():
             selected_tools.append("PopSIM")
@@ -310,7 +323,7 @@ class TsmPanelPlugin():
                 elif tool_name == 'PopSIM':
                     self.mark_step_in_progress(self.ui.label_PopSIM)
                     QApplication.processEvents()
-                    dialog = PopulatioSIMDialog()
+                    dialog = PopSynDialog()
                     result = dialog.run_popsim_script()
                     if not result:
                         self.mark_step_failed(self.ui.label_PopSIM)
@@ -415,7 +428,7 @@ class TsmPanelPlugin():
         "GenConSet": "General Configuration", "ProjSpecs": "Scenario Specs",
         "ViewSettings": "View Settings", "UpdateLinksNodesPlugin": "GeoMaster Editor",
         "tsm_subarea_extractor": "Subarea Networks", "many_to_one": "Link Consolidator",
-        "MSR_Disaggregate": "MSR", "PopSIM": "Population SIM", "FL_skimmy": "Skimmy",
+        "MSR_Disaggregate": "MSR", "PopSIM": "PopSyn", "FL_skimmy": "Skimmy",
         "SDT_resident": "SDT Resident", "SDT_visitor": "SDT Visitor",
         "LDT_resident": "LDT Resident", "LDT_visitor": "LDT Visitor",
         "TripList2Table": "agentPlans", "tsm_assign": "ELToD",
@@ -447,7 +460,7 @@ class TsmPanelPlugin():
             dialog = MSR_Disaggregate()
 
         if tool_name == 'PopSIM':
-            dialog = PopulatioSIMDialog()
+            dialog = PopSynDialog()
         if tool_name == 'FL_skimmy':
             dialog = FLSkim()
         if tool_name == 'SDT_resident':
@@ -470,10 +483,14 @@ class TsmPanelPlugin():
         if tool_name == 'SummaryLoadedVolume':
             dialog = Summary_Dialog()
 
-        print("Dialog instance created")                    
-        # from PyQt5 import uic
-        # print("Call UI")
+        print("Dialog instance created")
+        # Auto-log every interaction in this dialog (fields, browse, checks, OK).
+        tsm_history.instrument_dialog(dialog, self._TOOL_LABELS.get(tool_name, tool_name))
         dialog.exec_()
+        # If the SDT Resident dialog was set to run both resident + visitor, clear the
+        # main-panel SDT Visitor step (the visitor was produced by the resident run).
+        if tool_name == 'SDT_resident':
+            self._sync_sdt_visitor_checkbox()
         # print("UI executed")
 
     
@@ -597,7 +614,7 @@ class TsmPanelPlugin():
 
     # Friendly names for the status labels, used in the Messages log.
     _STEP_NAMES = {
-        "label_PopSIM": "Population SIM",
+        "label_PopSIM": "PopSyn",
         "label_Skimmy": "Skimmy",
         "label_SDTRes": "SDT Resident",
         "label_SDTVis": "SDT Visitor",

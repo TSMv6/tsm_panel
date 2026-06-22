@@ -20,3 +20,6 @@ Thumbs.db
 # Bundled executables (model engines + data utilities + their GDAL DLLs).
 # Large binaries are shipped via GitHub Releases, not committed to source.
 Apps/
+
+# generated SDT run config
+config/sdt/model.toml

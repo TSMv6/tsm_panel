@@ -79,6 +79,13 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
         if settings.get("bool_Counts") is not None:
             self.checkBox_Counts.setChecked(self._str2bool(settings.get("bool_Counts")))
+        # QLOS capacities file (user setting). Default to {tsm_location}/Inputs/netPrep.
+        cap = settings.get("netprep_capacities_file")
+        if not cap:
+            tloc = settings.get("tsm_location") or ""
+            cap = (os.path.join(tloc, "Inputs", "netPrep", "QLOS_capacities.csv").replace("\\", "/")
+                   if tloc else "")
+        self.lineEdit_Capacities.setText(cap)
 
         # Help text: render docs/LINK_CONSOLIDATION.md into the side panel.
         self.textBrowser = self.findChild(QTextBrowser, 'textBrowser')
@@ -103,6 +110,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             lambda: self.select_file(self.lineEdit_MSRSubarea, "open", "GeoPackage (*.gpkg);; Shapefiles (*.shp)"))
         self.browse_MSRLookup.clicked.connect(
             lambda: self.select_file(self.lineEdit_MSRLookup, "open", "CSV (*.csv)"))
+        self.browse_Capacities.clicked.connect(
+            lambda: self.select_file(self.lineEdit_Capacities, "open", "CSV (*.csv)"))
 
         # Enable/disable the MSR inputs based on model resolution
         self.modelResolution.currentTextChanged.connect(self.toggle_msr_fields)
@@ -190,6 +199,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_MSRSubarea.setText(cfg["msr_subarea"])
         if cfg.get("msr_lookup"):
             self.lineEdit_MSRLookup.setText(cfg["msr_lookup"])
+        if cfg.get("capacities_file"):
+            self.lineEdit_Capacities.setText(cfg["capacities_file"])
 
         if "keep_Counts" in cfg:
             self.checkBox_Counts.setChecked(self._str2bool(cfg["keep_Counts"]))
@@ -252,6 +263,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         settings.set("model_resolution", self.modelResolution.currentText())
         settings.set("msr_subarea", self.lineEdit_MSRSubarea.text())
         settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
+        settings.set("netprep_capacities_file", self.lineEdit_Capacities.text())
         settings.set("bool_Counts", self.checkBox_Counts.isChecked())
         settings.set("GM_line_layer", self.lineLayerCombo.currentText())
         settings.set("GM_node_layer", self.nodeLayerCombo.currentText())
@@ -411,6 +423,15 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         bool_Counts = self.checkBox_Counts.isChecked()
 
+        # QLOS capacities lookup (FTYPE|lanes -> capacity) is a user setting / model
+        # input, not a plugin asset and NOT a hardcoded path in netPrep. Default to
+        # {tsm_location}/Inputs/netPrep/QLOS_capacities.csv; overridable via Config.
+        tsm_location = settings.get("tsm_location") or ""
+        capacities_file = (self.lineEdit_Capacities.text().strip() or
+                           settings.get("netprep_capacities_file") or
+                           os.path.join(tsm_location, "Inputs", "netPrep",
+                                        "QLOS_capacities.csv")).replace("\\", "/")
+
         settings_file = os.path.join(output_dir, SETTINGS_FILENAME).replace("\\", "/")
 
         try:
@@ -434,6 +455,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"TSM_Link_File = {output_linkfile}\n")
                 f.write(f"TSM_Node_File = {output_nodefile}\n")
                 f.write(f"plugin_dir = {plugin_dir}\n")
+                # Capacities lookup path passed explicitly (no hardcoded path in the exe).
+                f.write(f"capacities_file = {capacities_file}\n")
                 # Run both consolidation and GMNS export (GMNS feeds the DTA
                 # assignment; built from the consolidated network in one pass).
                 f.write("RUN_MODE = both\n")
@@ -458,17 +481,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # the subprocess inherit QGIS's environment -- otherwise the shipped
         # gdal.dll tries to load QGIS's version-mismatched driver plugins and
         # spams "Can't load requested DLL ... 127" errors in the log.
-        app_dir = os.path.dirname(exe_path)
-        env = dict(os.environ)
-        env["PATH"] = app_dir + os.pathsep + env.get("PATH", "")
-        env["GDAL_DATA"] = os.path.join(app_dir, "gdal-data")
-        env["PROJ_LIB"] = os.path.join(app_dir, "proj")
-        # Point the driver path at the app folder (no GDAL plugins there) so the
-        # shipped gdal.dll does not pick up QGIS's version-mismatched plugins.
-        env["GDAL_DRIVER_PATH"] = app_dir
-
+        # run_app builds that GDAL env (PATH/GDAL_DRIVER_PATH/GDAL_DATA/PROJ_LIB)
+        # itself, and runs in a live console tee'd to a log next to the settings file.
         try:
-            result = subprocess.run([exe_path, settings_file], env=env)
+            result = Config().run_app([exe_path, settings_file],
+                                      log_path=os.path.splitext(settings_file)[0] + ".log", console=True)
             if result.returncode != 0:
                 print("netPrep execution failed.")
                 if show_message:

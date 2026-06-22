@@ -1,292 +1,173 @@
-import os, shutil, subprocess, time
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
-from qgis.core import QgsProject, QgsVectorLayer
+import os
+from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-# from .helper_functions import HelperFun 
+from . import msr_run
 
 from .MSR_ui import Ui_Dialog_MSR
 
+
 class MSR_Disaggregate(QDialog, Ui_Dialog_MSR):
+    """Standalone MSR (Multi-Spatial Resolution) editor. Disaggregates a TSM
+    trip list to subarea subzones by running msr.exe (see msr_run). The same
+    engine runs as a sub-step of agentPlans; this dialog exposes it directly."""
+
     def __init__(self):
         super().__init__()
-        # self.setupUi(self)
 
-        # Verify the UI file path
-        # plugin_dir = os.path.dirname(__file__).replace("\\", "/")
         settings = Config()
         plugin_dir = settings.get("plugin_dir")
         ui_file = os.path.join(plugin_dir, "ui/MSR.ui")
-        print(f"UI file found at: {ui_file}")
-
-        # Check if the UI file exists
         if not os.path.exists(ui_file):
             print(f"UI file not found at: {ui_file}")
-            return  # If the file doesn't exist, stop further execution
+            return
+        uic.loadUi(ui_file, self)
 
-        # Load the UI dynamically if the file exists
-        uic.loadUi(ui_file, self)  # This will automatically load the UI and set it up
+        self._populate_help()
+        scen = (settings.get("scenarioDir") or "").replace("\\", "/")
+        self.label_outDir.setText(f"Scenario directory: {scen}" if scen else
+                                  "Scenario directory not set — set it in Project / Scenario Specs.")
 
-        # Populate the dropdowns with available land-use layers (polygons)
-        self.populate_layer_combobox(self.comboBox_Landuse,"Polygon")
+        # Browse buttons
+        self.browse_MSRTrips.clicked.connect(lambda: self.select_file(self.lineEdit_MSRTrips, "Trip list (*.csv.gz *.csv)"))
+        self.browse_MSRSubarea.clicked.connect(lambda: self.select_file(self.lineEdit_MSRSubarea, "Subarea zones (*.csv)"))
+        self.browse_MSRLookup.clicked.connect(lambda: self.select_file(self.lineEdit_MSRLookup, "Subzone lookup (*.csv *.gpkg)"))
 
-        # self.populate_layer_combobox(self.comboBox_RefLUlayer, "Polygon")
-        # Connect buttons to browse function
-        self.browse_SynHH.clicked.connect(lambda: self.select_file(self.lineEdit_SynHH, "open"))
-        self.browse_SynPer.clicked.connect(lambda: self.select_file(self.lineEdit_SynPer, "open"))
-        self.browse_Skim.clicked.connect(lambda: self.select_file(self.lineEdit_Skim, "open"))
-
-        # Populate telework policies (7%, 10%, 15%, 20%, 25%)
-        # Default = 15%, which is default zero in the floridaturnpike<scenario>.properties 
-        # self.comboBox_TeleworkShare.addItems(["7%", "10%", "15%", "20%", "25%"])
-        # self.comboBox_TeleworkShare.setCurrentText("15%")
-        # self.browse_SDTOut.clicked.connect(lambda: self.select_directory(self.lineEdit_OutDir))
-
-        # Connect the "save" button to the corresponding function
         self.button_OkCancel.accepted.connect(self.update_settings)
         self.button_OkCancel.rejected.connect(self.cancel_action)
         self.Run_MSR.clicked.connect(lambda: self.run_MSR(show_message=True))
 
-        # Update Settings ("Main Panel -> Load Settings -> Config()")
-        settings = Config()
-        print("current landuse layer:", settings.get("landuse_layer"))
-        if settings.get("landuse_layer"):
-            landuse_layer_name = settings.get("landuse_layer")
-            # print(landuse_layer_name)
-            # if isinstance(layer, QgsVectorLayer):
-            # landuse_layer = QgsProject.instance().mapLayersByName(landuse_layer_name)[0]
-            if landuse_layer_name in [self.comboBox_Landuse.itemText(i) for i in range(self.comboBox_Landuse.count())]:
-                print("Landuse layer already in combo box")
-                # self.comboBox_LUlayer.addItem(landuse_layer_name) # Add to combo box if not already present
-                self.comboBox_Landuse.setCurrentText(landuse_layer_name)
-        if settings.get("synHH_file"):
-            self.lineEdit_SynHH.setText(settings.get("synHH_file"))
-        if settings.get("synPer_file"):
-            self.lineEdit_SynPer.setText(settings.get("synPer_file"))
-        if settings.get("skim_file"):
-            self.lineEdit_Skim.setText(settings.get("skim_file"))
-        if settings.get("telework_share"):
-            self.comboBox_TeleworkShare.setCurrentText(settings.get("telework_share"))
-        if settings.get("scenarioDir"):
-                self.lineEdit_OutDir.setText(settings.get("scenarioDir"))
+        # Size-term coefficient TOMLs: shown with their bundled default paths so the
+        # user can see (and replace) them. disaggregate recomputes size terms from
+        # these every run, so pointing here at a recalibrated TOML is how size terms
+        # change -- there is no cached size-term file.
+        self._bundled_tomls = msr_run.bundled_sizeterm_tomls(settings)
+        self._toml_fields = {
+            "sdt_resident": self.lineEdit_TomlSdtRes,
+            "sdt_visitor":  self.lineEdit_TomlSdtVis,
+            "ldt":          self.lineEdit_TomlLdt,
+            "truck":        self.lineEdit_TomlTruck,
+        }
+        for k, edit in self._toml_fields.items():
+            edit.setText(settings.get(msr_run.SIZETERM_KEYS[k]) or self._bundled_tomls[k])
+        self.browse_TomlSdtRes.clicked.connect(lambda: self.select_file(self.lineEdit_TomlSdtRes, "Size-term TOML (*.toml)"))
+        self.browse_TomlSdtVis.clicked.connect(lambda: self.select_file(self.lineEdit_TomlSdtVis, "Size-term TOML (*.toml)"))
+        self.browse_TomlLdt.clicked.connect(lambda: self.select_file(self.lineEdit_TomlLdt, "Size-term TOML (*.toml)"))
+        self.browse_TomlTruck.clicked.connect(lambda: self.select_file(self.lineEdit_TomlTruck, "Size-term TOML (*.toml)"))
+
+        # Prefill from saved settings (shared keys with the agentPlans MSR step).
+        if settings.get("msr_trip_list"):
+            self.lineEdit_MSRTrips.setText(settings.get("msr_trip_list"))
+        if settings.get("msr_subarea"):
+            self.lineEdit_MSRSubarea.setText(settings.get("msr_subarea"))
+        if settings.get("msr_lookup"):
+            self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
+        self.checkBox_SizeTerms.setChecked(
+            str(settings.get("msr_export_sizeterms")).lower() in ("true", "1", "yes"))
+
+    # ------------------------------------------------------------------
+    def _populate_help(self):
+        html = """
+<html><body style='font-family:Segoe UI,Arial; font-size:9pt; line-height:1.35;'>
+<h3 style='margin:0 0 6px 0;'>MSR &#8211; Multi-Spatial Resolution</h3>
+<p>SE data is held at the regional planning resolution (~26k subzones) for
+portability, but the model runs at the TSM resolution (~8.7k zones) for speed.
+MSR <b>disaggregates</b> a TSM-resolution trip list down to the finer subzones
+inside a chosen <b>subarea</b>, so a corridor / project area can be analysed at
+high resolution without re-running the whole statewide model at 26k.</p>
+
+<h4>Where MSR fits</h4>
+<pre style='font-family:Consolas,monospace; font-size:9pt; background:#f4f4f4; padding:6px;'>
+Regular:  RPM zones &#8594; TSM zones &#8594; Skims / Demand Models &#8594; agentPlans &#8594; agentFlow
+
+MSR:      RPM zones &#8594; TSM zones &#8594; Skims / Demand Models &#8594; <b>MSR</b> &#8594; <b>MSR agentPlans</b> &#8594; agentFlow
+                                                          (subarea subzones)
+</pre>
+<p><i>RPM = Regional Planning Model (~26k zones). MSR inserts the subarea
+sub-zone disaggregation step into the otherwise TSM-zone pipeline.</i></p>
+
+<h4>Inputs</h4>
+<ul>
+<li><b>Trip list (.csv.gz)</b> &#8211; the TSM-resolution trip list to split
+(<code>tripList_&lt;res&gt;min.csv.gz</code> from agentPlans).</li>
+<li><b>Subarea zone list</b> &#8211; the parent TSM zones that define the subarea.</li>
+<li><b>Subzone lookup (26k)</b> &#8211; the land-use table mapping each subzone to its
+parent TSM zone (<code>parent_col = TSM_NG</code>).</li>
+</ul>
+
+<h4>Size terms &#8211; recomputed every run</h4>
+<p>Destination <b>size terms</b> are computed from the bundled SDT / LDT / truck
+coefficient <b>TOMLs</b>. <code>msr disaggregate</code> <b>recomputes them on every
+run</b> &#8211; there is <u>no cached size-term file</u> to keep in sync. So you do not
+need a &quot;recompute&quot; step: if a coefficient TOML changes, the next run already
+reflects it.</p>
+<ul>
+<li>To use <b>recalibrated</b> coefficients, point the <b>Size-term coefficients</b>
+fields at the modified <code>.toml</code>(s) (they show the bundled defaults by
+default). That override is what changes the size terms.</li>
+<li><b>Check the box</b> &quot;Also export size-terms review CSV&quot; only if you want a
+QA copy of the computed terms written to
+<code>subarea_taz_sizeTerms.csv</code> (<code>TSM_NG, Index, market, purpose,
+sizeTerm, probability</code>). It runs <code>msr sizeterms</code> and is <b>not</b>
+reused by the disaggregation.</li>
+</ul>
+
+<h4>Outputs (scenario directory)</h4>
+<ul>
+<li><code>subarea_msr_triplist.csv.gz</code> &#8211; MSR trip list with O_MSR/D_MSR.</li>
+<li><code>ELToD_MSR_Hourly_tt.csv</code> &#8211; hourly MSR OD trip table.</li>
+<li><code>subarea_taz_sizeTerms.csv</code> &#8211; only if the QA box is checked.</li>
+</ul>
+<p>Runs <code>msr.exe disaggregate</code> on a control file written to
+<code>msr_control.toml</code>. The same engine also runs inside the
+<b>agentPlans (Trip List &#8594; Table)</b> step.</p>
+</body></html>
+"""
+        self.textBrowser_Help.setHtml(html)
+
+    def cancel_action(self):
+        self.reject()
+
+    def select_file(self, line_edit, file_filter):
+        path, _ = QFileDialog.getOpenFileName(self, "Select File", "", file_filter + ";; All Files (*)")
+        if path:
+            line_edit.setText(path.replace("\\", "/"))
+
+    def _apply_to_config(self, settings):
+        """Push the dialog's fields into Config (no file write). A size-term TOML
+        override is stored only when it differs from the bundled default, so
+        unchanged fields stay dynamic (follow the plugin config)."""
+        settings.set("msr_trip_list", self.lineEdit_MSRTrips.text())
+        settings.set("msr_subarea", self.lineEdit_MSRSubarea.text())
+        settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
+        settings.set("msr_export_sizeterms", self.checkBox_SizeTerms.isChecked())
+        for k, edit in self._toml_fields.items():
+            val = edit.text().strip().replace("\\", "/")
+            settings.set(msr_run.SIZETERM_KEYS[k],
+                         "" if (not val or val == self._bundled_tomls[k]) else val)
 
     def update_settings(self):
         settings = Config()
-        if self.comboBox_Landuse.currentData():
-            landuse_layer = self.comboBox_Landuse.currentData()
-            settings.set("landuse_layer", landuse_layer.name())  
-        if self.lineEdit_SynHH.text():
-            settings.set("synHH_file", self.lineEdit_SynHH.text())
-        if self.lineEdit_SynPer.text():
-            settings.set("synPer_file", self.lineEdit_SynPer.text())
-        if self.lineEdit_Skim.text():
-            settings.set("skim_file", self.lineEdit_Skim.text())
-        if self.comboBox_TeleworkShare.currentText():
-            settings.set("telework_share", self.comboBox_TeleworkShare.currentText())   
-        if self.lineEdit_OutDir.text():
-            settings.set("scenarioDir", self.lineEdit_OutDir.text())
-        # self.close()  # Closes the dialog and saves the settings
+        self._apply_to_config(settings)
         settings.check_and_save_to_file("scenario_settings_file")
-        QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
-        
-
-    # Create a copy of the template file
-    def template_keys_update(self, template, replacements, properties_file):
-        with open(template, "r") as file:
-            content = file.read()
-
-        # Replace keys with scenario-specific values
-        for key, value in replacements.items():
-            content = content.replace(f"{{{key}}}", value)
-
-        # Write the modified content to the output file
-        with open(properties_file, "w") as file:
-            file.write(content)
-        print(f"Scenario-specific file created: {properties_file}")
+        QMessageBox.information(self, "Settings Updated", "MSR settings have been updated.")
 
     def run_MSR(self, show_message=False):
-        # Check if all required fields are filled
-        if not self.comboBox_Landuse.currentData():
-            QMessageBox.critical(self, "Error", "Please select a land-use layer.")
-            return False
-        if not self.lineEdit_SynHH.text():
-            QMessageBox.critical(self, "Error", "Please select a synthetic household file.")
-            return False
-        if not self.lineEdit_SynPer.text():
-            QMessageBox.critical(self, "Error", "Please select a synthetic person file.")
-            return False
-        if not self.lineEdit_Skim.text():
-            QMessageBox.critical(self, "Error", "Please select a skim file.")
-            return False
-        if not self.lineEdit_OutDir.text():
-            QMessageBox.critical(self, "Error", "Please select an output directory.")
-            return False
-
-        # Run the R script to get Landuse data at TSM level from the regional level
         settings = Config()
-        landuse_layer = self.comboBox_Landuse.currentData()
-        landuse_layer_path = self.get_layer_path(landuse_layer)
-        settings.set("landuse_layer_path", landuse_layer_path) 
-        tsm_landuse_path = os.path.join(settings.get("scenarioDir"), "tsm_landuse.csv").replace("\\", "/")
-        tsm_landuse_default = os.path.join(settings.get("plugin_dir"), "Rscripts/tsm_landuse_default.csv").replace("\\", "/")
-        settings.set("tsm_landuse_path", tsm_landuse_path)
-
-        # se_aggregate.exe replaces SDT_resident_LUPrep.R (aggregate MPO/SE polygons
-        # to the TSM zone land use; args: gpkg, out, default).
-        se_exe = settings.app_exe("utilities/se_aggregate.exe")
-        if not os.path.exists(se_exe):
-            QMessageBox.critical(self, "Error", f"Land-use prep utility not found: {se_exe}")
+        # Apply current fields (incl. any TOML override) so msr_run sees them.
+        self._apply_to_config(settings)
+        scenario_dir = settings.get("scenarioDir")
+        ok, msg = msr_run.run(
+            scenario_dir,
+            self.lineEdit_MSRTrips.text().strip(),
+            self.lineEdit_MSRSubarea.text().strip(),
+            self.lineEdit_MSRLookup.text().strip(),
+            settings=settings,
+            export_sizeterms=self.checkBox_SizeTerms.isChecked(),
+        )
+        if not ok:
+            QMessageBox.critical(self, "Error", msg)
             return False
-        try:
-            print(f"Aggregating MPO landuse to TSM with {se_exe}: {landuse_layer_path} -> {tsm_landuse_path}")
-            result1 = subprocess.run([se_exe, landuse_layer_path, tsm_landuse_path, tsm_landuse_default],
-                                     env=Config().app_env(se_exe))
-            if result1.returncode != 0 or not os.path.exists(tsm_landuse_path):
-                print("Aggregating MPO landuse to TSM failed.")
-                QMessageBox.critical(self, "Error", "Aggregating MPO landuse to TSM failed.")
-                return False
-            print(f"Aggregation of MPO landuse to TSM successful: {tsm_landuse_path}")
-        except Exception as e:
-            print(f"Aggregating MPO landuse to TSM failed: {e}")
-            QMessageBox.critical(self, "Error", f"Aggregating MPO landuse to TSM failed: {e}")
-            return False
-
-        # Copy AM skim as MD until we decide to build MD skims or warm start skims
-        source_file = settings.get("skim_file")
-        extension = os.path.splitext(source_file)[1][1:]
-        if extension != "omx":
-            QMessageBox.critical(self, "Error", "Please select a valid skim file (.omx).")
-            return False
-        destination_file = os.path.join(settings.get("scenarioDir"), "MD_Skim.omx")
-        try:
-            if os.path.exists(destination_file):
-                os.remove(destination_file)
-            shutil.copyfile(source_file, destination_file)
-            destination_file = os.path.join(settings.get("scenarioDir"), "AM_Skim.omx")
-            if not os.path.exists(destination_file):
-                shutil.copyfile(source_file, destination_file)
-        except Exception as e:
-            print(f"Error copying skim files: {e}")
-            QMessageBox.critical(self, "Error", f"Error copying skim files: {e}")
-            return False
-
-        # Create SDT-resident properties file
-        sdt_res_template = os.path.join(settings.get("plugin_dir"), "templates", "floridaturnpike_template.properties")
-        tsm_location = settings.get("tsm_location")
-        properties_file = os.path.join(settings.get("tsm_location"), "config", "floridaturnpike.properties")
-        replacements = {
-            "PROJECT_DIR": tsm_location.replace("\\", "/"),
-            "SCENARIO_DIR": settings.get("scenarioDir").replace("\\", "/"),
-            "SYN_HH": self.lineEdit_SynHH.text().replace("\\", "/"),
-            "SYN_PER": self.lineEdit_SynPer.text().replace("\\", "/"),
-            "SKIM_FILE": self.lineEdit_Skim.text().replace("\\", "/"),
-            "LANDUSE_DATA": os.path.basename(tsm_landuse_path)
-        }
-        try:
-            self.template_keys_update(sdt_res_template, replacements, properties_file)
-        except Exception as e:
-            print(f"Error creating properties file: {e}")
-            QMessageBox.critical(self, "Error", f"Error creating properties file: {e}")
-            return False
-
-        # Run the SDT-resident model
-        jdk_path = settings.get("jdk_path")
-        jdk_path_update = jdk_path.replace("Program Files", "Progra~1")
-        prj_drive, prj_dir = os.path.splitdrive(tsm_location)
-        cmd_sdt_res_template = os.path.join(settings.get("plugin_dir"), "templates", "runSDModel_RES_template.cmd")
-        cmd_file = os.path.join(settings.get("scenarioDir"), "runSDModel_RES.cmd")
-        replacements = {
-            "PRJ_DRIVE": prj_drive,
-            "PRJ_DIR": prj_dir.replace("\\", "/"),
-            "JDK_PATH": jdk_path_update.replace("\\", "/")
-        }
-        try:
-            self.template_keys_update(cmd_sdt_res_template, replacements, cmd_file)
-        except Exception as e:
-            print(f"Error creating CMD file: {e}")
-            QMessageBox.critical(self, "Error", f"Error creating CMD file: {e}")
-            return False
-
-        ps_command = f'start "" powershell.exe -Command "& \'{cmd_file}\'"'
-        output_file1 = os.path.join(settings.get("scenarioDir"), "households_1.csv").replace("\\", "/")
-        output_file2 = os.path.join(settings.get("scenarioDir"), "persons_1.csv").replace("\\", "/")
-        try:
-            if os.path.exists(output_file1):
-                os.remove(output_file1)
-            if os.path.exists(output_file2):
-                os.remove(output_file2)
-        except Exception as e:
-            print(f"Error removing old output files: {e}")
-            QMessageBox.critical(self, "Error", f"Error removing old output files: {e}")
-            return False
-
-        try:
-            result2 = subprocess.Popen(ps_command, shell=True)
-            if hasattr(result2, "returncode") and result2.returncode is not None and result2.returncode != 0:
-                print("SDT Resident Model run failed.")
-                QMessageBox.critical(self, "Error", "SDT Resident Model run failed.")
-                return False
-        except Exception as e:
-            print(f"SDT Resident Model run failed: {e}")
-            QMessageBox.critical(self, "Error", f"SDT Resident Model run failed: {e}")
-            return False
-
-        # Check for files
-        try:
-            check_exe = os.path.join(settings.get("plugin_dir"), "templates", "wait_for_files.exe").replace("\\", "/")
-            print(f"wait for files: {check_exe}")
-            print(f"Checking for files: {output_file1}, {output_file2}")
-            watcher = subprocess.Popen([check_exe, "180", "18000", output_file1, output_file2])
-            return_code = watcher.wait()
-            if return_code == 0:
-                print(f"SDT Resident Model run successful: {watcher.pid}")
-                if show_message:
-                    QMessageBox.information(self, "Success", "SDT Resident Model run successful. \n\nPlease check the output files in the selected directory.")
-                return True
-            else:
-                print(f"SDT-Res file watcher process failed: {return_code}")
-                QMessageBox.critical(self, "Error", "Watcher process failed.")
-                return False
-        except Exception as e:
-           print(f"Error SDT-Res file watcher process: {e}")
-           return False
-        # Check if the output files exist
-
-
-    def cancel_action(self):
-        print("Action canceled. Closing dialog.")
-        self.reject()  # Closes the dialog without executing any code
-
-    def select_file(self, line_edit, type):
-        if type == "open":
-            file_path, _ = QFileDialog.getOpenFileName(self, "Select File",  "", "csv (*.csv) ;; skim (*.omx);; All Files (*)") 
-        elif type == "save":
-            file_path, _ = QFileDialog.getSaveFileName(self, "Select File",  "", "csv (*.csv) ;; All Files (*)")
-        if file_path:
-            line_edit.setText(file_path)
-
-    def select_directory(self, line_edit):
-        directory = QFileDialog.getExistingDirectory(self, "Select Directory", )
-        if directory:
-            line_edit.setText(directory)
-
-    def populate_layer_combobox(self, combobox, geom_type):
-        """Populate the dropdown with layers of the specified geometry type."""
-        combobox.clear()
-        combobox.addItem("Select a layer", None)  # Default option
-
-        # Get all layers in QGIS
-        layers = QgsProject.instance().mapLayers().values()
-        vector_layers = [layer for layer in layers if hasattr(layer, "geometryType")]
-        for layer in vector_layers:
-            # if isinstance(layer, QgsVectorLayer) and 
-            if layer.geometryType() == {"Point": 0, "LineString": 1, "Polygon": 2}[geom_type]:
-                combobox.addItem(layer.name(), layer)
-    
-    def get_layer_path(self, layer):
-        """Retrieve the data source path of a layer."""
-        if layer:
-            provider = layer.dataProvider()
-            return provider.dataSourceUri().split("|")[0]  # Remove extra filter params
-        return None
-    
+        if show_message:
+            QMessageBox.information(self, "Success", msg)
+        return True

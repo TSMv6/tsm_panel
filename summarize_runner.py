@@ -53,4 +53,4 @@ def run_summary(template, link, vol, out_gpkg, subarea, vol2=None, include_speed
     exe = settings.app_exe("utilities/summarize.exe")
     if not os.path.exists(exe):
         raise FileNotFoundError("summarize.exe not found at: %s" % exe)
-    return subprocess.run([exe, ctl], env=settings.app_env(exe))
+    return settings.run_app([exe, ctl], log_path=os.path.splitext(ctl)[0] + ".log", console=True)

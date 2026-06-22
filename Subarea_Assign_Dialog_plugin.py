@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model
+from .model_run import run_gated_model, begin_run_console
 # from .helper_functions import HelperFun 
 
 import processing
@@ -261,8 +261,8 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             return
         try:
             # odme counts (C++ port of Generate_ODME_Counts.R): subarea link gpkg -> ODME target counts
-            result = subprocess.run([odme_exe, "counts", sub_link_file, count_file],
-                                    env=Config().app_env(odme_exe))
+            result = Config().run_app([odme_exe, "counts", sub_link_file, count_file],
+                                      log_path=os.path.splitext(count_file)[0] + ".log", console=True)
             if result.returncode == 0:
                 print("ODME Target Counts file generated successfully")
             else:
@@ -281,8 +281,8 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             return
         try:
             # odme develop (C++ port of Develop_ODME_Correction_factors.R)
-            result = subprocess.run([odme_exe, "develop", base_tt_file, odme_tt_file, odme_correct_file],
-                                    env=Config().app_env(odme_exe))
+            result = Config().run_app([odme_exe, "develop", base_tt_file, odme_tt_file, odme_correct_file],
+                                      log_path=os.path.splitext(odme_correct_file)[0] + ".log", console=True)
             if result.returncode == 0:
                 print("Successfully computed ODME correction factors")
                 QMessageBox.information(self, "Success", "Successfully computed ODME correction factors.")
@@ -472,6 +472,8 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
         plugin_dir = settings.get("plugin_dir")
         tsm_location = settings.get("tsm_location")
         scenario_dir = settings.get("scenarioDir")
+        # One live-tail window for the whole Subarea run (no per-step black windows).
+        begin_run_console(os.path.join(scenario_dir, "Subarea.log"), "Subarea Assignment - run log")
         eltod_template = os.path.join(plugin_dir, "templates", "ELToD_template.ctl")
         etlod_temp_scenario = os.path.join(scenario_dir, "ELToD_temp.ctl")
         eltod_scenario = os.path.join(scenario_dir, "ELToD.ctl")
@@ -484,6 +486,10 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
 
         self.generate_controls_from_template("{tsm_loc}", tsm_location, eltod_template, etlod_temp_scenario)
         self.generate_controls_from_template("{scenario_loc}", scenario_dir, etlod_temp_scenario, etlod_temp_scenario)
+        # ELToD EL parameter files (toll/turn/closer) ship with the plugin, not under
+        # tsm_location/Parameters: {config_loc} -> plugin_dir/config/eltod_el_parameters.
+        eltod_param_dir = os.path.join(plugin_dir, "config", "eltod_el_parameters")
+        self.generate_controls_from_template("{config_loc}", eltod_param_dir, etlod_temp_scenario, etlod_temp_scenario)
 
         # Export Link GPKG to Link.csv
         sub_link_file = self.get_layer_path(self.comboBox_linkLayer.currentData()) + "|layername=" + settings.get("sub_link_layer_name")
@@ -509,19 +515,20 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             self.close()
             return
 
-         # STEP 1: Generate PopulationSIM input files
+         # STEP 1: Generate PopSyn input files
         try:
-            result1 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "Subarea_LINK.csv"),
+            convert_log = os.path.join(scenario_dir, "Subarea_convert.log")
+            result1 = settings.run_app([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "Subarea_LINK.csv"),
                                       "--drop-geom", "--drop", "A", "--drop", "B", "--rename", "Sub_A=A", "--rename", "Sub_B=B"],
-                                     env=settings.app_env(gpkgcsv_exe))
-            result2 = subprocess.run([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "Subarea_NODE.csv"),
-                                      "--drop-geom"], env=settings.app_env(gpkgcsv_exe))
+                                     log_path=convert_log, console=True)
+            result2 = settings.run_app([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "Subarea_NODE.csv"),
+                                      "--drop-geom"], log_path=convert_log, console=True, append=True)
             if result1.returncode == 0 and result2.returncode == 0:  # Check if the conversion ran successfully
                     print("Link and node file are exported to csv")
             else:
                 print("Link or node file are failed to export to csv.")
         except Exception as e:
-            print("Error running PopulationSIM:", e)
+            print("Error running PopSyn:", e)
             QMessageBox.critical(self, "Error", f"Error exporting GPKG to CSV format in STEP 1: {e}")
             self.close()
         
@@ -629,7 +636,7 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             apply_args = [odme_exe, "apply", fut_sub_file, fut_odme_file, odme_corr_fac]
             if node_replacement_file and os.path.exists(node_replacement_file):
                 apply_args.append(node_replacement_file)
-            result1 = subprocess.run(apply_args, env=settings.app_env(odme_exe))
+            result1 = settings.run_app(apply_args, log_path=os.path.join(scenario_dir, "ODME_apply.log"), console=True)
             if( result1.returncode == 0):
                 print("Successfully applied ODME correction factors")
             else:
@@ -642,11 +649,12 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
         os.remove(etlod_temp_scenario)
 
         # Run ELToD  (shipped under the plugin's Apps/ELToD; was tsm_location/Apps)
-        eltod_exe_path = Config().app_exe("ELToD/ELToD5_23.exe")
+        eltod_exe_path = Config().app_exe("ELToD/ELToD.exe")
         
         # Run ELToD via the shared gated runner (captures output; reports
         # token/offline/model errors in a message box instead of the console).
-        if not run_gated_model(self, [eltod_exe_path, eltod_scenario], "ELToD assignment"):
+        if not run_gated_model(self, [eltod_exe_path, eltod_scenario], "ELToD assignment",
+                               log_path=os.path.join(scenario_dir, "ELToD.log"), console=True):
             return
         print("Subarea Assignment ran successfully")
 

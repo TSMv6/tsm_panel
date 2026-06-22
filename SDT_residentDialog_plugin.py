@@ -59,6 +59,26 @@ class SDTResidentModel(QDialog, Ui_Dialog_SDTRes):
         if settings.get("scenarioDir"):
             self.lineEdit_OutDir.setText(settings.get("scenarioDir"))
 
+        # Model-selection + phase checkboxes (Resident, Visitor, Run-all, phases).
+        # Persisted in Config so the dialog remembers them across open/close.
+        self._cb_settings = {
+            "sdt_run_resident":    self.cb_runResident,
+            "sdt_run_visitor":     self.cb_runVisitor,
+            "sdt_run_all_phases":  self.cb_runAllPhases,
+            "sdt_phase_wfh":       self.cb_wfh,
+            "sdt_phase_auto_own":  self.cb_autoOwn,
+            "sdt_phase_veh_type":  self.cb_vehType,
+            "sdt_phase_mandatory": self.cb_mandatory,
+            "sdt_phase_tour":      self.cb_tour,
+            "sdt_phase_stop":      self.cb_stop,
+            "sdt_phase_trip":      self.cb_trip,
+        }
+        for key, cb in self._cb_settings.items():
+            v = settings.get(key)
+            if v is not None:
+                cb.setChecked(bool(v))
+        self.toggle_phases()  # reflect restored state in the enabled/disabled phases
+
     def _load_help_doc(self, md_path):
         try:
             with open(md_path, "r", encoding="utf-8") as f:
@@ -114,6 +134,9 @@ class SDTResidentModel(QDialog, Ui_Dialog_SDTRes):
         settings.set("telework_share", self.comboBox_TeleworkShare.currentText())
         if self.lineEdit_OutDir.text():
             settings.set("scenarioDir", self.lineEdit_OutDir.text())
+        # Persist the model-selection + phase checkboxes (incl. Visitor).
+        for key, cb in getattr(self, "_cb_settings", {}).items():
+            settings.set(key, cb.isChecked())
 
     def update_settings(self):
         self._sync_config()

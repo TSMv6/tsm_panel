@@ -1,0 +1,7 @@
+policy_id,type,density_min,density_max,toll_min,toll_max,increment,dynamic,cpi_adjust
+1,density,0,11,0.50,0.50,0.25,0,0
+1,density,11,18,0.50,0.50,0.25,0,0
+1,density,18,26,0.50,0.50,0.25,0,0
+1,density,26,35,0.50,0.75,0.25,1,0
+1,density,35,45,0.75,1.00,0.25,1,0
+1,density,45,95,1.00,3.00,0.25,1,0

@@ -1,9 +1,9 @@
 import os, shutil, subprocess, time
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model
+from .model_run import run_gated_model, begin_run_console
 # from .helper_functions import HelperFun 
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtGui import QColor
@@ -75,6 +75,53 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             self.table.setItem(row, 2, QTableWidgetItem(future if future else df))
         # Stretch the three columns to fill the table width.
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # LDT-visitor incremental/absolute toggle. OFF = incremental: run only the
+        # households added between the reference year and the scenario year
+        # (ref < Year <= scen), then append back to the previous year's output. ON =
+        # absolute: all Year <= scen, no reference, no append. read in
+        # run_LDT_visitor() to pick ldtprep's ref arg (ref==scen=absolute).
+        self.checkBox_absolute = QCheckBox(
+            "Absolute run (all HH ≤ scenario year, no increment/append)")
+        # One-time pre-sort of the all-years US syn-HH by hhnuma. The pure-stream
+        # synhh-incremental REQUIRES the file globally sorted by hhnuma; tick this
+        # once (after choosing a new all-years file) to sort it (~10 min). The run
+        # writes <name>_sorted.csv.gz, switches the syn-HH field to it, and unticks
+        # the box so the expensive sort is not repeated every run.
+        self.checkBox_sortSynHH = QCheckBox(
+            "Pre-sort syn-HH by hhnuma (one-time, ~10 min)")
+        self.checkBox_sortSynHH.setChecked(False)   # OFF by default; one-time op, not persisted
+        self.checkBox_sortSynHH.setToolTip(
+            "Run once before the first run with a new all-years syn-HH file. Sorts it "
+            "globally by hhnuma so the incremental step can pure-stream filter by year. "
+            "Takes ~10 minutes; writes <name>_sorted.csv.gz and repoints the syn-HH "
+            "field to it, then unticks itself.")
+        grid2 = self.findChild(QGridLayout, "gridLayout_2")
+        if grid2 is not None:
+            grid2.addWidget(self.checkBox_absolute, 8, 0, 1, 6)
+            grid2.addWidget(self.checkBox_sortSynHH, 9, 0, 1, 6)
+
+        # Base year (2024) has NO prior-year output to increment from, so it MUST run
+        # absolute -- force it on and grey it out. Future years (> base) may be either
+        # incremental (default) or absolute, so the box is enabled for the user.
+        BASE_YEAR = 2024
+        try:
+            _yr = int(settings.get("scenarioYear") or settings.get("networkYear") or BASE_YEAR)
+        except (TypeError, ValueError):
+            _yr = BASE_YEAR
+        if _yr <= BASE_YEAR:
+            self.checkBox_absolute.setChecked(True)
+            self.checkBox_absolute.setEnabled(False)
+            self.checkBox_absolute.setToolTip(
+                f"Base year ({BASE_YEAR}) has no prior-year LDT output to increment from, "
+                "so it always runs absolute (all US HH ≤ scenario year). Locked for the base year.")
+        else:
+            if settings.get("LDT_visitor_absolute"):
+                self.checkBox_absolute.setChecked(True)
+            self.checkBox_absolute.setToolTip(
+                "Off (default): incremental - run only households added between the reference "
+                "year and the scenario year, then append back to the previous output.\n"
+                "On: run every US household with Year ≤ scenario year; no reference, no append.")
         
         # Save these values to config file
         # row_names = []
@@ -128,6 +175,20 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             # self.pushButton.clicked.connect(lambda: self.select_file(self.lineEdit_prevOut, "open"))
             self.lineEdit_prevOut.setEnabled(settings.get("LDT_visitor_userRef"))
             settings.set("LDT_visitor_userRef_filepath",  self.lineEdit_prevOut.text())
+
+        # Base year (and prior) always runs absolute, so the reference-file
+        # calibration block (User Reference File / Reference Year / Reference Tour
+        # File) does not apply -- disable the whole grid. The external-counts table
+        # beside it is a sibling layout and stays usable. Done last so it overrides
+        # the userRef restore above.
+        if _yr <= BASE_YEAR:
+            self.checkBox_userRef.setChecked(False)
+            ref_grid = self.findChild(QGridLayout, "gridLayout")
+            if ref_grid is not None:
+                for i in range(ref_grid.count()):
+                    w = ref_grid.itemAt(i).widget()
+                    if w is not None:
+                        w.setEnabled(False)
 
     def check_userRef(self):
         settings = Config()
@@ -225,6 +286,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             settings.set("LDTExtCountYear", None)
             settings.set("LDT_visitor_userRef", False)
             settings.set("LDT_visitor_userRef_filepath", None)
+        settings.set("LDT_visitor_absolute", self.checkBox_absolute.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
             
@@ -311,6 +373,9 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             return False
 
         settings = Config()
+        # One live-tail window for the whole LDT-visitor run (no per-step black windows).
+        begin_run_console(os.path.join(settings.get("scenarioDir"), "LDT_visitor.log"),
+                          "LDT Visitor - run log")
         #------------------------------------------------------------------------------------
         # Generate updated landuse data file
         landuse_layer = self.comboBox_LU.currentData()
@@ -326,16 +391,20 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             return False
 
         us_lu_file = settings.get("scenarioYear") + "_landuse.dat"
-        ldt_resident_default = os.path.join(settings.get("tsm_location"), "Inputs/LDT_Skims_LU_SynHH", us_lu_file).replace("\\","/")
+        # LDT reference inputs (landuse, vehicle_type_alts, ...) all live in the
+        # user-selected LDT Input Directory (panel field -> LDT_resident_InputDir,
+        # e.g. {tsm_location}/Inputs/LDT_Skims_LU_SynHH). NOT a hardcoded folder.
+        ldt_resident_default = os.path.join(settings.get("LDT_resident_InputDir"), us_lu_file).replace("\\","/")
         ldt_resident_updated = os.path.join(settings.get("scenarioDir"), "LDT_Landuse.dat").replace("\\","/")
         settings.set("LDT_resident_Landuse_updated", ldt_resident_updated)
         print(f"Updated Landuse file: {ldt_resident_updated}")
         print(f"Default Landuse file: {ldt_resident_default}")
         print(f"Landuse layer path: {landuse_layer_path}")
         print(f"ldtprep exe: {ldtprep_exe}")
+        ldt_log = os.path.join(settings.get("scenarioDir"), "LDT_visitor.log")
         try:
-            result1 = subprocess.run([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
-                                     env=Config().app_env(ldtprep_exe))
+            result1 = Config().run_app([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
+                                       log_path=ldt_log, console=True)
             if result1.returncode != 0:
                 QMessageBox.critical(self, "Error", "LDT Landuse update failed.")
                 return False
@@ -347,33 +416,73 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # Generate incremental synthetic household data file
         US_ldt_syn_hh = settings.get("LDT_visitor_SynHH")
         scenYear = settings.get("scenarioYear")
-        ref_year = settings.get("LDTExtCountYear")
+        # NOTE: the one-time C++ sort-synhh pre-sort is no longer needed -- the Python
+        # prep below does sort+filter in ONE pass (pandas sorts 134M rows in ~8s), so
+        # the sort checkbox is now a no-op. ldtprep sort-synhh kept, commented out:
+        # if self.checkBox_sortSynHH.isChecked():
+        #     _stem = US_ldt_syn_hh
+        #     for _ext in (".csv.gz", ".gz", ".csv", ".dat"):
+        #         if _stem.lower().endswith(_ext):
+        #             _stem = _stem[:-len(_ext)]; break
+        #     sorted_hh = (_stem + "_sorted.csv.gz").replace("\\", "/")
+        #     result_sort = Config().run_app([ldtprep_exe, "sort-synhh", US_ldt_syn_hh, sorted_hh],
+        #                                    log_path=ldt_log, console=True, append=True)
+        #     if result_sort.returncode != 0:
+        #         QMessageBox.critical(self, "Error", "Syn-HH one-time sort failed."); return False
+        #     US_ldt_syn_hh = sorted_hh; settings.set("LDT_visitor_SynHH", sorted_hh)
+        #     self.lineEdit_LDTSynHH.setText(sorted_hh); self.checkBox_sortSynHH.setChecked(False)
+        # LDT is run incrementally by design. Default = INCREMENTAL: pass the
+        # reference year so ldtprep keeps only ref < Year <= scen (the households
+        # added since the reference run), which are appended back below to rebuild
+        # the complete set. ABSOLUTE (testing checkbox) = pass ref == scen so
+        # ldtprep keeps ALL Year <= scen, and the append step is skipped.
+        absolute = self.checkBox_absolute.isChecked()
+        if absolute:
+            ref_year = str(scenYear)
+        else:
+            ref_year = settings.get("LDTExtCountYear")
+            if ref_year is None:
+                ref_year = "2023"  # Default reference year if not provided
         out_ldt_syn_hh = os.path.join(settings.get("scenarioDir"), "LDT_visitor_SynHH.dat").replace("/", "\\")
         settings.set("LDT_visitor_SynHH_updated", out_ldt_syn_hh)
 
         print(f"ldtprep exe: {ldtprep_exe}")
         print(f"US HH all years: {US_ldt_syn_hh}")
         print(f"Scenario Year: {scenYear}")
-        print(f"LDT reference year: {ref_year}")
+        print(f"LDT mode: {'ABSOLUTE (Year <= scen, no append)' if absolute else f'INCREMENTAL (ref {ref_year} < Year <= scen)'}")
         print(f"LDT HH updated: {out_ldt_syn_hh}")
 
-        if ref_year is None:
-            ref_year = "2023"  # Default reference year if not provided
-
+        # --- syn-HH prep via Python (pandas): combined filter+sort in ONE pass ------
+        # Replaces the C++ two-step (sort-synhh + synhh-incremental). pandas sorts
+        # 134M rows in ~8s and does sort+filter together, dropping the intermediate
+        # sorted-gz read/write. QGIS ships pandas, so no extra install for the user.
+        import sys as _sys
+        qgis_py = os.path.join(_sys.exec_prefix, "python.exe")
+        if not os.path.exists(qgis_py):
+            qgis_py = _sys.executable
+        prep_script = os.path.join(settings.get("plugin_dir"), "ldt_synhh_prep.py")
         try:
-            result2 = subprocess.run([ldtprep_exe, "synhh-incremental", US_ldt_syn_hh, scenYear, ref_year, out_ldt_syn_hh],
-                                     env=Config().app_env(ldtprep_exe))
+            result2 = Config().run_app([qgis_py, prep_script, "visitor", US_ldt_syn_hh, str(scenYear), str(ref_year), out_ldt_syn_hh],
+                                       log_path=ldt_log, console=True, append=True)
             if result2.returncode != 0:
                 QMessageBox.critical(self, "Error", "LDT HH from Scenario failed.")
                 return False
         except Exception as e:
             print(f"Running LDT Syn HH update: {e}")
             return False
+        # --- C++ ldtprep path (commented out per the python switch; kept for fallback) ---
+        # try:
+        #     result2 = Config().run_app([ldtprep_exe, "synhh-incremental", US_ldt_syn_hh, str(scenYear), str(ref_year), out_ldt_syn_hh],
+        #                                log_path=ldt_log, console=True, append=True)
+        #     if result2.returncode != 0:
+        #         QMessageBox.critical(self, "Error", "LDT HH from Scenario failed."); return False
+        # except Exception as e:
+        #     print(f"Running LDT Syn HH update: {e}"); return False
 
         self.check_nHH(settings.get("LDT_visitor_SynHH_updated")) # Update number of households in settings
 
         #------------------------------------------------------------------------------------
-        LDT_Parameters = os.path.join(settings.get("tsm_location"), "config", "ldt_coefficients_toml").replace("\\", "/")
+        LDT_Parameters = os.path.join(settings.get("plugin_dir"), "config", "ldt_coefficients_toml").replace("\\", "/")
 
         check_railSkim = os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_RailSkim")))
         check_roadSkim = os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_RoadSkim")))
@@ -417,9 +526,19 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # Run the LDT-visitor model (ldt-run.exe) via the shared gated runner
         # (captures output, reports token/offline/model errors in a message box).
         if not run_gated_model(self, [ldt_exe, properties_file], "LDT-visitor model",
-                               cwd=settings.get("scenarioDir")):
+                               cwd=settings.get("scenarioDir"),
+                               log_path=os.path.join(settings.get("scenarioDir"), "LDT_visitor_run.log"),
+                               console=True):
             return False
-        
+
+        # Absolute (testing) run: ldtprep already emitted the full Year <= scen set,
+        # so there is nothing to append back. Done.
+        if absolute:
+            if show_message:
+                QMessageBox.information(self, "Success",
+                                       "LDT Visitor Model run successfully (absolute run - all HH <= scenario year, no append).")
+            return True
+
         #------------------------------------------------------------------------------------
         # Check and append if incremental
         if self.checkBox_userRef.isChecked():
@@ -446,8 +565,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         incremental_output = os.path.join(scenarioDir, "OS_LD_increment_tour_out.csv")
 
         try:
-            result4 = subprocess.run([ldtprep_exe, "synhh-append", incremental_output, checkBox_userRef_str, prev_out_file, tsm_location,  scenarioDir, scenYear],
-                                     env=Config().app_env(ldtprep_exe))
+            result4 = Config().run_app([ldtprep_exe, "synhh-append", incremental_output, checkBox_userRef_str, prev_out_file, tsm_location,  scenarioDir, scenYear],
+                                       log_path=ldt_log, console=True, append=True)
             if result4.returncode == 0:
                 print(f"Appended LDT incremental results with previous years: OS_LD_tour_out.csv")
                 # QMessageBox.information(self, "Success", "Appended LDT incremental results with previous years: OS_LD_tour_out.csv")

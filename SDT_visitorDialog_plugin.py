@@ -39,6 +39,11 @@ class SDTVisitorModel(QDialog, Ui_Dialog_SDTVis):
         if settings.get("scenarioDir"):
             self.lineEdit_OutDir.setText(settings.get("scenarioDir"))
 
+        # This dialog runs the VISITOR model ONLY. Hide the resident/visitor
+        # selection — choosing to also run visitor belongs in the SDT Resident dialog.
+        for w in (self.label_models, self.cb_runResident, self.cb_runVisitor):
+            w.hide()
+
     def _load_help_doc(self, md_path):
         try:
             with open(md_path, "r", encoding="utf-8") as f:
@@ -77,19 +82,13 @@ class SDTVisitorModel(QDialog, Ui_Dialog_SDTVis):
         if not self.lineEdit_OutDir.text():
             QMessageBox.critical(self, "Error", "Please select an output directory.")
             return False
-        if not (self.cb_runResident.isChecked() or self.cb_runVisitor.isChecked()):
-            QMessageBox.critical(self, "Error", "Select at least one model to run (Resident and/or Visitor).")
-            return False
 
         self._sync_config()
-        # The visitor dialog has no resident-phase granularity: if Resident is
-        # also selected here it runs the full resident model.
-        resident = self.cb_runResident.isChecked()
-        visitor = self.cb_runVisitor.isChecked()
-        flags = {"resident": resident, "wfh": resident, "mandatory": resident,
-                 "auto_own": resident, "veh_type": resident, "tour": resident,
-                 "stop": resident, "trip": resident,
-                 "visitor": visitor, "visitor_veh": visitor}
+        # This dialog runs the VISITOR model only (resident + its phases stay off).
+        flags = {"resident": False, "wfh": False, "mandatory": False,
+                 "auto_own": False, "veh_type": False, "tour": False,
+                 "stop": False, "trip": False,
+                 "visitor": True, "visitor_veh": True}
         ok, msg = run_sdt_models(flags)
         if not ok:
             QMessageBox.critical(self, "Error", msg)
