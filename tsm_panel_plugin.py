@@ -61,7 +61,7 @@ class TsmPanelPlugin():
 
     def initGui(self):
         """Initialize the plugin UI."""
-        self.action = QAction(QIcon("icon.png"), "Open Panel", self.iface.mainWindow())
+        self.action = QAction(QIcon("icon.png"), "Open TSMv6", self.iface.mainWindow())
         self.action.triggered.connect(self.run)
         self.iface.addPluginToMenu("TSM UI", self.action)
 
@@ -238,6 +238,30 @@ class TsmPanelPlugin():
         # Check box for running all tools
         self.ui.pushButton_ClearSelection.clicked.connect(self.reset_all_step_labels)
         self.ui.pushButton_RunSelected.clicked.connect(self.run_all_tools)
+        self.ui.pushButton_UncheckAll.clicked.connect(self._uncheck_all_steps)
+        self.ui.pushButton_FullRun.clicked.connect(self._check_full_run)
+
+    # Step checkboxes that make up a "full run": steps 1-8 + step 9 ELToD. HyDRA
+    # (the alternative step 9) and Subarea Assignment (optional) are NOT included.
+    _FULL_RUN_CHECKBOXES = ("checkBox_PopSIM", "checkBox_Skimmy", "checkBox_SDTRes",
+                            "checkBox_SDTVis", "checkBox_LDTRes", "checkBox_LDTVis",
+                            "checkBox_Truck", "checkBox_TripTable", "checkBox_TSMAssign")
+    _ALL_STEP_CHECKBOXES = _FULL_RUN_CHECKBOXES + ("checkBox_Hydra", "checkBox_SubAssign")
+
+    def _uncheck_all_steps(self):
+        """Uncheck every step checkbox."""
+        for name in self._ALL_STEP_CHECKBOXES:
+            cb = getattr(self.ui, name, None)
+            if cb is not None:
+                cb.setChecked(False)
+
+    def _check_full_run(self):
+        """Select a full run: steps 1-8 + ELToD (step 9). Clears HyDRA and Subarea."""
+        full = set(self._FULL_RUN_CHECKBOXES)
+        for name in self._ALL_STEP_CHECKBOXES:
+            cb = getattr(self.ui, name, None)
+            if cb is not None:
+                cb.setChecked(name in full)
 
     def _on_eltod_toggled(self, checked):
         """ELToD selected -> clear HyDRA (they are the same step 9, mutually exclusive)."""

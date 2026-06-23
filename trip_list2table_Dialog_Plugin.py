@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApp
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import begin_run_console
+from .model_run import begin_run_console, closes_run_console
 from . import msr_run
 # from .helper_functions import HelperFun
 
@@ -374,6 +374,7 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
         print(f"Wrote agentPlans control: {out_path}")
         return out_path
 
+    @closes_run_console
     def run_trip_table(self, show_message=False):
         settings = Config()
         settings.set("output_resolution", self.comboBox_Resolution.currentText())

@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApp
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model, begin_run_console
+from .model_run import run_gated_model, begin_run_console, closes_run_console
 # from .helper_functions import HelperFun 
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtGui import QColor
@@ -351,6 +351,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             return provider.dataSourceUri().split("|")[0]  # Remove extra filter params
         return None
     
+    @closes_run_console
     def run_LDT_visitor(self, show_message=False):
         # Check if all required fields are filled
         if not self.lineEdit_InputDir.text():

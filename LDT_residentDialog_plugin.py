@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QLab
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model, open_log_console
+from .model_run import run_gated_model, begin_run_console, closes_run_console
 # from .helper_functions import HelperFun 
 
 from .LDT_resident_ui import Ui_Dialog_LDTRes
@@ -244,6 +244,7 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
             return provider.dataSourceUri().split("|")[0]  # Remove extra filter params
         return None
     
+    @closes_run_console
     def run_LDT_resident(self, show_message=False):
         # Check if all required fields are filled
         if not self.lineEdit_InputDir.text():
@@ -298,7 +299,7 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         # this log; every step streams (appends) to it, windowless. (Pilot of the
         # one-window-per-run model -- replaces a flashing console per step.)
         ldt_log = os.path.join(settings.get("scenarioDir"), "LDT_resident.log")
-        open_log_console(ldt_log, title="LDT Resident - run log")
+        begin_run_console(ldt_log, "LDT Resident - run log")
         try:
             result1 = Config().run_app([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
                                        log_path=ldt_log, console=False, append=True)

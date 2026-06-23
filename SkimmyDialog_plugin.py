@@ -2,7 +2,7 @@ import os
 import csv
 import subprocess
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
-from .model_run import run_gated_model, begin_run_console
+from .model_run import run_gated_model, begin_run_console, closes_run_console
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -260,6 +260,7 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
     # ------------------------------------------------------------------
     # Run
     # ------------------------------------------------------------------
+    @closes_run_console
     def run_Skimmy(self, show_message=False):
         settings = Config()
 

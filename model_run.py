@@ -19,6 +19,7 @@ Two entry points:
 
 import collections
 import ctypes
+import functools
 import os
 import re
 import subprocess
@@ -204,19 +205,51 @@ def open_log_console(log_path, title="TSM run log"):
 # shared log (streamed, windowless) instead of each popping its own console -- one
 # live-tail window (begin_run_console) shows the whole run. None = per-call behavior.
 _RUN_LOG = None
+_RUN_CONSOLE = None  # Popen of the live-tail window, so end_run_console() can close it.
+
+
+def _close_console_proc(proc):
+    """Terminate a live-tail console process, which closes its window."""
+    if proc is None:
+        return
+    try:
+        if proc.poll() is None:
+            proc.terminate()  # kills the powershell tail -> its console window closes
+    except Exception:
+        pass
+
 
 def begin_run_console(log_path, title="TSM run log"):
     """Start a one-window run: open ONE live-tail console on log_path and route every
     subsequent console=True step (run_gated_model / run_app) to stream-append into it,
-    so a whole dialog run shows in a single window with no per-step black windows."""
-    global _RUN_LOG
+    so a whole dialog run shows in a single window with no per-step black windows.
+    Closes any leftover window from a previous run first."""
+    global _RUN_LOG, _RUN_CONSOLE
+    _close_console_proc(_RUN_CONSOLE)  # don't leak a prior run's window
     _RUN_LOG = log_path
-    return open_log_console(log_path, title)
+    _RUN_CONSOLE = open_log_console(log_path, title)
+    return _RUN_CONSOLE
 
 def end_run_console():
-    """Stop redirecting console=True steps (back to per-call behavior)."""
-    global _RUN_LOG
+    """Stop redirecting console=True steps AND close the live-tail window (called when
+    a dialog's run finishes, so the run-log window does not linger)."""
+    global _RUN_LOG, _RUN_CONSOLE
     _RUN_LOG = None
+    _close_console_proc(_RUN_CONSOLE)
+    _RUN_CONSOLE = None
+
+
+def closes_run_console(fn):
+    """Decorator for a dialog's run method: after it returns (success, failure, or
+    exception), close the live-tail run-log window opened via begin_run_console so it
+    does not linger. Robust to the method's many early-return paths."""
+    @functools.wraps(fn)
+    def _wrap(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            end_run_console()
+    return _wrap
 
 
 def run_gated_model_result(args, model_label="This model", log_path=None, console=False,

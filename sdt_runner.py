@@ -11,7 +11,7 @@ step for now; it produces tsm_landuse.csv that the model reads as taz_data.
 import os
 import subprocess
 from .tsm_settings import Config
-from .model_run import run_gated_model_result, begin_run_console
+from .model_run import run_gated_model_result, begin_run_console, closes_run_console
 
 TELEWORK_TO_SHARE = {"7%": "0.07", "10%": "0.10", "15%": "0.15", "20%": "0.20", "25%": "0.25"}
 
@@ -20,6 +20,7 @@ def _fwd(path):
     return str(path).replace("\\", "/")
 
 
+@closes_run_console
 def run_sdt_models(flags):
     """Run the SDT model(s). `flags` is a dict of the [models] toggles:
        resident, wfh, mandatory, auto_own, veh_type, tour, stop, trip,

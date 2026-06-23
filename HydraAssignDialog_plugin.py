@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model, begin_run_console
+from .model_run import run_gated_model, begin_run_console, closes_run_console
 
 from .hydra_ui import Ui_DialogHydra
 
@@ -192,6 +192,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         QMessageBox.information(self, "Settings Updated", "HyDRA settings have been updated.")
 
     # ------------------------------------------------------------------
+    @closes_run_console
     def run_hydra(self, show_message=False):
         settings = Config()
         tsm_location = settings.get("tsm_location")

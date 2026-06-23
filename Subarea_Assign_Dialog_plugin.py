@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model, begin_run_console
+from .model_run import run_gated_model, begin_run_console, closes_run_console
 # from .helper_functions import HelperFun 
 
 import processing
@@ -459,6 +459,7 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
             'SAVE_STYLES_METADATA': False
         })
 
+    @closes_run_console
     def run_subarea_assignment(self):        
         settings = Config()
         if not settings.get("sub_link_layer_name") or not settings.get("sub_node_layer_name"):

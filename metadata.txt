@@ -2,8 +2,8 @@
 [general]
 name=TSM Model Plugin
 qgisMinimumVersion=3.0
-author=AmarSarvepalli
-email=Venkat.Sarvepalli@dot.state.fl.us
+author= Amar Sarvepalli
+email= Venkat.Sarvepalli@dot.state.fl.us
 description=A QGIS plugin to interface with Turnpike State Model (TSM)
 version=1.76
 icon=icons/FL_USA250 logo.png
