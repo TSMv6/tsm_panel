@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5 import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-# from .helper_functions import HelperFun 
+from . import tsm_history
+# from .helper_functions import HelperFun
 
 import processing
 
@@ -93,21 +94,33 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         print("Action canceled. Closing dialog.")
         self.reject()  # Closes the dialog without executing any code
 
+    @staticmethod
+    def _ensure_suffix(path, suffix):
+        """Append `suffix` (e.g. '.xlsx') if `path` doesn't already end with it.
+        QFileDialog.getSaveFileName does not reliably auto-append the filter
+        extension, so the chosen/typed path can come back bare."""
+        if path and not path.lower().endswith(suffix.lower()):
+            path += suffix
+        return path
+
     def select_file(self, line_edit, type):
         if type == "open":
             file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "All Files (*)") #"", "JSON Files (*.json);;All Files (*)")
         elif type == "save":
-            file_path, _ = QFileDialog.getSaveFileName(self, "Select File", "", "GeoPackage (*.gpkg);; Shapefiles (*.shp)") 
-            
+            file_path, _ = QFileDialog.getSaveFileName(self, "Select File", "", "GeoPackage (*.gpkg);;Shapefiles (*.shp)")
+            if file_path and "." not in os.path.basename(file_path):
+                file_path = self._ensure_suffix(file_path, ".gpkg")
+
         if file_path:
             line_edit.setText(file_path)
 
     def select_file_xlsx(self, line_edit, type):
         if type == "open":
-            file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "Excel File (*xlsx)") #"", "JSON Files (*.json);;All Files (*)")
+            file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "Excel File (*.xlsx)") #"", "JSON Files (*.json);;All Files (*)")
         elif type == "save":
-            file_path, _ = QFileDialog.getSaveFileName(self, "Select File", "", "Excel File (*xlsx);; All Files (*)") 
-            
+            file_path, _ = QFileDialog.getSaveFileName(self, "Select File", "", "Excel File (*.xlsx);;All Files (*)")
+            file_path = self._ensure_suffix(file_path, ".xlsx")
+
         if file_path:
             line_edit.setText(file_path)
 
@@ -156,6 +169,27 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
            # Keep the dialog open
         # self.show()
+    def _remove_layers_by_path(self, file_path):
+        """Drop every project layer that points to `file_path` (matched by the
+        actual file on disk, not the layer name). QGIS holds an open handle on a
+        loaded GeoPackage; if we rewrite it while loaded, the new write appends a
+        second layer (file size doubles, two layers appear). Removing the layer
+        first releases the handle so summarize.exe can overwrite cleanly."""
+        if not file_path:
+            return 0
+        target = os.path.normcase(os.path.abspath(file_path))
+        proj = QgsProject.instance()
+        removed = 0
+        for lyr in list(proj.mapLayers().values()):
+            try:
+                src = lyr.source().split("|")[0]      # strip "|layername=..."
+                if os.path.normcase(os.path.abspath(src)) == target:
+                    proj.removeMapLayer(lyr.id())
+                    removed += 1
+            except Exception:
+                continue
+        return removed
+
     def load_output_layer(self, file_path, layer_name):
         """Load the output GPKG file into QGIS."""
         if os.path.exists(file_path):
@@ -178,6 +212,29 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             else:
                 print(f"Error Unable to Layer Symbology to: {layer_name}")
                 
+    def _write_validation_stats(self, loadedOut_file, xlsx_path):
+        """Build the validation workbook (.xlsx) from the daily CSV that
+        summarize.exe just wrote. Pure Python -- logs live to the History box +
+        log file, no console window."""
+        from PyQt5.QtWidgets import QApplication
+        out = (loadedOut_file or "").replace("\\", "/")
+        daily_csv = (out[:-5] + "_daily.csv") if out.lower().endswith(".gpkg") \
+            else (out + "_daily.csv")
+
+        def logf(m):
+            tsm_history.log_action(m, "Summarization")
+            QApplication.processEvents()  # repaint the History box live (we're on the UI thread)
+        try:
+            from .validation_runner import write_validation_xlsx
+            n = write_validation_xlsx(daily_csv, xlsx_path, log=logf)
+            QMessageBox.information(
+                self, "Validation Stats",
+                "Validation workbook written (%d counted locations):\n%s" % (n, xlsx_path))
+        except Exception as ve:
+            logf("Summarization: validation FAILED -- %s" % ve)
+            QMessageBox.warning(self, "Validation Stats",
+                                "Validation stats could not be written:\n%s" % ve)
+
     def run_summary(self):
         settings = Config()
         plugin_dir = settings.get("plugin_dir")
@@ -192,16 +249,20 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             return
         
         validationStats = settings.get("validationStats")
-        if validationStats:
-            bool_validation_stats = "TRUE"
-            validationStats_file = self.lineEdit_validationStats.text()
-        else:
-            bool_validation_stats = "FALSE"
-            validationStats_file = "None"
-        
         if validationStats and not self.lineEdit_validationStats.text():
             QMessageBox.warning(self, "Warning", "Please select a validation stats file.")
             return
+
+        if validationStats:
+            bool_validation_stats = "TRUE"
+            # Guarantee the .xlsx extension even if the path was typed by hand
+            # (the save dialog enforces it, manual entry does not). Reflect the
+            # corrected path back into the field so the user sees what's written.
+            validationStats_file = self._ensure_suffix(self.lineEdit_validationStats.text(), ".xlsx")
+            self.lineEdit_validationStats.setText(validationStats_file)
+        else:
+            bool_validation_stats = "FALSE"
+            validationStats_file = "None"
 
         # Get the path of the link layer
         link_layer_path = self.get_layer_path(link_layer)
@@ -209,7 +270,7 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             QMessageBox.warning(self, "Warning", "Link layer path not found.")
             return
         
-        from summarize_runner import run_summary
+        from .summarize_runner import run_summary
         is_subarea = bool(settings.get("isSubareaLevel"))
 
         print("link_layer_path:", link_layer_path)
@@ -219,15 +280,30 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
 
         loaded_qml_file = os.path.join(plugin_dir, "qgis_styles/TSM_Loaded_Symbology.qml").replace("\\","/")
 
+        # Overwrite: if the output GPKG is already loaded (matched by file path),
+        # drop it so the rewrite doesn't append a second layer / double the file.
+        dropped = self._remove_layers_by_path(loadedOut_file)
+        if dropped:
+            tsm_history.log_action(
+                "Summarization: dropped %d loaded layer(s) for overwrite of %s"
+                % (dropped, os.path.basename(loadedOut_file)), "Summarization")
+
         try:
             # C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
             result1 = run_summary("summarize_loaded.toml", link_layer_path, volume_file, loadedOut_file, subarea=is_subarea)
-      
+
             if result1.returncode == 0:  # Check if the R script ran successfully
                 print("loaded entwork volumes script ran successfully.")
-                
+
                 self.load_output_layer(loadedOut_file, "LoadedNetwork")
                 self.load_layer_symbology(loaded_qml_file, "LoadedNetwork")
+
+                # Validation stats: Python post-step (pandas/openpyxl) reading the
+                # daily CSV summarize just wrote. Logs live to the History box + log
+                # file; no extra console window.
+                if validationStats:
+                    self._write_validation_stats(loadedOut_file, validationStats_file)
+
                 QMessageBox.information(self, "Success", "Loaded network volumes script ran successfully.")
             else:
                 print("error running loaded networks or validation.")

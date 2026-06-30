@@ -8,7 +8,7 @@ control file, and invokes summarize.exe (resolved via settings.app_exe).
 import os
 import subprocess
 
-from tsm_settings import Config
+from .tsm_settings import Config
 
 
 def _rename(subarea, include_speed_ff):

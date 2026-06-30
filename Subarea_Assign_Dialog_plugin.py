@@ -661,7 +661,7 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
 
         # ====================================================================================
         # Loaded network -- C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
-        from summarize_runner import run_summary
+        from .summarize_runner import run_summary
 
         sub_link_layer_path = self.get_layer_path(self.comboBox_linkLayer.currentData())
         sub_volume_file = settings.get("sub_volume_file")

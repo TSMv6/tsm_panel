@@ -511,7 +511,7 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         
         # ====================================================================================
         # Loaded network -- C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
-        from summarize_runner import run_summary
+        from .summarize_runner import run_summary
 
         link_layer_path = self.get_layer_path(self.comboBox_linkLayer.currentData())
         volume_file = settings.get("volume_file")

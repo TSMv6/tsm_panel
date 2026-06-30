@@ -55,6 +55,14 @@ class Config:
         if os.path.isdir(gdata):
             env["GDAL_DATA"] = gdata
         if os.path.isdir(projd):
+            # Set BOTH PROJ_DATA (PROJ 9.1+) and PROJ_LIB (legacy) to the bundled
+            # proj.db. QGIS injects its OWN PROJ_DATA into our environment, and the
+            # bundled proj is NEWER than QGIS's -- if we leave QGIS's PROJ_DATA in
+            # place the exe loads that older proj.db and rejects it ("PROJ: no
+            # database context specified ... DATABASE.LAYOUT.VERSION ... from another
+            # PROJ installation"), which breaks CRS lookups. Overriding both makes
+            # every bundled GDAL exe use its own matching proj.db.
+            env["PROJ_DATA"] = projd
             env["PROJ_LIB"] = projd
         return env
 
