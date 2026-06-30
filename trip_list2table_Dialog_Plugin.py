@@ -92,8 +92,8 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
     # ------------------------------------------------------------------
     def _default_inputs(self):
         """Ordered (key, label, default_path) for the per-scenario agentPlans
-        INPUTS only: SDT/LDT demand, the distance skim and the synthetic
-        households. Distribution/lookup files are configs, not inputs -- see
+        INPUTS only: SDT/LDT demand and the synthetic households.
+        Distribution/lookup files are configs, not inputs -- see
         _config_distributions(). The key matches the agentPlans control key."""
         scen = self.lineEdit_SCENLoc.text().replace("\\", "/")
         loop = self.comboBox_Feedback.currentText() or "1"
@@ -109,7 +109,6 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
             ("sdt_vis_trips", "SDT visitor trips",        sc(f"sdt_visitor_trips_{loop}.csv")),
             ("fl_ldt_tours",  "FL LDT tours",             sc("FL_LD_tour_out.csv")),
             ("os_ldt_tours",  "OS LDT tours",             sc("OS_LD_tour_out.csv")),
-            ("distance_skim", "Distance skim",            sc("Skim_distbased.csv")),
             ("sdt_syn_hh",    "SDT synthetic households", syn_hh),
         ]
 
@@ -245,8 +244,6 @@ destination).</li>
 <li><b>Access/egress mode choice:</b> each ground leg gets a mode by share
 (Auto 81.5%, DME 18.3%, Other 2%). DME (Disney Magical Express) is only valid at OIA
 and only for Disney resort zones; otherwise it reverts to Auto.</li>
-<li><b>Distance guard:</b> air access/egress legs longer than 25 miles are flagged
-(<code>LDT_Air_AccEgr25M</code>) since travellers rarely lodge far from the airport.</li>
 <li>If both tour ends fall in the same DMA, the &quot;air&quot; tour is treated as an
 auto trip instead.</li>
 </ul>

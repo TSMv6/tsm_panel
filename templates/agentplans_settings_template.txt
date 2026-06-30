@@ -31,7 +31,6 @@ canaveral_cruise     = {canaveral_cruise}
 ga_al_destinations   = {ga_al_destinations}
 cbm_external_lookup  = {cbm_external_lookup}
 taz_dma              = {taz_dma}
-distance_skim        = {distance_skim}
 sdt_syn_hh           = {sdt_syn_hh}
 
 # Outputs:
