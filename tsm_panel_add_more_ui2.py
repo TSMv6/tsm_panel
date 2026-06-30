@@ -522,7 +522,7 @@ class Ui_DockWidget(object):
         self.pushButton_ProjectSettings.setText(_translate("DockWidget", "Scenario Specs"))
         self.pushButton_loadSettings.setText(_translate("DockWidget", "Load Settings"))
         self.pushButton_GenPrjSetting.setText(_translate("DockWidget", "General Configuration"))
-        self.pushButton_saveSettings.setText(_translate("DockWidget", "Save Settings"))
+        self.pushButton_saveSettings.setText(_translate("DockWidget", "Save As"))
         self.pushButton_ViewSettings.setText(_translate("DockWidget", "View Settings"))
         self.Step_2_Editors.setTitle(_translate("DockWidget", "Editors"))
         self.pushButton_104.setText(_translate("DockWidget", "SE Data Editor"))

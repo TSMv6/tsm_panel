@@ -538,9 +538,10 @@ class TsmPanelPlugin():
         # Ensure parent is a QMainWindow, then use it as the parent for QFileDialog
         parent_main_window = self.iface.mainWindow()
         if isinstance(parent_main_window, QMainWindow):
-            file_path, _ = QFileDialog.getSaveFileName(parent_main_window, "Save Settings", "", "JSON Files (*.json);;All Files (*)")
-            settings.set("scenario_settings_file", file_path)
+            file_path, _ = QFileDialog.getSaveFileName(parent_main_window, "Save As", "", "JSON Files (*.json);;All Files (*)")
             if file_path:
+                # Future saves (and the JSON's own record) point at this file.
+                settings.set("scenario_settings_file", file_path)
                 try:
                     # Save the settings as JSON
                     settings.save_to_file(file_path)
@@ -559,6 +560,8 @@ class TsmPanelPlugin():
             settings.load_from_file(default_file)  # Call existing function with last file path
             plugin_dir = os.path.dirname(__file__).replace("\\", "/")
             settings.set("plugin_dir", plugin_dir)
+            # Saves target the file we loaded, not the path baked into the JSON.
+            settings.set("scenario_settings_file", default_file)
         else:
             print("No previous settings file found.")
 
@@ -588,7 +591,6 @@ class TsmPanelPlugin():
         parent_main_window = self.iface.mainWindow()
         if isinstance(parent_main_window, QMainWindow):
             file_path, _ = QFileDialog.getOpenFileName(parent_main_window, "Open Settings", "", "JSON Files (*.json);;All Files (*)")
-            settings.set("scenario_settings_file", file_path)
             print(file_path)
             if file_path:
                 try:
@@ -596,6 +598,11 @@ class TsmPanelPlugin():
                     settings.load_from_file(file_path)  # Load the settings from the selected file path
                     plugin_dir = os.path.dirname(__file__).replace("\\", "/")
                     settings.set("plugin_dir", plugin_dir)
+                    # Point future saves at the file we just opened -- NOT the path
+                    # baked into the JSON. load_from_file() replaces the whole dict,
+                    # so this must be set AFTER the load (a copied/renamed file then
+                    # saves back to itself, not its original location).
+                    settings.set("scenario_settings_file", file_path)
                     # self.save_last_used_settings(file_path)  # Save the last used settings file path
                     print("UI updated with loaded settings")
                     # Show this scenario's saved action history, then log the load.
