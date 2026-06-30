@@ -241,11 +241,12 @@ class TsmPanelPlugin():
         self.ui.pushButton_UncheckAll.clicked.connect(self._uncheck_all_steps)
         self.ui.pushButton_FullRun.clicked.connect(self._check_full_run)
 
-    # Step checkboxes that make up a "full run": steps 1-8 + step 9 ELToD. HyDRA
-    # (the alternative step 9) and Subarea Assignment (optional) are NOT included.
-    _FULL_RUN_CHECKBOXES = ("checkBox_PopSIM", "checkBox_Skimmy", "checkBox_SDTRes",
-                            "checkBox_SDTVis", "checkBox_LDTRes", "checkBox_LDTVis",
-                            "checkBox_Truck", "checkBox_TripTable", "checkBox_TSMAssign")
+    # Step checkboxes that make up a "full run": steps 1-9 + step 10 ELToD. HyDRA
+    # (the alternative step 10) and Subarea Assignment (optional) are NOT included.
+    _FULL_RUN_CHECKBOXES = ("checkBox_Many2One", "checkBox_Skimmy", "checkBox_PopSIM",
+                            "checkBox_SDTRes", "checkBox_SDTVis", "checkBox_LDTRes",
+                            "checkBox_LDTVis", "checkBox_Truck", "checkBox_TripTable",
+                            "checkBox_TSMAssign")
     _ALL_STEP_CHECKBOXES = _FULL_RUN_CHECKBOXES + ("checkBox_Hydra", "checkBox_SubAssign")
 
     def _uncheck_all_steps(self):
@@ -256,7 +257,7 @@ class TsmPanelPlugin():
                 cb.setChecked(False)
 
     def _check_full_run(self):
-        """Select a full run: steps 1-8 + ELToD (step 9). Clears HyDRA and Subarea."""
+        """Select a full run: steps 1-9 + ELToD (step 10). Clears HyDRA and Subarea."""
         full = set(self._FULL_RUN_CHECKBOXES)
         for name in self._ALL_STEP_CHECKBOXES:
             cb = getattr(self.ui, name, None)
@@ -295,10 +296,12 @@ class TsmPanelPlugin():
         # step (visitors are produced by the resident run).
         self._sync_sdt_visitor_checkbox()
         selected_tools = []
-        if self.ui.checkBox_PopSIM.isChecked():
-            selected_tools.append("PopSIM")
+        if getattr(self.ui, "checkBox_Many2One", None) and self.ui.checkBox_Many2One.isChecked():
+            selected_tools.append("many_to_one")
         if self.ui.checkBox_Skimmy.isChecked():
             selected_tools.append("FL_skimmy")
+        if self.ui.checkBox_PopSIM.isChecked():
+            selected_tools.append("PopSIM")
         if self.ui.checkBox_SDTRes.isChecked():
             selected_tools.append("SDT_resident")
         if self.ui.checkBox_SDTVis.isChecked():
@@ -341,7 +344,10 @@ class TsmPanelPlugin():
                     self.mark_step_in_progress(self.ui.label_Many2One)
                     QApplication.processEvents()
                     dialog = TsmNetManDialog()
-                    dialog.run_Many2One_script()
+                    result = dialog.run_Many2One_script()
+                    if result is False:
+                        self.mark_step_failed(self.ui.label_Many2One)
+                        return False
                     self.mark_step_completed(self.ui.label_Many2One)
                     QApplication.processEvents()
                 elif tool_name == 'PopSIM':
@@ -621,9 +627,9 @@ class TsmPanelPlugin():
         # Give every status label the same fixed footprint so text changes
         # don't resize the column.
         status_labels = [
-            "label_PopSIM", "label_Skimmy", "label_SDTRes", "label_SDTVis",
-            "label_LDTRes", "label_LDTVis", "label_Truck", "label_TripList",
-            "label_TSMAssign", "label_SubAssign", "label_Hydra",
+            "label_Many2One", "label_PopSIM", "label_Skimmy", "label_SDTRes",
+            "label_SDTVis", "label_LDTRes", "label_LDTVis", "label_Truck",
+            "label_TripList", "label_TSMAssign", "label_SubAssign", "label_Hydra",
         ]
         for name in status_labels:
             lbl = getattr(self.ui, name, None)
@@ -725,7 +731,8 @@ class TsmPanelPlugin():
 
     def reset_all_step_labels(self):
         for label in [
-            self.ui.label_PopSIM, self.ui.label_LDTRes, self.ui.label_LDTVis,
+            self.ui.label_Many2One, self.ui.label_PopSIM,
+            self.ui.label_LDTRes, self.ui.label_LDTVis,
             self.ui.label_SDTRes, self.ui.label_SDTVis, self.ui.label_Skimmy,
             self.ui.label_TripList, self.ui.label_TSMAssign, self.ui.label_SubAssign
         ]:
