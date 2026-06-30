@@ -23,6 +23,34 @@ the trip list, and an optional toll-policy CSV.
 4. **LTM + Meso** — LTM globally, with selected facility types run **mesoscopic**
    (vehicle packets) for sharper dynamics on freeways/managed lanes.
 5. **LTM + Meso + Signals** — adds the **signal-delay model** at signalized nodes.
+6. **Node + PointQueue (nodeDNL)** — node-conserving loader (`NodeDnl`, `DTA_NodePQ`):
+   flow is propagated through an explicit **node model** so `N_out = N_in` at every
+   interior node, with **inflow-capacity** receiving (point-queue style).
+7. **Node + Spatial/LTM (nodeDNL)** — the node-conserving loader with **spatial
+   storage/spillback** receiving (`DTA_NodeLTM`). This is the AgentFlow engine's **own
+   default** now (the conserving loader) — pick it for the most physically consistent
+   volumes.
+
+### Node refresh — per iteration vs per chunk (node loaders)
+
+The **`DTA_Node*`** loaders run a node simulation to propagate flow. The **Node
+refresh** control (`NODE_SCHEDULE`) sets how often that node sim is refreshed within
+an equilibrium iteration, trading speed for tightness:
+
+- **Per iteration** (`per_iter`, default) — route every chunk against the frozen node
+  travel times and run the node sim **once per iteration**. Noisier early but ~3–6×
+  faster wall-time — **statewide-affordable**.
+- **Per chunk** (`per_chunk`) — refresh the node sim **after every routing chunk**
+  (≈ *Route Chunks* passes). Cleanest convergence, ~10× the node passes —
+  **county-scale**.
+- **Hybrid (per-iter → per-chunk)** — cheap `per_iter` through the early/sampling
+  iterations, then a short `per_chunk` polish over the last few to restore the
+  directional AM/PM peaks. The dialog expands this to an iteration ramp from
+  *Max Iterations* (e.g. 30 iters → `1-25:iter, 26-30:chunk`).
+
+(*Route Chunks* is the number of incremental routing batches per pass; a "chunk" is a
+batch of routing groups, not a VOT class. Node refresh applies to the node loaders;
+it is harmless for the point-queue / LTM engines.)
 
 ### Activating meso / micro per link
 

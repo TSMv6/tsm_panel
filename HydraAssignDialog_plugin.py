@@ -20,6 +20,19 @@ MACRO_PRESETS = {
     "LTM":                  ("DTA_LTM", "", False),
     "LTM + Meso":           ("DTA_LTM", "11,91,93,94", False),
     "LTM + Meso + Signals": ("DTA_LTM", "11,91,93,94", True),
+    # Node-conserving loaders (NodeDnl): N_out == N_in at every interior node.
+    # NodePQ = inflow-capacity receiving, NodeLTM = spatial storage/spillback.
+    "Node + PointQueue (nodeDNL)":   ("DTA_NodePQ", "", False),
+    "Node + Spatial/LTM (nodeDNL)":  ("DTA_NodeLTM", "", False),
+}
+
+# Per-iteration node-DNL refresh stride (NODE_SCHEDULE). Maps the GUI label to the
+# control-file value; "hybrid" is expanded to an iteration ramp at write time
+# (cheap per_iter through the sampling stages, a short per_chunk polish at the end).
+NODE_SCHEDULES = {
+    "Per iteration (fast - statewide)": "per_iter",
+    "Per chunk (tight - county)":       "per_chunk",
+    "Hybrid (per-iter -> per-chunk)":   "hybrid",
 }
 
 
@@ -81,6 +94,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self.lineEdit_Gap.setText(str(settings.get("hydra_gap")))
         if settings.get("hydra_chunks"):
             self.lineEdit_Chunks.setText(str(settings.get("hydra_chunks")))
+        if settings.get("hydra_node_schedule"):
+            self._select_node_schedule(settings.get("hydra_node_schedule"))
         if settings.get("hydra_trip_file"):
             self.lineEdit_TripFile.setText(settings.get("hydra_trip_file"))
         if settings.get("hydra_toll_policy"):
@@ -131,6 +146,28 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         _, meso, _ = MACRO_PRESETS.get(name, ("DTA_PointQueue", "", False))
         self.lineEdit_MesoFtypes.setText(meso)
 
+    def _select_node_schedule(self, value):
+        """Select the node-schedule combo from a saved control value (per_iter /
+        per_chunk / hybrid)."""
+        for text, val in NODE_SCHEDULES.items():
+            if val == value:
+                self._select_combo(self.comboBox_NodeSchedule, text)
+                return
+
+    def _node_schedule_value(self):
+        """NODE_SCHEDULE control value from the combo. 'hybrid' expands to an
+        iteration ramp: cheap per_iter for most iterations, a short per_chunk
+        polish at the end (last ~15%, min 3) to restore the AM/PM peaks."""
+        val = NODE_SCHEDULES.get(self.comboBox_NodeSchedule.currentText(), "per_iter")
+        if val != "hybrid":
+            return val
+        try:
+            iters = int(float(self.lineEdit_Iters.text().strip() or "30"))
+        except ValueError:
+            iters = 30
+        split = max(1, iters - max(3, round(iters * 0.15)))
+        return "per_chunk" if split >= iters else f"1-{split}:iter, {split+1}-{iters}:chunk"
+
     def toggle_micro(self, on):
         self.lineEdit_MicroFtypes.setEnabled(on)
         self.comboBox_Coupling.setEnabled(on)
@@ -164,6 +201,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_iters", self.lineEdit_Iters.text())
         settings.set("hydra_gap", self.lineEdit_Gap.text())
         settings.set("hydra_chunks", self.lineEdit_Chunks.text())
+        settings.set("hydra_node_schedule",
+                     NODE_SCHEDULES.get(self.comboBox_NodeSchedule.currentText(), "per_iter"))
         # Threads are NOT persisted here -- they come from General Configuration.
         # Inputs / outputs (output dir is always the scenario directory)
         settings.set("hydra_trip_file", self.lineEdit_TripFile.text())
@@ -199,10 +238,15 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
 
         link_layer = self.comboBox_LinkLayer.currentData()
         node_layer = self.comboBox_NodeLayer.currentData()
+        # Network input: dialog dropdown when standalone; in a full run (or when
+        # nothing is picked) chain off the Link Consolidator outputs.
+        sel_link = self.get_layer_path(link_layer) if link_layer else ""
+        sel_node = self.get_layer_path(node_layer) if node_layer else ""
+        link_path, node_path = settings.resolve_network_paths(sel_link, sel_node)
         trip_file = self.lineEdit_TripFile.text().strip()
         out_dir = (settings.get("scenarioDir") or "").replace("\\", "/")
-        if not (link_layer and node_layer and trip_file and out_dir):
-            QMessageBox.critical(self, "Error", "Please select the Link layer, Node layer, and Trip list (output goes to the scenario directory).")
+        if not (link_path and node_path and trip_file and out_dir):
+            QMessageBox.critical(self, "Error", "Need a Link network, Node network, and Trip list. Pick the layers here, or run Link Consolidation first (output goes to the scenario directory).")
             return False
         # One live-tail window for the whole Hydra run (no per-step black windows).
         begin_run_console(os.path.join(out_dir, "Hydra.log"), "AgentFlow / Hydra - run log")
@@ -226,8 +270,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         node_csv = os.path.join(out_dir, "Node_hydra.csv")
         convert_log = os.path.join(out_dir, "Hydra_convert.log")
         try:
-            for i, (src_layer, dst, label) in enumerate(((link_layer, link_csv, "link"), (node_layer, node_csv, "node"))):
-                src = self.get_layer_path(src_layer)
+            for i, (src, dst, label) in enumerate(((link_path, link_csv, "link"), (node_path, node_csv, "node"))):
                 r = Config().run_app([gpkgcsv, "to-csv", src, dst, "--drop-geom"],
                                      log_path=convert_log, console=True, append=(i > 0))
                 if r.returncode != 0 or not os.path.exists(dst):
@@ -249,6 +292,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write(f"MAX_ITERATIONS        {self.lineEdit_Iters.text().strip() or '30'}\n")
                 f.write(f"RELATIVE_GAP          {self.lineEdit_Gap.text().strip() or '0.01'}\n")
                 f.write(f"ROUTE_CHUNKS          {self.lineEdit_Chunks.text().strip() or '10'}\n")
+                # Node-DNL refresh stride (per_iter / per_chunk / hybrid ramp).
+                # Only the DTA_Node* loaders run the node sim, but the key is
+                # harmless for the others.
+                f.write(f"NODE_SCHEDULE         {self._node_schedule_value()}\n")
                 f.write(f"THREADS               {self.lineEdit_Threads.text().strip() or '0'}\n")
                 if meso:
                     f.write(f"MESO_FTYPE            {meso}\n")

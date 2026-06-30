@@ -315,15 +315,22 @@ class TsmPanelPlugin():
         if self.ui.checkBox_TSMAssign.isChecked():
             selected_tools.append("tsm_assign")
 
-        for tool in selected_tools:
-            success = self.run_tool([tool])  # run_tool now returns True/False
-            if not success:
-                self.log_message(f"Stopped — remaining steps skipped.")
-                QMessageBox.warning(None, "Stopped", f"Stopped at step: {tool}. Remaining steps will not be run.")
-                break
-        else:
-            self.log_message("All selected models completed.")
-            QMessageBox.information(None, "Information", "All selected models have been run with saved settings")
+        # Mark a full run so downstream steps (Skimmy/ELToD/HyDRA) chain their
+        # network input from the Link Consolidator outputs instead of the
+        # (possibly stale or unloaded) layer dropdown. Always cleared afterwards.
+        Config.set_full_run(True)
+        try:
+            for tool in selected_tools:
+                success = self.run_tool([tool])  # run_tool now returns True/False
+                if not success:
+                    self.log_message(f"Stopped — remaining steps skipped.")
+                    QMessageBox.warning(None, "Stopped", f"Stopped at step: {tool}. Remaining steps will not be run.")
+                    break
+            else:
+                self.log_message("All selected models completed.")
+                QMessageBox.information(None, "Information", "All selected models have been run with saved settings")
+        finally:
+            Config.set_full_run(False)
 
     def run_tool(self, tool_list):
         """Run the tool(s) using saved settings. Returns True if all succeed, False if any fail."""

@@ -363,8 +363,16 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
     @closes_run_console
     def run_TSM_assignment(self, show_message=False):        
         settings = Config()
-        if not settings.get("link_layer_name") or not settings.get("node_layer_name"):
-            QMessageBox.critical(self, "Error", "Please select both Link and Node layers.")
+        # Network input: dialog dropdown when standalone; in a full run (or when
+        # nothing is picked) chain off the Link Consolidator outputs.
+        _ll = self.comboBox_linkLayer.currentData()
+        _nl = self.comboBox_nodeLayer.currentData()
+        sel_link = self.get_layer_path(_ll) if _ll else ""
+        sel_node = self.get_layer_path(_nl) if _nl else ""
+        link_path, node_path = settings.resolve_network_paths(sel_link, sel_node)
+        if not link_path or not node_path:
+            QMessageBox.critical(self, "Error",
+                "No link/node network found. Pick the layers here, or run Link Consolidation first.")
             return
         if not settings.get("triptable_file") or not settings.get("volume_file"):
             QMessageBox.critical(self, "Error", "Please select both Trip Table and Volume files.")
@@ -387,14 +395,14 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
         self.generate_controls_from_template("{config_loc}", eltod_param_dir, etlod_temp_scenario, etlod_temp_scenario)
 
         # Export Link GPKG to Link.csv
-        link_file = self.get_layer_path(self.comboBox_linkLayer.currentData()) + "|layername=" + settings.get("link_layer_name")
+        link_file = link_path
         print("link_file", link_file)
         link_csv_file = os.path.join(scenario_dir, "LINK.csv").replace("/","\\")
         settings.set("link_csv_file", link_csv_file)
         # self.export_GPKG_to_csv(link_file, link_csv_file) # Built-in option is slow
         
         # Export Node GPKG to Node.csv
-        node_file = self.get_layer_path(self.comboBox_nodeLayer.currentData()) + "|layername=" + settings.get("node_layer_name")
+        node_file = node_path
         print("node_file", node_file)
         node_csv_file = os.path.join(scenario_dir, "NODE.csv").replace("/","\\")
         settings.set("node_csv_file", node_csv_file)
@@ -412,8 +420,8 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
          # STEP 1: Generate PopSyn input files
         try:
             convert_log = os.path.join(scenario_dir, "TSMAssign_convert.log")
-            result1 = Config().run_app([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_linkLayer.currentData()), os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"], log_path=convert_log, console=True)
-            result2 = Config().run_app([gpkgcsv_exe, "to-csv", self.get_layer_path(self.comboBox_nodeLayer.currentData()), os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"], log_path=convert_log, console=True, append=True)
+            result1 = Config().run_app([gpkgcsv_exe, "to-csv", link_path, os.path.join(scenario_dir, "LINK.csv"), "--drop-geom"], log_path=convert_log, console=True)
+            result2 = Config().run_app([gpkgcsv_exe, "to-csv", node_path, os.path.join(scenario_dir, "NODE.csv"), "--drop-geom"], log_path=convert_log, console=True, append=True)
             if result1.returncode == 0 and result2.returncode == 0:  # Check if the conversion ran successfully
                     print("Link and node file are exported to csv")
             else:

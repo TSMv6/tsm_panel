@@ -266,8 +266,14 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
 
         link_layer = self.comboBox_Linklayer.currentData()
         node_layer = self.comboBox_Nodelayer.currentData()
-        if not link_layer or not node_layer:
-            QMessageBox.critical(self, "Error", "Please select both a link and a node layer.")
+        # Network input: dialog dropdown when standalone; in a full run (or when
+        # nothing is picked) chain off the Link Consolidator outputs.
+        sel_link = self.get_layer_path(link_layer) if link_layer else ""
+        sel_node = self.get_layer_path(node_layer) if node_layer else ""
+        link_path, node_path = settings.resolve_network_paths(sel_link, sel_node)
+        if not link_path or not node_path:
+            QMessageBox.critical(self, "Error",
+                "No link/node network found. Pick the layers here, or run Link Consolidation first.")
             return False
         skim_file = self.lineEdit_OutSkimFile.text().strip()
         if not skim_file:
@@ -300,8 +306,7 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
                 return False
 
         output_dir = os.path.dirname(skim_file)
-        link_path = self.get_layer_path(link_layer)
-        node_path = self.get_layer_path(node_layer)
+        # link_path / node_path already resolved above (dropdown or consolidator).
 
         # 1) Dump gpkg attributes, then transform to PathSkim's positional schema.
         link_full = os.path.join(output_dir, "_link_full.csv")

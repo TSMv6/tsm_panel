@@ -120,6 +120,38 @@ class Config:
         kw.setdefault("creationflags", no_window | high)
         return subprocess.run(args, env=env, **kw)
 
+    # ---- network-input chaining -------------------------------------------
+    # Link Consolidation (step 1) writes the canonical scenario network to
+    # TSM_Link_File / TSM_Node_File and auto-loads them as the TSM_Link /
+    # TSM_Node layers. Downstream steps (Skimmy, ELToD, HyDRA) should chain off
+    # those during a full run -- where the dialogs aren't touched and the layers
+    # may not even be loaded -- while a standalone run honors the layer the user
+    # picked. A class-level flag marks a full run in progress (never persisted).
+    _full_run_active = False
+
+    @classmethod
+    def set_full_run(cls, active):
+        """Mark a full-model run in progress (set by the panel's Run TSM)."""
+        Config._full_run_active = bool(active)
+
+    @classmethod
+    def full_run_active(cls):
+        return Config._full_run_active
+
+    def resolve_network_paths(self, link_sel="", node_sel=""):
+        """Resolve (link_path, node_path) for a downstream step. A standalone run
+        uses the dialog's picked layer paths (link_sel/node_sel); in a full run,
+        or when a selection is empty, fall back to the Link Consolidator outputs
+        (TSM_Link_File / TSM_Node_File) so the chain works even with no layers
+        loaded. Returns file paths (possibly empty strings)."""
+        link = (link_sel or "").strip()
+        node = (node_sel or "").strip()
+        if Config._full_run_active or not link:
+            link = (self.get("TSM_Link_File") or link or "").strip()
+        if Config._full_run_active or not node:
+            node = (self.get("TSM_Node_File") or node or "").strip()
+        return link, node
+
     def save_to_file(self, file_path):
             """Save the configuration settings to a JSON file."""
             try:
