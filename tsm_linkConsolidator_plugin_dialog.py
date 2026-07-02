@@ -1,12 +1,12 @@
 import os
 import subprocess
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5.QtWidgets import QTextBrowser
+from qgis.PyQt.QtWidgets import QTextBrowser
 from .tsm_link_consolidator_ui import Ui_Dialog
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 
-from PyQt5.QtCore import Qt
+from qgis.PyQt.QtCore import Qt
 from .tsm_settings import Config
 
 # Name of the netPrep control file written/read in the scenario (output) directory.
@@ -79,6 +79,13 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
         if settings.get("bool_Counts") is not None:
             self.checkBox_Counts.setChecked(self._str2bool(settings.get("bool_Counts")))
+        # Count field: user-driven (no hardcoded TSMv5.COUNT_24). Options come from
+        # the selected line layer's fields matching CNT / COUNT / AADT; the choice is
+        # saved globally (Config "count_field") so netPrep and Summarization agree.
+        self.lineLayerCombo.currentIndexChanged.connect(self._populate_count_fields)
+        self.checkBox_Counts.toggled.connect(self.comboBox_CountField.setEnabled)
+        self.comboBox_CountField.setEnabled(self.checkBox_Counts.isChecked())
+        self._populate_count_fields()
         # QLOS capacities file (user setting). Default to {tsm_location}/Inputs/netPrep.
         cap = settings.get("netprep_capacities_file")
         if not cap:
@@ -90,7 +97,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # Help text: render docs/LINK_CONSOLIDATION.md into the side panel.
         self.textBrowser = self.findChild(QTextBrowser, 'textBrowser')
         self.textBrowser.setOpenExternalLinks(True)
-        self.textBrowser.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.textBrowser.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         self._load_help_doc(os.path.join(plugin_dir, "docs", "LINK_CONSOLIDATION.md"))
 
         # ------------------------------------------------------------------
@@ -204,6 +211,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if "keep_Counts" in cfg:
             self.checkBox_Counts.setChecked(self._str2bool(cfg["keep_Counts"]))
+        if cfg.get("COUNT_FIELD"):
+            cf = cfg["COUNT_FIELD"].strip()
+            if self.comboBox_CountField.findText(cf) < 0:
+                self.comboBox_CountField.insertItem(0, cf)
+            self.comboBox_CountField.setCurrentText(cf)
 
         if cfg.get("output_dir"):
             self.output_directory.setText(cfg["output_dir"])
@@ -218,6 +230,29 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
     # ======================================================================
     # UI behaviour
     # ======================================================================
+    def _populate_count_fields(self):
+        """Fill the count-field dropdown from the selected GeoMaster line layer:
+        every field whose name contains CNT, COUNT or AADT (case-insensitive).
+        The previously saved choice (Config "count_field") is re-selected when
+        still present; with no layer selected the saved value is offered alone so
+        a headless/full run still writes the right COUNT_FIELD."""
+        import re as _re
+        saved = (Config().get("count_field") or "").strip()
+        current = self.comboBox_CountField.currentText().strip() or saved
+        layer = self.lineLayerCombo.currentData()
+        names = []
+        if layer is not None and hasattr(layer, "fields"):
+            pat = _re.compile(r"CNT|COUNT|AADT", _re.I)
+            names = [f.name() for f in layer.fields() if pat.search(f.name())]
+        if current and current not in names:
+            names.insert(0, current)
+        self.comboBox_CountField.blockSignals(True)
+        self.comboBox_CountField.clear()
+        self.comboBox_CountField.addItems(names)
+        if current in names:
+            self.comboBox_CountField.setCurrentText(current)
+        self.comboBox_CountField.blockSignals(False)
+
     def toggle_msr_fields(self):
         """Enable MSR subarea/lookup inputs only for the MSR resolution."""
         is_msr = self.modelResolution.currentText() == "MSR"
@@ -265,6 +300,9 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
         settings.set("netprep_capacities_file", self.lineEdit_Capacities.text())
         settings.set("bool_Counts", self.checkBox_Counts.isChecked())
+        # Global count field -- netPrep, Summarization and validation all read this.
+        if self.comboBox_CountField.currentText().strip():
+            settings.set("count_field", self.comboBox_CountField.currentText().strip())
         settings.set("GM_line_layer", self.lineLayerCombo.currentText())
         settings.set("GM_node_layer", self.nodeLayerCombo.currentText())
         settings.set("GM_centroid_layer", self.lineLayerCombo_2.currentText())
@@ -422,6 +460,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             return False
 
         bool_Counts = self.checkBox_Counts.isChecked()
+        # User-selected ground-count field (dropdown next to Keep Counts). Saved
+        # globally so Summarization / validation read the same column name.
+        count_field = self.comboBox_CountField.currentText().strip()
+        if count_field:
+            settings.set("count_field", count_field)
 
         # QLOS capacities lookup (FTYPE|lanes -> capacity) is a user setting / model
         # input, not a plugin asset and NOT a hardcoded path in netPrep. Default to
@@ -452,6 +495,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"output_dir = {output_dir}\n")
                 f.write(f"Settings_File = {settings_file}\n")
                 f.write(f"keep_Counts = {bool_Counts}\n")
+                if count_field:
+                    f.write(f"COUNT_FIELD = {count_field}\n")
                 f.write(f"TSM_Link_File = {output_linkfile}\n")
                 f.write(f"TSM_Node_File = {output_nodefile}\n")
                 f.write(f"plugin_dir = {plugin_dir}\n")

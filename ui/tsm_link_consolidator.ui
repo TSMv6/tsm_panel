@@ -197,6 +197,13 @@
             </widget>
            </item>
            <item row="0" column="1">
+            <widget class="QComboBox" name="comboBox_CountField">
+             <property name="toolTip">
+              <string>Ground-count field on the GeoMaster line layer (fields containing CNT / COUNT / AADT). Saved globally so netPrep and Summarization use the same field.</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
             <widget class="QLabel" name="label_NetResolution">
              <property name="text">
               <string>Network Resolution</string>
@@ -206,7 +213,7 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="2">
+           <item row="0" column="3">
             <widget class="QComboBox" name="modelResolution">
              <property name="toolTip">
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose Model Resolution (TSM or MSR)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
