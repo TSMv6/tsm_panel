@@ -1,5 +1,5 @@
 import json, os
-from PyQt5.QtWidgets import QDialog, QFileDialog
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog
 
 class Config:
     _instance = None

@@ -1,10 +1,10 @@
 import os
 import subprocess
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox,QTableWidget, QTableWidgetItem, QMainWindow
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox,QTableWidget, QTableWidgetItem, QMainWindow
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5 import uic  # For loading .ui dynamically
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from qgis.PyQt import uic  # For loading .ui dynamically
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
 
 from .tsm_settings import Config
 
@@ -41,7 +41,7 @@ class ViewSettings(QDialog, Ui_Form):
         # self.table.setRowCount(0)  # Clear any existing rows
         # self.table.setColumnCount(2)
         # self.table.setHorizontalHeaderLabels(["Key", "Value"])
-        # self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        # self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
 
         saveSettings_button = getattr(self, "pushButton_Save", None)
         saveSettings_button.clicked.connect(lambda _, tool= "save":self.save_settings_to_file())
@@ -62,7 +62,7 @@ class ViewSettings(QDialog, Ui_Form):
         self.table.setColumnCount(3)
         self.table.setColumnHidden(1, True)
         self.table.setHorizontalHeaderLabels(["Label", "Key", "Value"])
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
 
         self.table.setColumnWidth(0, 150)  # Set width of the first column
         self.table.setColumnWidth(1, 100)  # Set width of the second column
@@ -80,7 +80,7 @@ class ViewSettings(QDialog, Ui_Form):
             if key in settings:
                 new_value = settings[key]
                 new_value_item = QTableWidgetItem(str(new_value))
-                new_value_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+                new_value_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, 2, new_value_item)
 
         # Drop obsolete rows (auto-renumbers the table; avoids fragile .ui edits).
@@ -95,11 +95,11 @@ class ViewSettings(QDialog, Ui_Form):
         #     value = settings[key]
         #     key_item = QTableWidgetItem(str(key))
         #     print(f"Key: {key}, Value: {value}")
-        #     # key_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        #     # key_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
         #     # self.table.setItem(row, 0, key_item)
 
         #     value_item = QTableWidgetItem(str(value))
-        #     value_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+        #     value_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable)
         #     self.table.setItem(row, 1, value_item)
 
         self.table.blockSignals(False)

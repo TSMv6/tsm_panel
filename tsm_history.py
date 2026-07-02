@@ -68,7 +68,7 @@ def _field_name(widget):
 
 def _log_snapshot(dialog, ui_name, action):
     """Record every input field's current value so empties are visible."""
-    from PyQt5.QtWidgets import QLineEdit, QComboBox, QCheckBox, QRadioButton
+    from qgis.PyQt.QtWidgets import QLineEdit, QComboBox, QCheckBox, QRadioButton
     log_action(f"{action} — fields:", ui_name)
     for w in dialog.findChildren(QLineEdit):
         _append(f"    • {_field_name(w)} = {w.text().strip() or '(empty)'}")
@@ -86,7 +86,7 @@ def instrument_dialog(dialog, ui_name):
         return
     dialog._history_instrumented = True
 
-    from PyQt5.QtWidgets import (QLineEdit, QCheckBox, QRadioButton, QComboBox,
+    from qgis.PyQt.QtWidgets import (QLineEdit, QCheckBox, QRadioButton, QComboBox,
                                  QPushButton, QDialogButtonBox)
 
     def edit_logger(w, nm):

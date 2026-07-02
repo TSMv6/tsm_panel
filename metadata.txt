@@ -1,9 +1,48 @@
-
 [general]
 name=TSM Model Plugin
 qgisMinimumVersion=3.0
-author= Amar Sarvepalli
-email= Venkat.Sarvepalli@dot.state.fl.us
-description=A QGIS plugin to interface with Turnpike State Model (TSM)
-version=1.76
+qgisMaximumVersion=4.99
+supportsQt6=True
+author=Amar Sarvepalli
+email=Venkat.Sarvepalli@dot.state.fl.us
+description=A QGIS plugin to interface with the Turnpike State Model (TSM) version 6 - configure, run and summarize the full model chain from one panel.
+about=TSM version 6 (TSMv6) is Florida's Turnpike statewide, agent-based
+    travel model. This plugin is the model's user interface: a dockable QGIS
+    panel that configures a scenario (General Configuration, Scenario Specs,
+    saved/loaded as a per-scenario settings JSON), runs each model step with a
+    checkbox ("Check Full Run" chains steps 1-10), live-logs every run, and
+    loads/summarizes the outputs as QGIS layers. All model engines are compiled
+    C++ executables bundled under the plugin's Apps/ folder (with their own GDAL
+    and VC runtime DLLs) - users install nothing beyond QGIS and this plugin.
+    .
+    Network models - GeoMaster (HERE/Navteq-based) network preparation:
+    netPrep.exe (link consolidation: ~4M GeoMaster links filtered and merged to
+    the ~600K-link TSM routable network + GMNS export) and PathSkim.exe
+    (Skimmy: multithreaded path-based congested/free-flow skims to OMX).
+    .
+    Demand models - synthetic population and person/agent travel demand:
+    popsim-run.exe + popsimprep.exe (PopSyn: IPF-based synthetic households,
+    persons and group quarters), sdt-run.exe (short-distance resident and
+    visitor tours), ldt-run.exe + ldtprep.exe (long-distance resident and
+    visitor tours incl. air access/egress), and agentPlans.exe (assembles all
+    markets - SDT/LDT/trucks/externals - into the hourly agent trip list and
+    trip tables, with MSR disaggregation via msr.exe).
+    .
+    Routing models - two interchangeable assignment engines: ELToD.exe
+    (TRANSIMS-based quasi-dynamic toll-choice assignment) and afdta.exe
+    (HyDRA / AgentFlow-DTA: agent-based dynamic traffic assignment with
+    point-queue, LTM and node-conserving nodeDNL loaders, meso/micro corridors,
+    express-lane toll choice). Support utilities include se_aggregate.exe,
+    gpkgcsv.exe, summarize.exe (loaded-network + validation summaries),
+    subarea.exe, odme.exe and SkimConverter.exe.
+    .
+    Runs on QGIS 3.x (Qt5) and QGIS 4.x (Qt6) from a single code base via the
+    qgis.PyQt compatibility layer.
+version=1.80
+changelog=1.80 (2026-06-30): single source for QGIS 3 (Qt5) and QGIS 4 (Qt6);
+    bundled VC runtime DLLs beside all engine exes (no installs for end users);
+    Link Consolidator + Skimmy join the full-run chain (steps renumbered 1-10);
+    HyDRA nodeDNL engines (DTA_NodePQ / DTA_NodeLTM) + per-iter/per-chunk node
+    refresh; validation workbook (xlsx) from the loaded-network summary;
+    scenario settings file now tracks the opened JSON (Save As).
 icon=icons/FL_USA250 logo.png

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QAction, QMainWindow
+from qgis.PyQt.QtWidgets import QAction, QMainWindow
 from qgis.PyQt.QtGui import QIcon
 from .tsm_subarea_plugin_dialog import TsmSubareaExtDialog
 

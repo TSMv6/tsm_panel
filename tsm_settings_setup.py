@@ -1,7 +1,7 @@
 import json
 import os
-from PyQt5.QtWidgets import QDialog, QFileDialog, QPushButton, QLineEdit
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QPushButton, QLineEdit
+from qgis.PyQt import uic  # For loading .ui dynamically
 
 class SettingsDialog(QDialog):
     """Dynamically loads a .ui file and connects actions to widgets."""

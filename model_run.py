@@ -25,7 +25,7 @@ import re
 import subprocess
 import time
 from ctypes import wintypes
-from PyQt5.QtWidgets import QMessageBox
+from qgis.PyQt.QtWidgets import QMessageBox
 
 from . import tsm_usage
 

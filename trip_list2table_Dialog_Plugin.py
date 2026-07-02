@@ -1,7 +1,7 @@
 import os, shutil, subprocess, time
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from .model_run import begin_run_console, closes_run_console
 from . import msr_run
@@ -143,7 +143,7 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         """(Re)build the editable input rows. Unless use_defaults is True, each row
         is prefilled with a saved override (Config 'tt_input_<key>') if present,
         else the computed default."""
-        from PyQt5.QtWidgets import QLabel, QLineEdit, QPushButton
+        from qgis.PyQt.QtWidgets import QLabel, QLineEdit, QPushButton
         grid = self.gridLayout_Inputs
         self._clear_layout(grid)
         self._input_edits.clear()

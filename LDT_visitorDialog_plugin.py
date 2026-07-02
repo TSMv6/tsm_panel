@@ -1,12 +1,12 @@
 import os, shutil, subprocess, time
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from .model_run import run_gated_model, begin_run_console, closes_run_console
 # from .helper_functions import HelperFun 
-from PyQt5.QtCore import Qt, QSettings
-from PyQt5.QtGui import QColor
+from qgis.PyQt.QtCore import Qt, QSettings
+from qgis.PyQt.QtGui import QColor
 
 from .LDT_outOfState_ui import Ui_Dialog_LDTos
 
@@ -74,7 +74,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             self.table.setItem(row, 1, QTableWidgetItem(count if count else dc))
             self.table.setItem(row, 2, QTableWidgetItem(future if future else df))
         # Stretch the three columns to fill the table width.
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # LDT-visitor incremental/absolute toggle. OFF = incremental: run only the
         # households added between the reference year and the scenario year
@@ -329,7 +329,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         self.lineEdit_NumHH.setText("Calculating...")
         QApplication.processEvents()
         # file_path = settings.get("LDT_visitor_SynHH")
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         total_lines = self.count_lines(file_path)
         self.lineEdit_NumHH.setText(str(total_lines))
         settings.set("LDT_visitor_nHH", total_lines)

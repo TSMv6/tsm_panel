@@ -1,6 +1,6 @@
 import os
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from . import msr_run
 
