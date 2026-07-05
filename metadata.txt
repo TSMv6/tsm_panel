@@ -1,48 +1,88 @@
 [general]
 name=TSM Model Plugin
+version=1.81
+date=2026-07-04
+author=Amar Sarvepalli
+email=venkat.sarvepalli@dot.state.fl.us
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 supportsQt6=True
-author=Amar Sarvepalli
-email=Venkat.Sarvepalli@dot.state.fl.us
-description=A QGIS plugin to interface with the Turnpike State Model (TSM) version 6 - configure, run and summarize the full model chain from one panel.
-about=TSM version 6 (TSMv6) is Florida's Turnpike statewide, agent-based
-    travel model. This plugin is the model's user interface: a dockable QGIS
-    panel that configures a scenario (General Configuration, Scenario Specs,
-    saved/loaded as a per-scenario settings JSON), runs each model step with a
-    checkbox ("Check Full Run" chains steps 1-10), live-logs every run, and
-    loads/summarizes the outputs as QGIS layers. All model engines are compiled
-    C++ executables bundled under the plugin's Apps/ folder (with their own GDAL
-    and VC runtime DLLs) - users install nothing beyond QGIS and this plugin.
-    .
-    Network models - GeoMaster (HERE/Navteq-based) network preparation:
-    netPrep.exe (link consolidation: ~4M GeoMaster links filtered and merged to
-    the ~600K-link TSM routable network + GMNS export) and PathSkim.exe
-    (Skimmy: multithreaded path-based congested/free-flow skims to OMX).
-    .
-    Demand models - synthetic population and person/agent travel demand:
-    popsim-run.exe + popsimprep.exe (PopSyn: IPF-based synthetic households,
-    persons and group quarters), sdt-run.exe (short-distance resident and
-    visitor tours), ldt-run.exe + ldtprep.exe (long-distance resident and
-    visitor tours incl. air access/egress), and agentPlans.exe (assembles all
-    markets - SDT/LDT/trucks/externals - into the hourly agent trip list and
-    trip tables, with MSR disaggregation via msr.exe).
-    .
-    Routing models - two interchangeable assignment engines: ELToD.exe
-    (TRANSIMS-based quasi-dynamic toll-choice assignment) and afdta.exe
-    (HyDRA / AgentFlow-DTA: agent-based dynamic traffic assignment with
-    point-queue, LTM and node-conserving nodeDNL loaders, meso/micro corridors,
-    express-lane toll choice). Support utilities include se_aggregate.exe,
-    gpkgcsv.exe, summarize.exe (loaded-network + validation summaries),
-    subarea.exe, odme.exe and SkimConverter.exe.
-    .
-    Runs on QGIS 3.x (Qt5) and QGIS 4.x (Qt6) from a single code base via the
-    qgis.PyQt compatibility layer.
-version=1.80
-changelog=1.80 (2026-06-30): single source for QGIS 3 (Qt5) and QGIS 4 (Qt6);
-    bundled VC runtime DLLs beside all engine exes (no installs for end users);
-    Link Consolidator + Skimmy join the full-run chain (steps renumbered 1-10);
-    HyDRA nodeDNL engines (DTA_NodePQ / DTA_NodeLTM) + per-iter/per-chunk node
-    refresh; validation workbook (xlsx) from the loaded-network summary;
-    scenario settings file now tracks the opened JSON (Save As).
 icon=icons/FL_USA250 logo.png
+description=QGIS interface to Florida's Turnpike Enterprise (FTE's) State Model - TSM v6. Configure, run and summarize the full model chain from one panel.
+about=TSMv6 is Florida's Turnpike Enterprise (FTE's) State Model (TSM): a
+    statewide, agent-based travel model (AgBM = ABM + DTA); this plugin is its
+    user interface. All engines are bundled C++ exes under Apps/ (with their
+    own GDAL + VC runtime DLLs) - nothing to install beyond QGIS.
+    .
+    - Panel: per-scenario settings (JSON), step checkboxes, "Check Full Run"
+    chains steps 1-10, live run logs (closing the log window cancels the run).
+    - Network models: netPrep.exe (link consolidation + GMNS export),
+    PathSkim.exe (Skimmy path-based skims to OMX).
+    - Demand models: popsim-run.exe (PopSyn), sdt-run.exe, ldt-run.exe,
+    agentPlans.exe (agent trip lists / trip tables, MSR).
+    - Routing models: ELToD.exe (quasi-DTA toll choice) or afdta.exe
+    (HyDRA agent-based DTA with nodeDNL loaders).
+    - Analyst: summarize.exe loaded-network summaries + validation workbook.
+    - Single code base for QGIS 3 (Qt5) and QGIS 4 (Qt6).
+changelog=
+    From TSMv5 to TSMv6: TSMv5 is a disaggregate TOUR-BASED demand model
+    (activity-based model family, ABM) with static assignment. TSMv6 is an
+    AGENT-BASED model (AgBM = ABM + DTA): the same disaggregate travelers
+    become individual agents whose trips are listed by agentPlans and routed
+    and loaded by dynamic traffic assignment (HyDRA/AgentFlow, or ELToD for
+    quasi-DTA toll choice), run end to end from this panel. Base network
+    updated to Navteq/HERE 2024 Q4 (GeoMaster); all models re-engineered onto
+    a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
+    engines replaced by the bundled exes).
+    .
+    One version per commit, newest first (24 commits, 2026-06-19 to today):
+    .
+    1.81 (2026-07-03): Kill switch - closing the run-log window cancels the
+    running engine and skips the remaining steps of the chain.
+    1.80 (2026-07-02): Link Consolidation count field is user-selected (no
+    more hardcoded TSMv5.COUNT_24), saved globally so netPrep, Summarization
+    and validation all read the same field.
+    1.79 (2026-07-02): Single code base for QGIS 3 (Qt5) and QGIS 4 (Qt6) -
+    qgis.PyQt imports throughout, every Qt enum reference fully scoped.
+    1.78 (2026-07-02): netPrep rebuilt as a Release build (had shipped Debug
+    by mistake, needing Visual Studio's runtime to launch); VC runtime DLLs
+    bundled beside every engine exe.
+    1.77 (2026-06-30): HyDRA - deployed the node-conserving afdta build.
+    1.76 (2026-06-30): Fixed scenario_settings_file not tracking the JSON the
+    user actually opened; Save button relabeled Save As.
+    1.75 (2026-06-29): Full-run network chaining - the Link Consolidator's
+    output network feeds Skimmy / ELToD / HyDRA automatically; added HyDRA's
+    node-conserving (nodeDNL) engines with a per-iteration / per-chunk /
+    hybrid node-refresh schedule.
+    1.74 (2026-06-29): agentPlans - removed the unused Distance skim input (it
+    only fed an optional >25-mile flag never wired up after the R->C++ port).
+    1.73 (2026-06-29): Summarization - fixed a broken module import and the
+    missing .xlsx suffix; added the validation workbook.
+    1.72 (2026-06-29): Panel - added Link Consolidator as a checkable full-run
+    step, moved Skimmy up under Network Models, renumbered the steps 1-10.
+    1.71 (2026-06-23): Bundled Apps/ (all model engines, utilities, and their
+    GDAL DLLs) inside the plugin so nothing else needs installing.
+    1.70 (2026-06-23): TOML and model parameters moved to the tsm_panel folder
+    from the model input folder.
+    1.69 (2026-06-23): Fixed the SDT Resident writer.
+    1.68 (2026-06-22): Wired all native C++ exes end to end; added live
+    console+log windows and a Python synthetic-household prep script; removed
+    the legacy R scripts (the R->C++ migration).
+    1.67 (2026-06-20): PopSyn - added the NP (= ResPOP) column to se_data so
+    the res_pop household control can be enforced.
+    1.66 (2026-06-20): MSR wired into agentPlans (trip_list2table) as a
+    control-file driven disaggregation step.
+    1.65 (2026-06-20): Added SDT/LDT/PopSyn/agentPlans model config and
+    parameter files (coefficients, distributions, templates).
+    1.64 (2026-06-20): Gated-model runner surfaces token/offline/model errors
+    in a dialog instead of a silent console failure.
+    1.63 (2026-06-20): Fixed GDAL "Can't load requested DLL ... 127" noise by
+    giving every bundled exe its own GDAL environment instead of QGIS's.
+    1.62 (2026-06-20): Plugin checkpoint - netPrep link-consolidation
+    dialog/UI rewiring plus documentation updates across several dialogs.
+    1.61 (2026-06-20): Phase 2 - routed loaded-volume summaries through
+    summarize.exe.
+    1.60 (2026-06-20): Phase 1 - routed Subarea ODME steps through odme.exe.
+    1.59 (2026-06-20): Phase 0 - routed Subarea/TSMAssign GeoPackage<->CSV
+    conversion through gpkgcsv.exe.
+    1.58 (2026-06-19): Initial commit - first release of the TSM Panel plugin.
