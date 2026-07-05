@@ -199,7 +199,7 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="comboBox_CountField">
              <property name="toolTip">
-              <string>Ground-count field on the GeoMaster line layer (fields containing CNT / COUNT / AADT). Saved globally so netPrep and Summarization use the same field.</string>
+              <string>Ground-count field(s) on the GeoMaster line layer -- check one or more fields containing CNT / COUNT / AADT (e.g. AADT + COUNT_AM + COUNT_HR7). Each becomes its own column on the consolidated network. Saved globally so netPrep and Summarization use the same fields.</string>
              </property>
             </widget>
            </item>

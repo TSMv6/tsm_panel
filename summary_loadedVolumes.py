@@ -227,10 +227,11 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         try:
             from .validation_runner import write_validation_xlsx
             # The ground-count column is the user's Link Consolidation choice
-            # (Config "count_field"); validation falls back to auto-detect if unset.
-            n = write_validation_xlsx(daily_csv, xlsx_path,
-                                      count_field=Config().get("count_field"),
-                                      log=logf)
+            # (Config "count_field"). That key may list SEVERAL fields (daily +
+            # period/hourly); daily validation compares against the FIRST one.
+            # Falls back to auto-detect if unset.
+            cf = (Config().get("count_field") or "").split(",")[0].strip() or None
+            n = write_validation_xlsx(daily_csv, xlsx_path, count_field=cf, log=logf)
             QMessageBox.information(
                 self, "Validation Stats",
                 "Validation workbook written (%d counted locations):\n%s" % (n, xlsx_path))
