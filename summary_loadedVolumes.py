@@ -1,8 +1,8 @@
 import os, re
 import subprocess
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from . import tsm_history
 # from .helper_functions import HelperFun
@@ -216,7 +216,7 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         """Build the validation workbook (.xlsx) from the daily CSV that
         summarize.exe just wrote. Pure Python -- logs live to the History box +
         log file, no console window."""
-        from PyQt5.QtWidgets import QApplication
+        from qgis.PyQt.QtWidgets import QApplication
         out = (loadedOut_file or "").replace("\\", "/")
         daily_csv = (out[:-5] + "_daily.csv") if out.lower().endswith(".gpkg") \
             else (out + "_daily.csv")
@@ -226,7 +226,12 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             QApplication.processEvents()  # repaint the History box live (we're on the UI thread)
         try:
             from .validation_runner import write_validation_xlsx
-            n = write_validation_xlsx(daily_csv, xlsx_path, log=logf)
+            # The ground-count column is the user's Link Consolidation choice
+            # (Config "count_field"). That key may list SEVERAL fields (daily +
+            # period/hourly); daily validation compares against the FIRST one.
+            # Falls back to auto-detect if unset.
+            cf = (Config().get("count_field") or "").split(",")[0].strip() or None
+            n = write_validation_xlsx(daily_csv, xlsx_path, count_field=cf, log=logf)
             QMessageBox.information(
                 self, "Validation Stats",
                 "Validation workbook written (%d counted locations):\n%s" % (n, xlsx_path))

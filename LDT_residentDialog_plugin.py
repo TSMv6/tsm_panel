@@ -1,7 +1,7 @@
 import os, shutil, subprocess, time
-from PyQt5.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QLabel, QLineEdit, QGridLayout, QPushButton
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QLabel, QLineEdit, QGridLayout, QPushButton
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from .model_run import run_gated_model, begin_run_console, closes_run_console
 # from .helper_functions import HelperFun 

@@ -1,10 +1,10 @@
 import os
 import subprocess
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 
 from qgis import processing
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 
 from .tsm_subarea_extractor_ui import Ui_Dialog
 from .tsm_settings import Config

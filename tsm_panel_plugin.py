@@ -1,10 +1,10 @@
-from PyQt5.QtWidgets import QAction, QDockWidget, QMessageBox, QLabel
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QFileDialog, QApplication
+from qgis.PyQt.QtWidgets import QAction, QDockWidget, QMessageBox, QLabel
+from qgis.PyQt.QtWidgets import QMainWindow, QPushButton, QFileDialog, QApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.utils import iface
 
-from PyQt5.QtCore import Qt, QSettings
-from PyQt5 import uic
+from qgis.PyQt.QtCore import Qt, QSettings
+from qgis.PyQt import uic
 
 from qgis.core import QgsApplication
 
@@ -12,7 +12,7 @@ import webbrowser  # Import webbrowser module
 
 # import weakref
 
-# from PyQt5.QtCore import pyqtSignal
+# from qgis.PyQt.QtCore import pyqtSignal
 
 # from .tsm_main_panel_ui import Ui_DockWidget
 from .tsm_panel_add_more_ui2 import Ui_DockWidget
@@ -145,7 +145,7 @@ class TsmPanelPlugin():
             main_win = self.iface.mainWindow()
 
             # Add TSM Dock widget
-            main_win.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widget)
+            main_win.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_widget)
 
             # Identify Browser and Layers panels (existing docks)
             browser_dock = main_win.findChild(QDockWidget, "Browser")
@@ -523,7 +523,7 @@ class TsmPanelPlugin():
         print("Dialog instance created")
         # Auto-log every interaction in this dialog (fields, browse, checks, OK).
         tsm_history.instrument_dialog(dialog, self._TOOL_LABELS.get(tool_name, tool_name))
-        dialog.exec_()
+        dialog.exec()
         # If the SDT Resident dialog was set to run both resident + visitor, clear the
         # main-panel SDT Visitor step (the visitor was produced by the resident run).
         if tool_name == 'SDT_resident':
@@ -623,8 +623,8 @@ class TsmPanelPlugin():
         collapse when empty or jump wider when 'Running...'/'Completed'/'Failed'
         appears, and so the two groups stay visually aligned."""
         from qgis.PyQt.QtWidgets import QSizePolicy, QLabel as _QLabel
-        from PyQt5.QtCore import QSize
-        from PyQt5.QtGui import QFont, QFontMetrics
+        from qgis.PyQt.QtCore import QSize
+        from qgis.PyQt.QtGui import QFont, QFontMetrics
         # Size the status/messaging column to ~10 characters at the panel's
         # small (8pt) font. The longest message shown is "Running..." (10
         # chars); reserve just enough for it plus the 4px label padding so the
@@ -651,10 +651,10 @@ class TsmPanelPlugin():
                 continue
             lbl.setMinimumSize(QSize(STATUS_WIDTH, 0))
             lbl.setMaximumWidth(STATUS_WIDTH)
-            sp = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+            sp = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
             sp.setHeightForWidth(lbl.sizePolicy().hasHeightForWidth())
             lbl.setSizePolicy(sp)
-            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
     # Friendly names for the status labels, used in the Messages log.
     _STEP_NAMES = {

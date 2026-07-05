@@ -1,5 +1,5 @@
 import json, os
-from PyQt5.QtWidgets import QDialog, QFileDialog
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog
 
 class Config:
     _instance = None
@@ -108,15 +108,52 @@ class Config:
                                   env=env, **kw)
         if log_path:
             import time as _time
+            import threading as _threading
+            # Kill switch: closing the live-tail run-log window cancels the run.
+            # The window (model_run._RUN_CONSOLE) and the worker exe are unrelated
+            # processes, so a watchdog thread inside QGIS bridges them: when the
+            # user closes the window while the exe runs, kill the exe TREE.
+            try:
+                from . import model_run as _mr
+                _console_closed = _mr.run_console_closed
+            except Exception:
+                _console_closed = lambda: False
+            if _console_closed():
+                # Window already closed (user cancelled an earlier step): don't
+                # even launch the next exe -- fail fast so the chain stops.
+                with open(log_path, "a", encoding="utf-8", errors="replace") as lf:
+                    lf.write("\n[%s] RUN CANCELLED -- log window closed; skipping: %s\n"
+                             % (_time.strftime("%H:%M:%S"), " ".join(args)))
+                return subprocess.CompletedProcess(args, 1)
             # Timestamp every line so the log reads as an activity log with a clock.
             with open(log_path, "a" if append else "w", encoding="utf-8", errors="replace") as lf:
                 lf.write("\n[%s] $ %s\n" % (_time.strftime("%H:%M:%S"), " ".join(args))); lf.flush()
                 p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                      creationflags=no_window | high, env=env, text=True, **kw)
+                cancelled = []
+                def _watchdog():
+                    while p.poll() is None:
+                        if _console_closed():
+                            cancelled.append(True)
+                            # Kill the whole tree (children too), windowless.
+                            subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"],
+                                           creationflags=no_window,
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            return
+                        _time.sleep(0.5)
+                wd = _threading.Thread(target=_watchdog, daemon=True)
+                wd.start()
                 for line in p.stdout:
                     lf.write("[%s] %s" % (_time.strftime("%H:%M:%S"), line)); lf.flush()
                 p.wait()
-            return subprocess.CompletedProcess(args, p.returncode)
+                wd.join(timeout=2)
+                rc = p.returncode
+                if cancelled:
+                    lf.write("[%s] RUN CANCELLED -- log window closed; %s terminated\n"
+                             % (_time.strftime("%H:%M:%S"), os.path.basename(args[0])))
+                    if rc == 0:
+                        rc = 1  # a cancelled run must never read as success
+            return subprocess.CompletedProcess(args, rc)
         kw.setdefault("creationflags", no_window | high)
         return subprocess.run(args, env=env, **kw)
 

@@ -1,6 +1,6 @@
 import os
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from . import tsm_auth_token
 
@@ -67,10 +67,10 @@ class GeneralConfigDialog(QDialog, Ui_Dialog_GenPrjSetting):
 
     def toggle_token_visibility(self, checked):
         """Show/hide the token text and flip the button label."""
-        from PyQt5.QtWidgets import QLineEdit
+        from qgis.PyQt.QtWidgets import QLineEdit
         token_edit = getattr(self, "lineEdit_TSMToken", None)
         if token_edit is not None:
-            token_edit.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
+            token_edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password)
         btn = getattr(self, "pushButton_ShowToken", None)
         if btn is not None:
             btn.setText("Hide" if checked else "Show")

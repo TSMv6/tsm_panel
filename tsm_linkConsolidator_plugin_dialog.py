@@ -1,16 +1,87 @@
 import os
 import subprocess
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox, QComboBox
 from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5.QtWidgets import QTextBrowser
+from qgis.PyQt.QtWidgets import QTextBrowser
 from .tsm_link_consolidator_ui import Ui_Dialog
-from PyQt5 import uic  # For loading .ui dynamically
+from qgis.PyQt import uic  # For loading .ui dynamically
 
-from PyQt5.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QEvent
+from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem
 from .tsm_settings import Config
 
 # Name of the netPrep control file written/read in the scenario (output) directory.
 SETTINGS_FILENAME = "link_consolidation_settings.txt"
+
+
+class MultiFieldCombo(QComboBox):
+    """Compact multi-select combo: each item is checkable, the popup stays open
+    while toggling, and the closed combo shows the comma-joined checked fields.
+    Used for COUNT_FIELD, where several count columns (AADT + period/hourly
+    COUNT_AM / COUNT_HR7 ...) can be selected together."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setEditable(True)
+        self.lineEdit().setReadOnly(True)
+        self.setModel(QStandardItemModel(self))
+        # Toggle on the view's PRESSED signal: it fires on mouse-press on both
+        # Qt5 and Qt6, BEFORE any popup-close plumbing runs, so the check always
+        # lands regardless of how the platform closes combo popups. (Doing the
+        # toggle in the release event-filter broke on QGIS4/Qt6, whose popup
+        # container handles clicks differently.)
+        self.view().pressed.connect(self._toggle_index)
+        # Best effort: eat the RELEASE so the popup stays open while checking
+        # several fields. If a Qt version closes the popup anyway, the toggle
+        # already happened on press -- reopen to check the next field.
+        self.view().viewport().installEventFilter(self)
+
+    def _toggle_index(self, idx):
+        it = self.model().itemFromIndex(idx)
+        if it is None:
+            return
+        it.setCheckState(Qt.CheckState.Unchecked
+                         if it.checkState() == Qt.CheckState.Checked
+                         else Qt.CheckState.Checked)
+        self._refresh_text()
+
+    def eventFilter(self, obj, ev):
+        if obj is self.view().viewport() and ev.type() == QEvent.Type.MouseButtonRelease:
+            return True  # keep the popup open; the toggle happened on press
+        return super().eventFilter(obj, ev)
+
+    def hidePopup(self):
+        # Qt may push the activated item's text into the line edit as the popup
+        # closes; re-assert the joined checked-fields display.
+        super().hidePopup()
+        self._refresh_text()
+
+    def set_fields(self, names, checked):
+        m = self.model()
+        m.clear()
+        for n in names:
+            it = QStandardItem(n)
+            it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+            it.setCheckState(Qt.CheckState.Checked if n in checked
+                             else Qt.CheckState.Unchecked)
+            m.appendRow(it)
+        self._refresh_text()
+
+    def checked_fields(self):
+        m = self.model()
+        return [m.item(r).text() for r in range(m.rowCount())
+                if m.item(r).checkState() == Qt.CheckState.Checked]
+
+    def set_checked(self, fields):
+        """Check exactly `fields`, adding any that aren't listed yet (saved
+        selections must survive even when the layer isn't loaded)."""
+        m = self.model()
+        existing = [m.item(r).text() for r in range(m.rowCount())]
+        names = existing + [f for f in fields if f not in existing]
+        self.set_fields(names, set(fields))
+
+    def _refresh_text(self):
+        self.lineEdit().setText(", ".join(self.checked_fields()))
 
 
 class TsmNetManDialog(QDialog, Ui_Dialog):
@@ -79,6 +150,30 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
         if settings.get("bool_Counts") is not None:
             self.checkBox_Counts.setChecked(self._str2bool(settings.get("bool_Counts")))
+        # Count field(s): user-driven (no hardcoded TSMv5.COUNT_24). Multi-select --
+        # AADT plus period/hourly counts (COUNT_AM, COUNT_HR7, ...) can be picked
+        # together; netPrep aggregates and outputs each as its own column. Options
+        # come from the selected line layer's fields matching CNT / COUNT / AADT;
+        # the selection is saved globally (Config "count_field", comma-joined) so
+        # netPrep and Summarization agree. The .ui ships a plain QComboBox
+        # placeholder; swap it for the checkable multi-select at load.
+        # Swap the placeholder for the multi-select DETERMINISTICALLY: remove it
+        # from its known grid cell (gridLayout_3 row 0, col 1) and add the new
+        # widget there. (QLayout.replaceWidget left the detached placeholder
+        # floating at the frame's top-left on some Qt builds, covering the
+        # Scenario Name label.)
+        _old = self.comboBox_CountField
+        self.comboBox_CountField = MultiFieldCombo(_old.parentWidget())
+        self.comboBox_CountField.setToolTip(_old.toolTip())
+        self.gridLayout_3.removeWidget(_old)
+        _old.hide()
+        _old.setParent(None)
+        _old.deleteLater()
+        self.gridLayout_3.addWidget(self.comboBox_CountField, 0, 1)
+        self.lineLayerCombo.currentIndexChanged.connect(self._populate_count_fields)
+        self.checkBox_Counts.toggled.connect(self.comboBox_CountField.setEnabled)
+        self.comboBox_CountField.setEnabled(self.checkBox_Counts.isChecked())
+        self._populate_count_fields()
         # QLOS capacities file (user setting). Default to {tsm_location}/Inputs/netPrep.
         cap = settings.get("netprep_capacities_file")
         if not cap:
@@ -90,7 +185,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # Help text: render docs/LINK_CONSOLIDATION.md into the side panel.
         self.textBrowser = self.findChild(QTextBrowser, 'textBrowser')
         self.textBrowser.setOpenExternalLinks(True)
-        self.textBrowser.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.textBrowser.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         self._load_help_doc(os.path.join(plugin_dir, "docs", "LINK_CONSOLIDATION.md"))
 
         # ------------------------------------------------------------------
@@ -204,6 +299,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if "keep_Counts" in cfg:
             self.checkBox_Counts.setChecked(self._str2bool(cfg["keep_Counts"]))
+        if cfg.get("COUNT_FIELD"):
+            self.comboBox_CountField.set_checked(self._split_fields(cfg["COUNT_FIELD"]))
 
         if cfg.get("output_dir"):
             self.output_directory.setText(cfg["output_dir"])
@@ -218,6 +315,28 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
     # ======================================================================
     # UI behaviour
     # ======================================================================
+    @staticmethod
+    def _split_fields(value):
+        """'AADT, COUNT_HR7' -> ['AADT', 'COUNT_HR7'] (trimmed, empties dropped)."""
+        return [p.strip() for p in (value or "").split(",") if p.strip()]
+
+    def _populate_count_fields(self):
+        """Fill the count-field multi-select from the selected GeoMaster line
+        layer: every field whose name contains CNT, COUNT or AADT (case-
+        insensitive). The previously saved selection (Config "count_field",
+        comma-joined) stays checked; saved-but-unlisted fields are kept as extra
+        items so a headless/full run still writes the right COUNT_FIELD."""
+        import re as _re
+        checked = self.comboBox_CountField.checked_fields() or \
+            self._split_fields(Config().get("count_field"))
+        layer = self.lineLayerCombo.currentData()
+        names = []
+        if layer is not None and hasattr(layer, "fields"):
+            pat = _re.compile(r"CNT|COUNT|AADT", _re.I)
+            names = [f.name() for f in layer.fields() if pat.search(f.name())]
+        names += [c for c in checked if c not in names]
+        self.comboBox_CountField.set_fields(names, set(checked))
+
     def toggle_msr_fields(self):
         """Enable MSR subarea/lookup inputs only for the MSR resolution."""
         is_msr = self.modelResolution.currentText() == "MSR"
@@ -265,6 +384,10 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
         settings.set("netprep_capacities_file", self.lineEdit_Capacities.text())
         settings.set("bool_Counts", self.checkBox_Counts.isChecked())
+        # Global count field(s), comma-joined -- netPrep, Summarization and
+        # validation all read this.
+        if self.comboBox_CountField.checked_fields():
+            settings.set("count_field", ", ".join(self.comboBox_CountField.checked_fields()))
         settings.set("GM_line_layer", self.lineLayerCombo.currentText())
         settings.set("GM_node_layer", self.nodeLayerCombo.currentText())
         settings.set("GM_centroid_layer", self.lineLayerCombo_2.currentText())
@@ -422,6 +545,12 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             return False
 
         bool_Counts = self.checkBox_Counts.isChecked()
+        # User-selected ground-count field(s) (multi-select next to Keep Counts),
+        # comma-joined. Saved globally so Summarization / validation read the
+        # same column names.
+        count_field = ", ".join(self.comboBox_CountField.checked_fields())
+        if count_field:
+            settings.set("count_field", count_field)
 
         # QLOS capacities lookup (FTYPE|lanes -> capacity) is a user setting / model
         # input, not a plugin asset and NOT a hardcoded path in netPrep. Default to
@@ -452,6 +581,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"output_dir = {output_dir}\n")
                 f.write(f"Settings_File = {settings_file}\n")
                 f.write(f"keep_Counts = {bool_Counts}\n")
+                if count_field:
+                    f.write(f"COUNT_FIELD = {count_field}\n")
                 f.write(f"TSM_Link_File = {output_linkfile}\n")
                 f.write(f"TSM_Node_File = {output_nodefile}\n")
                 f.write(f"plugin_dir = {plugin_dir}\n")

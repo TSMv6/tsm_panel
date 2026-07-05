@@ -25,7 +25,7 @@ import re
 import subprocess
 import time
 from ctypes import wintypes
-from PyQt5.QtWidgets import QMessageBox
+from qgis.PyQt.QtWidgets import QMessageBox
 
 from . import tsm_usage
 
@@ -239,6 +239,15 @@ def end_run_console():
     _RUN_CONSOLE = None
 
 
+def run_console_closed():
+    """Kill switch: True when a one-window run is active but the USER closed its
+    live-tail window. run_app watches this while a worker exe runs and treats it
+    as a cancel request (terminate the exe tree, skip the remaining steps).
+    Only the user closes that window mid-run -- end_run_console() closes it
+    programmatically AFTER the run, when nothing is watching anymore."""
+    return _RUN_CONSOLE is not None and _RUN_CONSOLE.poll() is not None
+
+
 def closes_run_console(fn):
     """Decorator for a dialog's run method: after it returns (success, failure, or
     exception), close the live-tail run-log window opened via begin_run_console so it
@@ -292,6 +301,17 @@ def run_gated_model_result(args, model_label="This model", log_path=None, consol
             out = _tail_file(log_path) if log_path else ""
             err = ""
         elif log_path:
+            # Kill switch: user closed the live-tail window -> cancel (see
+            # run_console_closed / the watchdog below). If it is ALREADY closed,
+            # don't launch the next step at all -- fail fast so the chain stops.
+            if run_console_closed():
+                with open(log_path, "a", encoding="utf-8", errors="replace") as lf:
+                    lf.write(f"\n[{time.strftime('%H:%M:%S')}] RUN CANCELLED -- "
+                             f"log window closed; skipping: {' '.join(args)}\n")
+                _record_usage(args, model_label, started, 1, False)
+                return False, f"{model_label} Cancelled", \
+                    f"{model_label} was cancelled (run-log window closed)."
+            import threading as _threading
             tail = collections.deque(maxlen=400)
             job = _make_kill_on_close_job()
             # Timestamp every line so the log reads as an activity log with a clock.
@@ -300,15 +320,34 @@ def run_gated_model_result(args, model_label="This model", log_path=None, consol
                 p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                      creationflags=_NO_WINDOW | _HIGH, **kwargs)
                 _assign_to_job(job, p._handle)
+                cancelled = []
+                def _watchdog():
+                    while p.poll() is None:
+                        if run_console_closed():
+                            cancelled.append(True)
+                            subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"],
+                                           creationflags=_NO_WINDOW,
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            return
+                        time.sleep(0.5)
+                wd = _threading.Thread(target=_watchdog, daemon=True)
+                wd.start()
                 try:
                     for line in p.stdout:
                         stamped = f"[{time.strftime('%H:%M:%S')}] {line}"
                         lf.write(stamped); lf.flush()
                         tail.append(stamped)
                     p.wait()
+                    wd.join(timeout=2)
                 finally:
                     _close_job(job)
+                if cancelled:
+                    note = (f"[{time.strftime('%H:%M:%S')}] RUN CANCELLED -- log window "
+                            f"closed; {os.path.basename(args[0])} terminated\n")
+                    lf.write(note); tail.append(note)
             rc, out, err = p.returncode, "".join(tail), ""
+            if cancelled and rc == 0:
+                rc = 1  # a cancelled run must never read as success
         else:
             kwargs["stdout"] = subprocess.PIPE
             kwargs["stderr"] = subprocess.PIPE
