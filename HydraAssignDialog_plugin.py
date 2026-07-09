@@ -118,9 +118,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if settings.get("hydra_micro_choice"):
             self._select_combo(self.comboBox_MicroChoice, settings.get("hydra_micro_choice"))
         self.checkBox_Micro.setChecked(_b("hydra_micro_enabled"))
-        self.checkBox_AgentPlans.setChecked(_b("hydra_agent_plans"))
-        self.checkBox_AgentPaths.setChecked(_b("hydra_agent_paths"))
-        self.checkBox_DuckDB.setChecked(_b("hydra_duckdb"))
+        # Both agent artifacts default ON; only an explicit saved "false" unchecks.
+        def _b_on(key):
+            v = settings.get(key)
+            return True if v in (None, "") else str(v).lower() in ("true", "1", "yes")
+        self.checkBox_AgentPlans.setChecked(_b_on("hydra_agent_plans"))
+        self.checkBox_AgentPaths.setChecked(_b_on("hydra_agent_paths"))
 
         # apply_macro_preset() overwrites Meso FTYPEs from the preset, so restore the
         # saved override AFTER it; toggle_micro() applies the enable state.
@@ -226,7 +229,6 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Output toggles
         settings.set("hydra_agent_plans", self.checkBox_AgentPlans.isChecked())
         settings.set("hydra_agent_paths", self.checkBox_AgentPaths.isChecked())
-        settings.set("hydra_duckdb", self.checkBox_DuckDB.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "HyDRA settings have been updated.")
 
@@ -330,12 +332,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     else:
                         f.write("MICRO_CHOICE          ENDOGENOUS\n")
                 # Link performance (macro/meso/micro) is always written by the engine.
-                # Agent plans/paths are optional and can be heavy.
-                write_agents = self.checkBox_AgentPlans.isChecked() or self.checkBox_AgentPaths.isChecked()
-                if write_agents:
-                    f.write(f"WRITE_AGENT_RESULTS   {'DUCKDB' if self.checkBox_DuckDB.isChecked() else 'CSV'}\n")
-                else:
-                    f.write("WRITE_AGENT_RESULTS   NO\n")
+                # Two independent agent artifacts, both default ON:
+                #   Agent plans -> agentPlans_out.csv (light per-agent summary)
+                #   Agent paths -> agentPaths.duckdb (heavy: full key paths;
+                #                  feeds agentAnalysis select-link/trace/tiers)
+                f.write(f"WRITE_AGENT_PLANS     {'YES' if self.checkBox_AgentPlans.isChecked() else 'NO'}\n")
+                f.write(f"WRITE_AGENT_PATHS     {'YES' if self.checkBox_AgentPaths.isChecked() else 'NO'}\n")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error writing hydra_run.ctl: {e}")
             return False

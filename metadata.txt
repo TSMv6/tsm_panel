@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=1.82
-date=2026-07-08
+version=1.83
+date=2026-07-09
 author=Amar Sarvepalli
 email=venkat.sarvepalli@dot.state.fl.us
 qgisMinimumVersion=3.0
@@ -37,6 +37,17 @@ changelog=
     .
     One version per commit, newest first (25 commits, 2026-06-19 to today):
     .
+    1.83 (2026-07-09): HyDRA outputs - Agent plans (agentPlans_out.csv) and
+    Agent paths (agentPaths.duckdb) are independent default-on outputs with
+    opt-out checkboxes; the redundant Write-to-DuckDB toggle is gone (engine
+    keys WRITE_AGENT_PLANS/WRITE_AGENT_PATHS; agent_results.duckdb renamed
+    agentPaths.duckdb). Summarization polish: browse buttons aligned; one
+    shared agentPaths field above the tabs with section separators; Subarea
+    tab takes boundary + land-use zones + node/link GPKG layers from
+    dropdowns (interior-node csv derived automatically, incl zone centroids)
+    and writes subarea link gpkg + node gpkg + trip list. agentAnalysis
+    'tiers' command traces one agent across Macro>Meso>Micro legs; engine
+    micro/meso probes + link_performance_microDTA + lane performance.
     1.82 (2026-07-08): Summarization - macroDTA link performance (required)
     plus optional mesoDTA / microDTA inputs summarized together (hydra
     template; overflow hours 24-29 folded into 0-5, two-way counts deduped in

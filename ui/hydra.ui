@@ -377,28 +377,27 @@
         <layout class="QGridLayout" name="gridLayout_out">
          <item row="0" column="0">
           <widget class="QCheckBox" name="checkBox_AgentPlans">
+           <property name="toolTip">
+            <string>Light per-agent summary (agentPlans_out.csv). Uncheck to skip.</string>
+           </property>
            <property name="text">
-            <string>Agent plans</string>
+            <string>Agent plans (agentPlans_out.csv)</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
          <item row="0" column="1">
           <widget class="QCheckBox" name="checkBox_AgentPaths">
            <property name="toolTip">
-            <string>Full per-agent paths (large output).</string>
+            <string>Full per-agent paths (agentPaths.duckdb, large). Feeds agentAnalysis select-link / trace / tiers. Uncheck to skip.</string>
            </property>
            <property name="text">
-            <string>Agent paths (heavy)</string>
+            <string>Agent paths (agentPaths.duckdb, heavy)</string>
            </property>
-          </widget>
-         </item>
-         <item row="0" column="2">
-          <widget class="QCheckBox" name="checkBox_DuckDB">
-           <property name="toolTip">
-            <string>Write agent results to DuckDB instead of CSV.</string>
-           </property>
-           <property name="text">
-            <string>Write to DuckDB</string>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

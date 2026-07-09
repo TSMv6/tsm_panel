@@ -30,6 +30,9 @@ from . import tsm_history
 
 
 # ----------------------------------------------------------------- helpers --
+BROWSE_W = 34   # one width for every '...' button so the rows line up
+
+
 def _browse_row(parent, label, mode="open", filt="All Files (*)", key=None):
     """label + line-edit + '...' browse button; returns (layout, line_edit)."""
     lay = QHBoxLayout()
@@ -37,7 +40,7 @@ def _browse_row(parent, label, mode="open", filt="All Files (*)", key=None):
     lab.setMinimumWidth(150)
     edit = QLineEdit(parent)
     btn = QPushButton("...", parent)
-    btn.setMaximumWidth(28)
+    btn.setFixedWidth(BROWSE_W)
 
     def pick():
         if mode == "open":
@@ -82,12 +85,50 @@ def _run(args, log_name):
                             log_path=log_path, console=True)
 
 
+def _hline(parent):
+    """Horizontal separator line between dialog sections."""
+    ln = QtWidgets.QFrame(parent)
+    ln.setFrameShape(QtWidgets.QFrame.HLine)
+    ln.setFrameShadow(QtWidgets.QFrame.Sunken)
+    return ln
+
+
+def _layer_combo(parent, geom_type, key=None):
+    """Dropdown of loaded QGIS layers of the given geometry type."""
+    from qgis.core import QgsProject
+    combo = QtWidgets.QComboBox(parent)
+    combo.addItem("Select a layer", None)
+    gcode = {"Point": 0, "LineString": 1, "Polygon": 2}[geom_type]
+    for layer in QgsProject.instance().mapLayers().values():
+        if hasattr(layer, "geometryType") and layer.geometryType() == gcode:
+            combo.addItem(layer.name(), layer)
+    if key:
+        saved = Config().get(key)
+        if saved:
+            i = combo.findText(saved)
+            if i >= 0:
+                combo.setCurrentIndex(i)
+        combo.currentTextChanged.connect(lambda t: Config().set(key, t))
+    return combo
+
+
+def _layer_path(layer):
+    if layer is None:
+        return None
+    return layer.dataProvider().dataSourceUri().split("|")[0]
+
+
 # ------------------------------------------------- summarization: 3 inputs --
 def add_dta_inputs(dlg):
     """Relabel the existing volume row as macroDTA and insert mesoDTA/microDTA
     rows right below it. Returns (meso_edit, micro_edit)."""
     dlg.label_4.setText("macroDTA link performance (csv)")
     dlg.lineEdit_volume.setToolTip("link_performance_macroDTA.csv (required)")
+    # Line the original rows' browse buttons up with the injected ones.
+    for name in ("browse_volume", "browse_loadedOut", "browse_ValidationStats"):
+        b = getattr(dlg, name, None)
+        if b is not None:
+            b.setFixedWidth(BROWSE_W)
 
     grid = dlg.gridLayout
     meso_lay, meso_edit = _browse_row(dlg, "mesoDTA link performance (csv)",
@@ -115,16 +156,32 @@ def add_dta_inputs(dlg):
 
 
 # ------------------------------------------------------ agentAnalysis tabs --
+def add_common_section(dlg):
+    """The agentPaths duckdb is one input shared by every tab -- keep it once,
+    between the summarization block and the tab widget, framed by separators."""
+    grid = dlg.gridLayout
+    row = grid.rowCount()
+    grid.addWidget(_hline(dlg), row, 0, 1, 1)
+    db_lay, dlg.lineEdit_agentPaths = _browse_row(
+        dlg, "agentPaths (duckdb)",
+        filt="DuckDB (*.duckdb);;All Files (*)", key="aa_trace_db")
+    dlg.lineEdit_agentPaths.setToolTip(
+        "agentPaths.duckdb from a HyDRA run (agents + full key paths). "
+        "Used by every tab below.")
+    grid.addLayout(db_lay, row + 1, 0, 1, 1)
+    grid.addWidget(_hline(dlg), row + 2, 0, 1, 1)
+
+
+def _db(dlg):
+    return dlg.lineEdit_agentPaths.text().strip()
+
+
 def _tab_trace(dlg):
     w = QWidget()
     v = QVBoxLayout(w)
-    db_lay, w.db = _browse_row(w, "agentPaths (duckdb)",
-                               filt="DuckDB (*.duckdb);;All Files (*)",
-                               key="aa_trace_db")
     tl_lay, w.trips = _browse_row(w, "trip list (csv/gz)",
                                   filt="Trip list (*.csv *.gz);;All Files (*)",
                                   key="aa_trips")
-    v.addLayout(db_lay)
     v.addLayout(tl_lay)
 
     ids = QHBoxLayout()
@@ -150,11 +207,11 @@ def _tab_trace(dlg):
     v.addStretch(1)
 
     def go():
-        if not (w.db.text() and w.trips.text() and w.hh.text()):
+        if not (_db(dlg) and w.trips.text() and w.hh.text()):
             QMessageBox.warning(dlg, "Path Trace",
-                                "agentPaths duckdb, trip list and hh_id are required.")
+                                "agentPaths duckdb (common field above), trip list and hh_id are required.")
             return
-        args = ["trace", "--db", w.db.text(), "--trips", w.trips.text(),
+        args = ["trace", "--db", _db(dlg), "--trips", w.trips.text(),
                 "--hh", w.hh.text()]
         for flag, e in (("--person", w.person), ("--tour", w.tour), ("--trip", w.trip)):
             if e.text().strip():
@@ -171,49 +228,100 @@ def _tab_trace(dlg):
 
 
 def _tab_subarea(dlg):
+    """Boundary and land use come from LOADED GPKG LAYERS (dropdowns); the
+    interior-node CSV the CLI needs (network nodes + zone centroids inside the
+    boundary) is derived here. Outputs: subarea link gpkg + node gpkg (clipped)
+    + the subarea trip list."""
     w = QWidget()
     v = QVBoxLayout(w)
-    rows = [
-        ("subarea boundary / nodes (csv)", "open", "CSV (*.csv);;All Files (*)", "aa_sub_nodes"),
-        ("land use zones - statewide (csv/gpkg)", "open", "All Files (*)", "aa_sub_landuse"),
-        ("agentPaths (duckdb)", "open", "DuckDB (*.duckdb);;All Files (*)", "aa_trace_db"),
-        ("trip list (csv/gz)", "open", "Trip list (*.csv *.gz);;All Files (*)", "aa_trips"),
-        ("link file (gpkg/csv)", "open", "All Files (*)", "aa_sub_links"),
-        ("node file (gpkg/csv)", "open", "All Files (*)", "aa_sub_nodesgpkg"),
-        ("output subarea trip list (csv/gz)", "save", "CSV (*.csv *.gz)", "aa_sub_out"),
-    ]
-    w.edits = {}
-    for label, mode, filt, key in rows:
-        lay, e = _browse_row(w, label, mode, filt, key)
+
+    def combo_row(label, geom, key):
+        lay = QHBoxLayout()
+        lab = QLabel(label, w); lab.setMinimumWidth(150)
+        cb = _layer_combo(w, geom, key)
+        lay.addWidget(lab); lay.addWidget(cb)
+        return lay, cb
+
+    b_lay, w.boundary = combo_row("subarea boundary (polygon layer)", "Polygon", "aa_sub_boundary_lyr")
+    z_lay, w.zones = combo_row("land use zones - statewide (polygon layer)", "Polygon", "aa_sub_zones_lyr")
+    n_lay, w.nodes_lyr = combo_row("network nodes (point layer)", "Point", "aa_sub_nodes_lyr")
+    l_lay, w.links_lyr = combo_row("network links (line layer)", "LineString", "aa_sub_links_lyr")
+    for lay in (b_lay, z_lay, n_lay, l_lay):
         v.addLayout(lay)
-        w.edits[key] = e
-    hint = QLabel("Interior nodes CSV must include the subarea's ZONE "
-                  "CENTROIDS (TAZ ids) as well as network nodes - the land use "
-                  "file is used to verify centroid coverage. Subarea link/node "
-                  "layers are clipped copies for the assignment step.", w)
-    hint.setWordWrap(True)
-    hint.setStyleSheet("color: gray;")
-    v.addWidget(hint)
+    tl_lay, w.trips = _browse_row(w, "trip list (csv/gz)",
+                                  filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
+    v.addLayout(tl_lay)
+    v.addWidget(_hline(w))
+    ol_lay, w.out_links = _browse_row(w, "output subarea links (gpkg)", "save",
+                                      "GeoPackage (*.gpkg)", "aa_sub_out_links")
+    on_lay, w.out_nodes = _browse_row(w, "output subarea nodes (gpkg)", "save",
+                                      "GeoPackage (*.gpkg)", "aa_sub_out_nodes")
+    ot_lay, w.out_trips = _browse_row(w, "output subarea trip list (csv/gz)", "save",
+                                      "CSV (*.csv *.gz)", "aa_sub_out")
+    for lay in (ol_lay, on_lay, ot_lay):
+        v.addLayout(lay)
     run = QPushButton("Run Subarea Extraction", w)
     v.addWidget(run)
     v.addStretch(1)
 
     def go():
-        need = ["aa_sub_nodes", "aa_trace_db", "aa_trips", "aa_sub_links", "aa_sub_out"]
-        if any(not w.edits[k].text() for k in need):
+        import processing, tempfile, csv as _csv
+        from qgis.core import QgsProject, QgsVectorLayer
+        boundary = w.boundary.currentData()
+        zones = w.zones.currentData()
+        nodes_lyr = w.nodes_lyr.currentData()
+        links_lyr = w.links_lyr.currentData()
+        if not (boundary and zones and nodes_lyr and links_lyr and _db(dlg)
+                and w.trips.text() and w.out_trips.text()):
             QMessageBox.warning(dlg, "Subarea",
-                                "nodes csv, duckdb, trip list, link file and output are required.")
+                                "Boundary, zones, node & link layers, the common agentPaths "
+                                "duckdb, trip list and trip-list output are required.")
             return
-        args = ["subarea",
-                "--db", w.edits["aa_trace_db"].text(),
-                "--nodes", w.edits["aa_sub_nodes"].text(),
-                "--trips", w.edits["aa_trips"].text(),
-                "--links", w.edits["aa_sub_links"].text(),
-                "--out", w.edits["aa_sub_out"].text()]
+        try:
+            # 1) network nodes inside the boundary
+            sel_nodes = processing.run("native:extractbylocation",
+                {"INPUT": nodes_lyr, "PREDICATE": [0], "INTERSECT": boundary,
+                 "OUTPUT": "memory:sub_nodes"})["OUTPUT"]
+            # 2) zone centroids inside (TAZ ids double as centroid node ids)
+            sel_zones = processing.run("native:extractbylocation",
+                {"INPUT": zones, "PREDICATE": [0], "INTERSECT": boundary,
+                 "OUTPUT": "memory:sub_zones"})["OUTPUT"]
+            zfields = [f.name().upper() for f in sel_zones.fields()]
+            zi = zfields.index("TAZ") if "TAZ" in zfields else 0
+            nfields = [f.name().upper() for f in sel_nodes.fields()]
+            ni = nfields.index("N") if "N" in nfields else 0
+            nodes_csv = os.path.join(tempfile.gettempdir(), "subarea_nodes_ui.csv")
+            with open(nodes_csv, "w", newline="") as f:
+                cw = _csv.writer(f); cw.writerow(["node"])
+                for feat in sel_nodes.getFeatures():
+                    cw.writerow([int(feat[ni])])
+                for feat in sel_zones.getFeatures():
+                    cw.writerow([int(feat[zi])])
+            _log("Subarea: %d nodes + %d zone centroids inside boundary -> %s"
+                 % (sel_nodes.featureCount(), sel_zones.featureCount(), nodes_csv))
+            # 3) clipped link / node gpkg outputs
+            if w.out_links.text():
+                processing.run("native:extractbylocation",
+                    {"INPUT": links_lyr, "PREDICATE": [0], "INTERSECT": boundary,
+                     "OUTPUT": w.out_links.text()})
+            if w.out_nodes.text():
+                processing.run("native:extractbylocation",
+                    {"INPUT": nodes_lyr, "PREDICATE": [0], "INTERSECT": boundary,
+                     "OUTPUT": w.out_nodes.text()})
+        except Exception as e:
+            QMessageBox.critical(dlg, "Subarea", "Boundary processing failed:\n%s" % e)
+            return
+        args = ["subarea", "--db", _db(dlg), "--nodes", nodes_csv,
+                "--trips", w.trips.text(),
+                "--links", _layer_path(links_lyr),
+                "--out", w.out_trips.text()]
         r = _run(args, "agentAnalysis_subarea.log")
         if r.returncode == 0:
             QMessageBox.information(dlg, "Subarea",
-                                    "Subarea trip list written:\n%s" % w.edits["aa_sub_out"].text())
+                "Subarea outputs written:\n%s\n%s\n%s" % (
+                    w.out_links.text() or "(links skipped)",
+                    w.out_nodes.text() or "(nodes skipped)",
+                    w.out_trips.text()))
         else:
             QMessageBox.critical(dlg, "Subarea", "agentAnalysis subarea failed - see History log.")
     run.clicked.connect(go)
@@ -226,11 +334,8 @@ _LINK_RE = re.compile(r"(\d+)\s*[->]+\s*(\d+)")
 def _tab_selectlink(dlg):
     w = QWidget()
     v = QVBoxLayout(w)
-    db_lay, w.db = _browse_row(w, "agentPaths (duckdb)",
-                               filt="DuckDB (*.duckdb);;All Files (*)", key="aa_trace_db")
     tl_lay, w.trips = _browse_row(w, "trip list (csv/gz, optional)",
                                   filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
-    v.addLayout(db_lay)
     v.addLayout(tl_lay)
 
     v.addWidget(QLabel("Links (one per line or comma-separated, as A-B node pairs, "
@@ -288,11 +393,11 @@ def _tab_selectlink(dlg):
 
     def go():
         pairs = _LINK_RE.findall(w.links.toPlainText())
-        if not (w.db.text() and pairs):
+        if not (_db(dlg) and pairs):
             QMessageBox.warning(dlg, "Select Link",
-                                "agentPaths duckdb and at least one A-B link are required.")
+                                "agentPaths duckdb (common field above) and at least one A-B link are required.")
             return
-        args = ["agents", "--db", w.db.text()]
+        args = ["agents", "--db", _db(dlg)]
         for a, b in pairs:
             args += ["--link", a, b]
         args += ["--logic", "AND" if w.rb_and.isChecked() else "OR"]
@@ -316,11 +421,8 @@ def _tab_selectlink(dlg):
 def _tab_turns(dlg):
     w = QWidget()
     v = QVBoxLayout(w)
-    db_lay, w.db = _browse_row(w, "agentPaths (duckdb)",
-                               filt="DuckDB (*.duckdb);;All Files (*)", key="aa_trace_db")
     nd_lay, w.nodes = _browse_row(w, "node list (csv)",
                                   filt="CSV (*.csv);;All Files (*)", key="aa_turns_nodes")
-    v.addLayout(db_lay)
     v.addLayout(nd_lay)
 
     opts = QHBoxLayout()
@@ -343,11 +445,11 @@ def _tab_turns(dlg):
     v.addStretch(1)
 
     def go():
-        if not (w.db.text() and w.nodes.text() and w.out.text()):
+        if not (_db(dlg) and w.nodes.text() and w.out.text()):
             QMessageBox.warning(dlg, "Turning Movements",
-                                "agentPaths duckdb, node list csv and output are required.")
+                                "agentPaths duckdb (common field above), node list csv and output are required.")
             return
-        args = ["turns", "--db", w.db.text(), "--nodes", w.nodes.text(),
+        args = ["turns", "--db", _db(dlg), "--nodes", w.nodes.text(),
                 "--out", w.out.text()]
         if w.cb_five.isChecked():
             args += ["--five"]

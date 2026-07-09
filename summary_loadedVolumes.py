@@ -32,8 +32,10 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         # Multi-DTA inputs (macro required; meso/micro optional) + the
         # agentAnalysis tabs (Path Trace / Subarea / Select Link / Turns),
         # injected programmatically so the .ui stays Designer-clean.
-        from .agent_analysis_tabs import add_dta_inputs, add_agent_analysis_tabs
+        from .agent_analysis_tabs import (add_dta_inputs, add_common_section,
+                                          add_agent_analysis_tabs)
         self.lineEdit_volumeMeso, self.lineEdit_volumeMicro = add_dta_inputs(self)
+        add_common_section(self)   # shared agentPaths.duckdb + separators
         add_agent_analysis_tabs(self)
 
         # Populate the dropdowns with available land-use layers (polygons)
