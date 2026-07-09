@@ -1,0 +1,22 @@
+# HyDRA link-performance summary (template). The plugin fills the @...@
+# placeholders at run time. mode="hydra" streams the per-interval
+# link_performance CSVs (macroDTA required; mesoDTA / microDTA optional --
+# their links are disjoint sets, all stream into the same daily accumulator),
+# folds simulation overflow hours (24..29) into 0..5, and writes the loaded
+# daily CSV + GPKG with VOL_/SPD_/QUE_ hourly columns.
+name = "loaded"
+mode = "hydra"
+group_by = ["A", "B"]
+
+[input]
+path = "@VOL@"
+rename = ["a_node=A", "b_node=B"]
+@INPUT2@
+@INPUT3@
+[join]
+path = "@LINK@"
+rename = [@RENAME@]
+
+[output]
+csv = "@OUT_CSV@"
+gpkg = "@OUT_GPKG@"

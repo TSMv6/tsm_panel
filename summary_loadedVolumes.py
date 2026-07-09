@@ -29,6 +29,13 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         # Load the UI dynamically if the file exists
         uic.loadUi(ui_file, self)  # This will automatically load the UI and set it up
 
+        # Multi-DTA inputs (macro required; meso/micro optional) + the
+        # agentAnalysis tabs (Path Trace / Subarea / Select Link / Turns),
+        # injected programmatically so the .ui stays Designer-clean.
+        from .agent_analysis_tabs import add_dta_inputs, add_agent_analysis_tabs
+        self.lineEdit_volumeMeso, self.lineEdit_volumeMicro = add_dta_inputs(self)
+        add_agent_analysis_tabs(self)
+
         # Populate the dropdowns with available land-use layers (polygons)
         self.populate_layer_combobox(self.comboBox_linkLayer, "LineString")
 
@@ -278,8 +285,17 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         from .summarize_runner import run_summary
         is_subarea = bool(settings.get("isSubareaLevel"))
 
+        # Optional meso / micro DTA link-performance files -> [input2]/[input3].
+        # Any hydra link_performance input switches to the hydra template.
+        meso_file = self.lineEdit_volumeMeso.text().strip()
+        micro_file = self.lineEdit_volumeMicro.text().strip()
+        is_hydra = "link_performance" in os.path.basename(volume_file).lower() \
+                   or meso_file or micro_file
+        template = "summarize_hydra.toml" if is_hydra else "summarize_loaded.toml"
+
         print("link_layer_path:", link_layer_path)
         print("volume_file:", volume_file)
+        print("meso_file:", meso_file, "micro_file:", micro_file, "template:", template)
         print("loadedOut_file:", loadedOut_file)
         print("is_subarea:", is_subarea)
 
@@ -295,7 +311,9 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
 
         try:
             # C++ summarize.exe (port of Summarise_Loaded_Volumes.R)
-            result1 = run_summary("summarize_loaded.toml", link_layer_path, volume_file, loadedOut_file, subarea=is_subarea)
+            result1 = run_summary(template, link_layer_path, volume_file, loadedOut_file,
+                                  subarea=is_subarea, vol2=meso_file or None,
+                                  vol3=micro_file or None)
 
             if result1.returncode == 0:  # Check if the R script ran successfully
                 print("loaded entwork volumes script ran successfully.")

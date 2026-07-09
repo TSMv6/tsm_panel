@@ -22,9 +22,21 @@ def _rename(subarea, include_speed_ff):
     return ", ".join('"%s"' % p for p in parts)
 
 
-def run_summary(template, link, vol, out_gpkg, subarea, vol2=None, include_speed_ff=True):
+def _input_block(section, path):
+    """Optional [input2]/[input3] TOML block for the meso / micro DTA
+    link-performance CSVs (hydra mode). Empty path -> the block vanishes."""
+    if not path:
+        return ""
+    return '[%s]\npath = "%s"\nrename = ["a_node=A", "b_node=B"]\n' % (
+        section, path.replace("\\", "/"))
+
+
+def run_summary(template, link, vol, out_gpkg, subarea, vol2=None, vol3=None,
+                include_speed_ff=True):
     """Fill `template` and run summarize.exe. The daily CSV path is derived from
-    out_gpkg (.gpkg -> _daily.csv), matching the old R behavior. Returns the
+    out_gpkg (.gpkg -> _daily.csv), matching the old R behavior. vol2/vol3 are
+    the optional mesoDTA / microDTA link-performance CSVs (hydra template;
+    their @INPUT2@/@INPUT3@ blocks vanish when unset). Returns the
     subprocess.CompletedProcess."""
     settings = Config()
     plugin_dir = settings.get("plugin_dir")
@@ -41,6 +53,8 @@ def run_summary(template, link, vol, out_gpkg, subarea, vol2=None, include_speed
     text = (text
             .replace("@VOL@", (vol or "").replace("\\", "/"))
             .replace("@VOL2@", (vol2 or "").replace("\\", "/"))
+            .replace("@INPUT2@", _input_block("input2", vol2))
+            .replace("@INPUT3@", _input_block("input3", vol3))
             .replace("@LINK@", (link or "").replace("\\", "/"))
             .replace("@OUT_CSV@", out_csv)
             .replace("@OUT_GPKG@", out_gpkg)
