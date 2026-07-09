@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=1.81
-date=2026-07-04
+version=1.82
+date=2026-07-08
 author=Amar Sarvepalli
 email=venkat.sarvepalli@dot.state.fl.us
 qgisMinimumVersion=3.0
@@ -35,8 +35,17 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (24 commits, 2026-06-19 to today):
+    One version per commit, newest first (25 commits, 2026-06-19 to today):
     .
+    1.82 (2026-07-08): Summarization - macroDTA link performance (required)
+    plus optional mesoDTA / microDTA inputs summarized together (hydra
+    template; overflow hours 24-29 folded into 0-5, two-way counts deduped in
+    validation). New agentAnalysis tabs at the bottom of the dialog: Path
+    Trace (hh/person/tour/trip id hierarchy vs agentPaths duckdb), Subarea
+    extraction, Select Link (multi-link AND/OR, map-selection pickup, loaded
+    volumes of selected agents), Turning Movements (node-list csv, 3- or
+    5-node movements, by-hour). Bundled Apps/agentAnalysis; refreshed
+    summarize.exe and afdta.exe (MESO_BREAKER_RATE anti-deadlock drain).
     1.81 (2026-07-03): Kill switch - closing the run-log window cancels the
     running engine and skips the remaining steps of the chain.
     1.80 (2026-07-02): Link Consolidation count field is user-selected (no
