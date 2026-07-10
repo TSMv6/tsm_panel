@@ -214,6 +214,15 @@ class TsmPanelPlugin():
         Summary_button = getattr(self.ui, "pushButton_74", None)
         if Summary_button:
             Summary_button.clicked.connect(lambda _, tool= "SummaryLoadedVolume":self.open_settings(tool))
+        # Visualizations: multi-resolution GPKG layers (meso segments / micro
+        # lanes with time-period COLUMNS) from a HyDRA run. The .ui shipped the
+        # button disabled as a placeholder; activate it now that the tool exists.
+        Viz_button = getattr(self.ui, "pushButton_77", None)
+        if Viz_button:
+            Viz_button.setEnabled(True)
+            Viz_button.setToolTip("Build meso-segment / micro-lane GPKG layers "
+                                  "from a HyDRA run (time periods as columns).")
+            Viz_button.clicked.connect(lambda _, tool="Visualizer": self.open_settings(tool))
 
         # Demand & Route Choice Models — each model's single button opens its
         # dialog (Hydra-style); the per-row "..." settings buttons were removed.
@@ -471,6 +480,7 @@ class TsmPanelPlugin():
         "TripList2Table": "agentPlans", "tsm_assign": "ELToD",
         "SubareaAssignDialog": "Subarea Assignment", "hydra": "HyDRA",
         "SummaryLoadedVolume": "Summarization",
+        "Visualizer": "Visualizations",
     }
 
     def open_settings(self, tool_name):
@@ -519,6 +529,9 @@ class TsmPanelPlugin():
 
         if tool_name == 'SummaryLoadedVolume':
             dialog = Summary_Dialog()
+        if tool_name == 'Visualizer':
+            from .visualizer_plugin import VisualizerDialog
+            dialog = VisualizerDialog()
 
         print("Dialog instance created")
         # Auto-log every interaction in this dialog (fields, browse, checks, OK).

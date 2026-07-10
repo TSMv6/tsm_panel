@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=1.83
+version=1.84
 date=2026-07-09
 author=Amar Sarvepalli
 email=venkat.sarvepalli@dot.state.fl.us
@@ -36,6 +36,17 @@ changelog=
     engines replaced by the bundled exes).
     .
     One version per commit, newest first (25 commits, 2026-06-19 to today):
+    .
+    1.84 (2026-07-10): Visualizations button (Analyst group) activated ->
+    new Visualizer dialog builds multi-resolution GPKG layers from a HyDRA
+    run via Apps/Visualizer/build_resolution_gpkg.py: meso_segments.gpkg
+    (ONE feature per sub-link segment; queue position) and micro_lanes.gpkg
+    (ONE feature per lane x link, lane lines offset from the corridor chain
+    so lanes stay smooth across link ends). Time periods are attribute
+    COLUMNS (veh_/queued_/speed_/density_/flow_<HHMM>), never duplicated
+    features - default AM peak + two PM peak hours (8,17,18) at 15-min
+    resolution, or All hours (hourly); user-settable. Deployed afdta with
+    MOBIL lane-hold cooldown + lane-group mandate fix.
     .
     1.83 (2026-07-09): HyDRA outputs - Agent plans (agentPlans_out.csv) and
     Agent paths (agentPaths.duckdb) are independent default-on outputs with
