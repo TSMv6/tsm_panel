@@ -309,15 +309,49 @@ def build_micro_lanes(run_dir, lines, srs_wkt, out_path, periods, lane_w_units):
             feat.SetGeometry(make_line(lane_pts))
             lyr.CreateFeature(feat)
 
+    # Node coordinates from link endpoints, so each link's polyline can be
+    # oriented to TRAVEL direction (a_node -> b_node). GeoMaster stores the
+    # opposite-direction carriageway (DIR_TRAVEL = T) with reversed vertex
+    # order, so an unoriented "left of travel" offset lands express lanes on
+    # the OUTSIDE of the WB roadway instead of the shared median. A node's
+    # coordinate is the endpoint that recurs across its incident links.
+    from collections import Counter as _C
+    ep = defaultdict(_C)
+    for (a, b), pts in lines.items():
+        ep[a][(round(pts[0][0], 1), round(pts[0][1], 1))] += 1
+        ep[b][(round(pts[-1][0], 1), round(pts[-1][1], 1))] += 1
+        ep[a][(round(pts[-1][0], 1), round(pts[-1][1], 1))] += 1
+        ep[b][(round(pts[0][0], 1), round(pts[0][1], 1))] += 1
+    node_xy = {n: c.most_common(1)[0][0] for n, c in ep.items()}
+
+    def oriented(a, b):
+        """Link polyline running a_node -> b_node (reversed if digitized T)."""
+        pts = lines.get((a, b))
+        if pts is None:
+            return None
+        na, nb = node_xy.get(a), node_xy.get(b)
+        if na and nb:
+            d0 = math.hypot(pts[0][0] - na[0], pts[0][1] - na[1])
+            dN = math.hypot(pts[0][0] - nb[0], pts[0][1] - nb[1])
+            if dN < d0:  # first vertex is nearer the B node -> reversed
+                return pts[::-1]
+        return pts
+
     n, miss = 0, set()
     for chain in chains:
-        pts_all, cuts = [], [0.0]  # cumulative length fraction at each link end
+        pts_all, cuts = [], [0.0]  # cumulative length at each link end
         for (a, b) in chain:
-            pts = lines.get((a, b))
+            pts = oriented(a, b)
             if pts is None:
                 miss.add((a, b))
                 continue
-            pts_all += pts if not pts_all else pts[0 if pts[0] != pts_all[-1] else 1:]
+            # connect head-to-tail; reverse this link if its tail meets the tail
+            if pts_all:
+                if math.hypot(pts[-1][0] - pts_all[-1][0], pts[-1][1] - pts_all[-1][1]) < \
+                   math.hypot(pts[0][0] - pts_all[-1][0], pts[0][1] - pts_all[-1][1]):
+                    pts = pts[::-1]
+                pts = pts[1:] if pts and pts[0] == pts_all[-1] else pts
+            pts_all += pts
             cuts.append(line_length(pts_all))
         if len(pts_all) < 2:
             continue
@@ -330,7 +364,7 @@ def build_micro_lanes(run_dir, lines, srs_wkt, out_path, periods, lane_w_units):
             emit(a, b, seg_pts)
             n += n_lanes
     for (a, b) in leftovers:
-        pts = lines.get((a, b))
+        pts = oriented(a, b)
         if pts is None:
             miss.add((a, b))
             continue
