@@ -113,6 +113,26 @@ def chain_micro_gp(lines, micro_gp, node_xy):
     return chains[0] if chains else []
 
 
+def read_link_ftypes(gpkg, layer_name=None):
+    """(a,b) -> FTYPE for every link in the layer (ramps, cross-streets, etc.)."""
+    ds = ogr.Open(gpkg)
+    lyr = ds.GetLayerByName(layer_name) if layer_name else ds.GetLayer(0)
+    defn = lyr.GetLayerDefn()
+    names = {defn.GetFieldDefn(i).GetName() for i in range(defn.GetFieldCount())}
+    af = next((c for c in ("A", "a", "a_node", "A_NODE") if c in names), None)
+    bf = next((c for c in ("B", "b", "b_node", "B_NODE") if c in names), None)
+    ff = next((c for c in ("FTYPE", "ftype", "FTI_FTYPE", "FType") if c in names), None)
+    out = {}
+    if af and bf and ff:
+        for f in lyr:
+            try:
+                out[(int(f.GetField(af)), int(f.GetField(bf)))] = int(f.GetField(ff))
+            except (TypeError, ValueError):
+                pass
+    ds = None
+    return out
+
+
 def oriented_pts(a, b, lines, node_xy):
     pts = lines.get((a, b))
     if pts is None:
@@ -158,6 +178,9 @@ def build_aerial(links_gpkg, run_dir, out_path, layer=None, hours="8,17,18",
     # per-lane performance (index/type) -> period value
     perf = _lane_perf(os.path.join(run_dir, "micro_lane_performance.csv"), periods)
 
+    # link ftypes (for ramp detection at interchanges; phase 3 gores)
+    ftypes = read_link_ftypes(links_gpkg, layer)
+
     # spine = chained GP mainline
     chain = chain_micro_gp(lines, gp_links, node_xy)
     if not chain:
@@ -187,6 +210,10 @@ def build_aerial(links_gpkg, run_dir, out_path, layer=None, hours="8,17,18",
     for n, t in ribbon_fields: rib.CreateField(ogr.FieldDefn(n, t))
     mrk = ds.CreateLayer("lane_markings", srs if srs_wkt else None, ogr.wkbLineString)
     for n, t in (("kind", ogr.OFTString),): mrk.CreateField(ogr.FieldDefn(n, t))
+    gore = ds.CreateLayer("gores", srs if srs_wkt else None, ogr.wkbPolygon)
+    for n, t in (("a_node", ogr.OFTInteger64), ("b_node", ogr.OFTInteger64),
+                 ("kind", ogr.OFTString)):
+        gore.CreateField(ogr.FieldDefn(n, t))
 
     # lane center offset (left of travel = +) relative to the spine.
     # GP lanes centered on the spine; buffer; EL bank on the median (left).
@@ -234,9 +261,68 @@ def build_aerial(links_gpkg, run_dir, out_path, layer=None, hours="8,17,18",
             _emit_line(mrk, offset_line(seg, buf_lo + buf_w / 2.0), "buffer")
             _emit_line(mrk, offset_line(seg, el_base + max_el * lane_w), "edge")
     rib.CommitTransaction()
+
+    # ---- phase 3: ramps + gores at interchanges ----
+    # A ramp is a non-mainline link (FTYPE in RAMP_FT) that touches a corridor
+    # node. Build it as its own one-lane ribbon that wedges to a point at the
+    # junction, and fill the gore -- the paved nose between the mainline right
+    # edge and the ramp -- so a diverge/merge reads as real geometry.
+    RAMP_FT = {71, 72, 73, 74, 39}          # on/off, system, freeway-to-freeway
+    chain_set = set(chain)
+    chain_nodes = {a for a, _ in chain} | {b for _, b in chain}
+    # right edge of the mainline chain link incident to a node, on each side
+    starts_at = {a: (a, b) for (a, b) in chain}   # chain link leaving the node
+    ends_at = {b: (a, b) for (a, b) in chain}     # chain link entering the node
+    gore_len = 250.0 * ft_to_unit
+    rib.StartTransaction()
+    n_ramp = n_gore = 0
+    for (a, b), pts in lines.items():
+        if (a, b) in chain_set or ftypes.get((a, b)) not in RAMP_FT:
+            continue
+        # which end sits on the corridor? that node J is the junction
+        if a in chain_nodes and b not in chain_nodes:
+            J, off_ramp = a, True          # diverges from the mainline at J
+        elif b in chain_nodes and a not in chain_nodes:
+            J, off_ramp = b, False         # merges into the mainline at J
+        else:
+            continue
+        rseg = dedupe(oriented_pts(a, b, lines, node_xy) or pts)
+        if len(rseg) < 2:
+            continue
+        # orient the ramp so the junction J is at t=0 (taper wedge start)
+        jxy = node_xy.get(J)
+        if jxy and math.hypot(rseg[-1][0]-jxy[0], rseg[-1][1]-jxy[1]) < \
+                   math.hypot(rseg[0][0]-jxy[0], rseg[0][1]-jxy[1]):
+            rseg = rseg[::-1]
+        rlen = line_length(rseg)
+        rfrac = min(0.5, gore_len / max(rlen, 1.0))
+        # ramp ribbon: symmetric taper to a point at J
+        left = variable_offset_line(rseg, taper_ramp(0.0, lane_w/2.0, True, False, rfrac))
+        right = variable_offset_line(rseg, taper_ramp(0.0, -lane_w/2.0, True, False, rfrac))
+        _emit_poly(rib, ribbon_fields, left, right, a, b, 900, "RAMP",
+                   lane_width_ft, 0.0, periods, perf); n_ramp += 1
+        # gore: mainline right edge near J  ++  reversed ramp near J
+        mlink = starts_at.get(J) if off_ramp else ends_at.get(J)
+        if mlink:
+            mseg = dedupe(oriented_pts(*mlink, lines, node_xy) or [])
+            if len(mseg) >= 2:
+                medge = offset_line(mseg, 0.0)      # GP roadway right edge
+                mk = min(1.0, gore_len / max(line_length(mseg), 1.0))
+                mnear = substring(medge, 0.0, mk) if off_ramp \
+                    else substring(medge, 1.0 - mk, 1.0)
+                rnear = substring(rseg, 0.0, rfrac)
+                if len(mnear) >= 2 and len(rnear) >= 2:
+                    poly = make_polygon(mnear, rnear[::-1])
+                    gf = ogr.Feature(gore.GetLayerDefn())
+                    gf.SetField("a_node", a); gf.SetField("b_node", b)
+                    gf.SetField("kind", "diverge" if off_ramp else "merge")
+                    gf.SetGeometry(poly); gore.CreateFeature(gf); n_gore += 1
+    rib.CommitTransaction()
+
     ds = None
-    print(f"[aerial] {n_ribbon} lane ribbons ({len(chain)} links, {max_gp} GP + "
-          f"{max_el} EL lanes, {len(periods)} periods) -> {out_path}")
+    print(f"[aerial] {n_ribbon} lane ribbons + {n_ramp} ramps + {n_gore} gores "
+          f"({len(chain)} links, {max_gp} GP + {max_el} EL lanes, "
+          f"{len(periods)} periods) -> {out_path}")
     return out_path
 
 

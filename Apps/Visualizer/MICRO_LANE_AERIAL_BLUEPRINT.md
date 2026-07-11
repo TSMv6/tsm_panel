@@ -10,7 +10,10 @@ edge of the GP roadway; lanes 0..gp-1, the buffer, and the EL bank hold fixed
 positions), so where a link's GP count changes the outer lane wedges in/out
 over a ~300 ft taper instead of every lane shifting and kinking. Verified at
 node 1226693376 (GP 4→3: the outer lane closes to a point at the boundary).
-Phases 3–5 below remain design.*
+**Phase 3 adds ramps + gores**: ramp links touching a corridor node become
+their own one-lane ribbons that wedge to a point at the junction, with the
+paved gore nose filled as a `gores` polygon layer (45 ramps + 45 gores on the
+tri-county corridor). Phases 4–5 (QML styles, deck.gl viewer) remain design.*
 
 ## 0. The consolidation question — resolved (no utility needed for phase 1)
 
@@ -157,7 +160,14 @@ aerial, animated lane view:
    `taper_ramp`; outer GP lane wedges over `taper_len` (300 ft) where the count
    changes vs the up/downstream link. (Buffer/barrier band already emitted in
    phase 1; access-window openings deferred to phase 3 with the gore geometry.)
-3. **Gores + ramp ribbons** at interchanges from movements.
+3. **Gores + ramp ribbons** at interchanges from movements. **DONE** — a ramp
+   is any non-mainline link with a ramp FTYPE (71/72/73/74/39) that touches a
+   corridor node; it is drawn as its own one-lane ribbon that wedges to a point
+   at the junction, and the **gore** (paved nose between the mainline right edge
+   and the ramp) is filled as a polygon (`gores` layer, `kind`=merge|diverge).
+   Verified on the tri-county corridor (45 ramps + 45 gores). Ramp connectivity
+   is by node incidence (no `gmns_movement` dependency yet); per-movement turn
+   pockets remain for when movements are wired in.
 4. **QML styles** + Visualizer-dialog option ("Aerial lane polygons").
 5. **JS viewer** (MapLibre/deck.gl) with time slider; optional vehicle-dot
    playback from trajectories.
