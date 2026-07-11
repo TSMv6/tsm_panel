@@ -168,7 +168,14 @@ aerial, animated lane view:
    Verified on the tri-county corridor (45 ramps + 45 gores). Ramp connectivity
    is by node incidence (no `gmns_movement` dependency yet); per-movement turn
    pockets remain for when movements are wired in.
-4. **QML styles** + Visualizer-dialog option ("Aerial lane polygons").
+4. **QML styles** + Visualizer-dialog option ("Aerial lane polygons"). **DONE**
+   — `aerial_style.py` builds the renderers with the QGIS API (guaranteed valid
+   vs hand-authored XML): ribbons graduated green→red on the first-period speed
+   column (RAMP/no-speed → grey fill), markings categorized on `kind`
+   (dashed white / yellow edge / red buffer), gores a hatched tan fill. The
+   panel loads the three sublayers pre-styled and `saveNamedStyle()` drops a
+   `<gpkg>_<sublayer>.qml` sidecar for standalone reuse; styling is wrapped so a
+   failure falls back to the raw layer.
 5. **JS viewer** (MapLibre/deck.gl) with time slider; optional vehicle-dot
    playback from trajectories.
 

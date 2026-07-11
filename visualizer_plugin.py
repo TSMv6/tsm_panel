@@ -167,6 +167,16 @@ class VisualizerDialog(QDialog):
         self.log.appendPlainText(msg)
         QtWidgets.QApplication.processEvents()
 
+    def _first_period_suffix(self):
+        """HHMM suffix of the first built period (styles the ribbons on it)."""
+        if self.rb_all.isChecked():
+            return "0000"
+        txt = (self.ed_hours.text().strip() or "8,17,18").split(",")[0].strip()
+        try:
+            return f"{int(txt):02d}00"
+        except ValueError:
+            return "0800"
+
     # ----------------------------------------------------------------- run --
     def run_build(self):
         run_dir = self.ed_run.text().strip()
@@ -214,13 +224,29 @@ class VisualizerDialog(QDialog):
             if self.cb_load.isChecked():
                 from qgis.core import QgsProject, QgsVectorLayer
                 for name, path in (("Meso Segments", res.get("meso")),
-                                   ("Micro Lanes", res.get("micro")),
-                                   ("Micro Lanes Aerial", aerial_path)):
+                                   ("Micro Lanes", res.get("micro"))):
                     if path and os.path.exists(path):
                         lyr = QgsVectorLayer(path, name, "ogr")
                         if lyr.isValid():
                             QgsProject.instance().addMapLayer(lyr)
                             self._say(f"[map] added {name}")
+                # aerial = 3 styled sublayers (ribbons / gores / markings)
+                if aerial_path and os.path.exists(aerial_path):
+                    try:
+                        import importlib.util as _u
+                        _p = os.path.join(os.path.dirname(__file__), "Apps",
+                                          "Visualizer", "aerial_style.py")
+                        _s = _u.spec_from_file_location("tsm_aerial_style", _p)
+                        _m = _u.module_from_spec(_s); _s.loader.exec_module(_m)
+                        suf = self._first_period_suffix()
+                        for name, lyr in _m.apply_all(aerial_path, suf):
+                            QgsProject.instance().addMapLayer(lyr)
+                            self._say(f"[map] added {name}")
+                    except Exception as se:
+                        self._say(f"[style] aerial styling failed: {se}")
+                        lyr = QgsVectorLayer(aerial_path, "Micro Lanes Aerial", "ogr")
+                        if lyr.isValid():
+                            QgsProject.instance().addMapLayer(lyr)
             self._say("[done]")
         except SystemExit as e:      # builder sys.exit messages
             QMessageBox.critical(self, "Visualizer", str(e))
