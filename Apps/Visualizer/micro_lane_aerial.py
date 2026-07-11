@@ -46,6 +46,43 @@ NI_DAY = 96
 FT_PER_MI = 5280.0
 
 
+def variable_offset_line(pts, off_at):
+    """Offset a polyline where the perpendicular distance varies along it:
+    off_at(t) gives the offset at length-fraction t in [0,1]. Used to taper a
+    lane's outer edge (width 0 → full) so an added/dropped lane is a wedge."""
+    if len(pts) < 2:
+        return pts
+    total = line_length(pts) or 1.0
+    out, acc, n = [], 0.0, len(pts)
+    for i in range(n):
+        if i == 0:
+            dx, dy = pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]
+        elif i == n - 1:
+            dx, dy = pts[-1][0] - pts[-2][0], pts[-1][1] - pts[-2][1]
+            acc = total
+        else:
+            dx = pts[i + 1][0] - pts[i - 1][0]
+            dy = pts[i + 1][1] - pts[i - 1][1]
+            acc += math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+        ln = math.hypot(dx, dy) or 1.0
+        d = off_at(acc / total)
+        out.append((pts[i][0] - dy / ln * d, pts[i][1] + dx / ln * d))
+    return out
+
+
+def taper_ramp(inner, outer, taper_start, taper_end, taper_frac):
+    """Return an off_at(t) that ramps the OUTER edge offset from `inner` (zero
+    lane width) up to `outer` (full width) over a taper zone at the start
+    and/or end. Interior is at `outer`."""
+    def f(t):
+        if taper_start and t < taper_frac:
+            return inner + (outer - inner) * (t / taper_frac)
+        if taper_end and t > 1.0 - taper_frac:
+            return inner + (outer - inner) * ((1.0 - t) / taper_frac)
+        return outer
+    return f
+
+
 def make_polygon(left_pts, right_pts):
     """Ribbon polygon from a left edge and a right edge (right reversed)."""
     ring = ogr.Geometry(ogr.wkbLinearRing)
@@ -153,36 +190,49 @@ def build_aerial(links_gpkg, run_dir, out_path, layer=None, hours="8,17,18",
 
     # lane center offset (left of travel = +) relative to the spine.
     # GP lanes centered on the spine; buffer; EL bank on the median (left).
-    def gp_center(i, gp):          # i = 0 rightmost
-        return (i - (gp - 1) / 2.0) * lane_w
-    def gp_left_edge(gp):
-        return gp_center(gp - 1, gp) + lane_w / 2.0
-    def el_center(j, gp):          # j = 0 nearest buffer
-        return gp_left_edge(gp) + buf_w + (j + 0.5) * lane_w
+    # Right-anchored cross-section (+offset = left of travel): the spine is the
+    # right edge of the GP roadway, GP lanes stack left, then a FIXED buffer and
+    # EL bank positioned at max_gp (so lanes 0..gp-1, the buffer, and the EL bank
+    # never shift when a link's lane count changes -- only the outer GP lane
+    # tapers in/out). Right edge of GP lane i is i*lane_w; left edge (i+1)*lane_w.
+    buf_lo = max_gp * lane_w
+    el_base = buf_lo + buf_w
+    taper_len = 300.0 * ft_to_unit   # AASHTO-ish taper for a lane add/drop
 
     rib.StartTransaction()
     n_ribbon = 0
-    for (a, b) in chain:
+    for idx, (a, b) in enumerate(chain):
         seg = oriented_pts(a, b, lines, node_xy)
         if seg is None or len(seg) < 2:
             continue
         seg = dedupe(seg)
         gp = lanes_of[(a, b)][1]
-        # GP ribbons
+        gp_prev = lanes_of[chain[idx - 1]][1] if idx > 0 else gp
+        gp_next = lanes_of[chain[idx + 1]][1] if idx + 1 < len(chain) else gp
+        tfrac = min(0.45, taper_len / max(line_length(seg), 1.0))
+        # GP ribbons, right-anchored; outer lanes taper where the count changes.
         for i in range(gp):
-            _emit_ribbon(rib, ribbon_fields, seg, gp_center(i, gp), lane_w,
-                         a, b, i, "GP", lane_width_ft, periods, perf); n_ribbon += 1
-        # EL ribbons (uniform bank; phase-1 places max_el lanes alongside)
+            inner, outer = i * lane_w, (i + 1) * lane_w
+            t_start = i >= gp_prev   # this lane was added at the upstream boundary
+            t_end = i >= gp_next     # this lane drops at the downstream boundary
+            right = offset_line(seg, inner)
+            left = variable_offset_line(seg, taper_ramp(inner, outer, t_start, t_end, tfrac))
+            _emit_poly(rib, ribbon_fields, left, right, a, b, i, "GP",
+                       lane_width_ft, (i + 0.5) * lane_w, periods, perf); n_ribbon += 1
+        # EL ribbons (uniform bank on the fixed median position)
         for j in range(max_el):
-            _emit_ribbon(rib, ribbon_fields, seg, el_center(j, gp), lane_w,
-                         a, b, max_gp + j, "EL", lane_width_ft, periods, perf); n_ribbon += 1
-        # markings: GP dashed separators, edge lines, and the EL buffer band
+            c = el_base + (j + 0.5) * lane_w
+            left = offset_line(seg, c + lane_w / 2.0)
+            right = offset_line(seg, c - lane_w / 2.0)
+            _emit_poly(rib, ribbon_fields, left, right, a, b, max_gp + j, "EL",
+                       lane_width_ft, c, periods, perf); n_ribbon += 1
+        # markings: GP dashed separators, right edge, EL buffer band + median edge
         for i in range(1, gp):
-            _emit_line(mrk, offset_line(seg, gp_center(i, gp) - lane_w / 2.0), "dashed")
-        _emit_line(mrk, offset_line(seg, gp_center(0, gp) - lane_w / 2.0), "edge")
+            _emit_line(mrk, offset_line(seg, i * lane_w), "dashed")
+        _emit_line(mrk, offset_line(seg, 0.0), "edge")
         if max_el > 0:
-            _emit_line(mrk, offset_line(seg, gp_left_edge(gp) + buf_w / 2.0), "buffer")
-            _emit_line(mrk, offset_line(seg, el_center(max_el - 1, gp) + lane_w / 2.0), "edge")
+            _emit_line(mrk, offset_line(seg, buf_lo + buf_w / 2.0), "buffer")
+            _emit_line(mrk, offset_line(seg, el_base + max_el * lane_w), "edge")
     rib.CommitTransaction()
     ds = None
     print(f"[aerial] {n_ribbon} lane ribbons ({len(chain)} links, {max_gp} GP + "
@@ -190,9 +240,7 @@ def build_aerial(links_gpkg, run_dir, out_path, layer=None, hours="8,17,18",
     return out_path
 
 
-def _emit_ribbon(layer, fields, seg, center, w, a, b, lane, ltype, wft, periods, perf):
-    left = offset_line(seg, center + w / 2.0)
-    right = offset_line(seg, center - w / 2.0)
+def _emit_poly(layer, fields, left, right, a, b, lane, ltype, wft, center, periods, perf):
     if len(left) < 2 or len(right) < 2:
         return
     feat = ogr.Feature(layer.GetLayerDefn())

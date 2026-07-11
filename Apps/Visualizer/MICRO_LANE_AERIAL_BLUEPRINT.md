@@ -1,11 +1,16 @@
 # Blueprint — Micro Lane Aerial Visualizer
 
 *How to turn the micro lane outputs into a real, aerial-quality lane view
-instead of parallel offset lines. **Phase 1 is BUILT** —
+instead of parallel offset lines. **Phases 1–2 are BUILT** —
 `micro_lane_aerial.py` + the Visualizer dialog's "Micro lanes AERIAL"
 checkbox produce `micro_lanes_aerial.gpkg` (true-width pavement ribbons, EL
 buffer, lane markings, colored by per-lane speed/density/flow per period).
-Phases 2–5 below remain design.*
+**Phase 2 adds tapers**: the cross-section is right-anchored (spine = right
+edge of the GP roadway; lanes 0..gp-1, the buffer, and the EL bank hold fixed
+positions), so where a link's GP count changes the outer lane wedges in/out
+over a ~300 ft taper instead of every lane shifting and kinking. Verified at
+node 1226693376 (GP 4→3: the outer lane closes to a point at the boundary).
+Phases 3–5 below remain design.*
 
 ## 0. The consolidation question — resolved (no utility needed for phase 1)
 
@@ -146,9 +151,12 @@ aerial, animated lane view:
 
 1. **Cross-section profile** from GMNS lanes + segments (consume `width_ft`,
    `_lanes_added`). Output straight-width ribbons (no tapers) — already an
-   aerial improvement.
+   aerial improvement. **DONE.**
 2. **Tapers** at lane adds/drops; **buffer/barrier** separators; access-window
-   openings.
+   openings. **DONE** — right-anchored cross-section + `variable_offset_line` /
+   `taper_ramp`; outer GP lane wedges over `taper_len` (300 ft) where the count
+   changes vs the up/downstream link. (Buffer/barrier band already emitted in
+   phase 1; access-window openings deferred to phase 3 with the gore geometry.)
 3. **Gores + ramp ribbons** at interchanges from movements.
 4. **QML styles** + Visualizer-dialog option ("Aerial lane polygons").
 5. **JS viewer** (MapLibre/deck.gl) with time slider; optional vehicle-dot
