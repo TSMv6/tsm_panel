@@ -1,7 +1,41 @@
 # Blueprint — Micro Lane Aerial Visualizer
 
-*Design only. How to turn the micro lane outputs into a real, aerial-quality
-lane view instead of parallel offset lines.*
+*How to turn the micro lane outputs into a real, aerial-quality lane view
+instead of parallel offset lines. **Phase 1 is BUILT** —
+`micro_lane_aerial.py` + the Visualizer dialog's "Micro lanes AERIAL"
+checkbox produce `micro_lanes_aerial.gpkg` (true-width pavement ribbons, EL
+buffer, lane markings, colored by per-lane speed/density/flow per period).
+Phases 2–5 below remain design.*
+
+## 0. The consolidation question — resolved (no utility needed for phase 1)
+
+`dta_micro` is marked on the **consolidated** network, but netPrep emits the
+GMNS lane/segment files from the pre-consolidation **GeoMaster** (keyed by
+GeoMaster `link_id`, via `Many_to_One_lookup.csv`, and today only a flat 12 ft
+width). Two facts made a GMNS-through-consolidation reconciler unnecessary for
+the real-lane-view goal *right now*:
+
+1. **The GMNS lane detail is thin today** — all widths are a flat 12 ft and
+   `gmns_lane.link_id` is a sequential GMNS id, not the GeoMaster `LINK_ID` in
+   the lookup, so stitching GeoMaster GMNS through consolidation is fragile and
+   adds nothing while widths are uniform.
+2. **The consolidated network already carries what we need** — `resolution_map.csv`
+   (written every run) has `lanes` and `ftype` per micro link, and the
+   consolidated I-95 corridor shows real lane-count variation (GP 3–6 lanes, EL
+   1–3) plus the GP/EL distinction by ftype. That *is* the true cross-section,
+   on the exact links the user tagged `dta_micro`.
+
+So phase 1 reads the consolidated micro links directly — no reconciler, no
+GeoMaster round-trip. A **GMNS reconciler utility** (`GMNS_MICRO_RECONCILE`)
+becomes worthwhile only in phase 2, once netPrep codes **real per-lane widths
+and lane types** and a consolidation-aware GMNS; it would map each consolidated
+`dta_micro` link to its ordered GeoMaster members (via `Many_to_One_lookup`'s
+`GeoMerge_Order`), pull their GMNS lane/segment records, and stitch them into a
+consolidated-keyed cross-section. Until then a manual lane-config override file
+covers a study corridor that needs non-uniform widths.
+
+*Design detail below. How to turn the micro lane outputs into a real,
+aerial-quality lane view instead of parallel offset lines.*
 
 ## 1. Where we are, and why it looks flat
 

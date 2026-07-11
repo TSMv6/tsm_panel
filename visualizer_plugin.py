@@ -65,14 +65,18 @@ class VisualizerDialog(QDialog):
         self.cb_meso.setChecked(True)
         self.cb_micro = QCheckBox("Micro lanes (per-lane offset lines)", gb_out)
         self.cb_micro.setChecked(True)
+        self.cb_aerial = QCheckBox("Micro lanes AERIAL (true-width pavement "
+                                   "ribbons + EL buffer)", gb_out)
+        self.cb_aerial.setChecked(False)
         go.addWidget(self.cb_meso, 0, 0, 1, 2)
         go.addWidget(self.cb_micro, 1, 0, 1, 2)
+        go.addWidget(self.cb_aerial, 2, 0, 1, 4)
         go.addWidget(QLabel("Lane width (ft)", gb_out), 1, 2)
         self.sp_lanew = QDoubleSpinBox(gb_out)
         self.sp_lanew.setRange(6.0, 30.0)
         self.sp_lanew.setValue(12.0)
         go.addWidget(self.sp_lanew, 1, 3)
-        self.ed_out = self._dir_row(go, 2, "Output folder (blank = <run dir>\\visualizer)")
+        self.ed_out = self._dir_row(go, 3, "Output folder (blank = <run dir>\\visualizer)")
         root.addWidget(gb_out)
 
         # ---------------- time periods ----------------
@@ -184,6 +188,7 @@ class VisualizerDialog(QDialog):
             import builtins
             orig_print = builtins.print
             builtins.print = lambda *a, **k: self._say(" ".join(str(x) for x in a))
+            aerial_path = None
             try:
                 res = builder.build(
                     links, run_dir,
@@ -193,12 +198,24 @@ class VisualizerDialog(QDialog):
                     lane_width_ft=self.sp_lanew.value(),
                     do_meso=self.cb_meso.isChecked(),
                     do_micro=self.cb_micro.isChecked())
+                if self.cb_aerial.isChecked():
+                    import importlib.util as _u
+                    _p = os.path.join(os.path.dirname(__file__), "Apps",
+                                      "Visualizer", "micro_lane_aerial.py")
+                    _s = _u.spec_from_file_location("tsm_micro_aerial", _p)
+                    _m = _u.module_from_spec(_s); _s.loader.exec_module(_m)
+                    aerial_path = _m.build(
+                        links, run_dir, out_dir=out_dir,
+                        layer=self.ed_layer.text().strip() or None, hours=hours,
+                        time_res=self.cmb_res.currentData(),
+                        lane_width_ft=self.sp_lanew.value())
             finally:
                 builtins.print = orig_print
             if self.cb_load.isChecked():
                 from qgis.core import QgsProject, QgsVectorLayer
                 for name, path in (("Meso Segments", res.get("meso")),
-                                   ("Micro Lanes", res.get("micro"))):
+                                   ("Micro Lanes", res.get("micro")),
+                                   ("Micro Lanes Aerial", aerial_path)):
                     if path and os.path.exists(path):
                         lyr = QgsVectorLayer(path, name, "ogr")
                         if lyr.isValid():
