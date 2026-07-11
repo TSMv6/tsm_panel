@@ -68,9 +68,13 @@ class VisualizerDialog(QDialog):
         self.cb_aerial = QCheckBox("Micro lanes AERIAL (true-width pavement "
                                    "ribbons + EL buffer)", gb_out)
         self.cb_aerial.setChecked(False)
+        self.cb_viewer = QCheckBox("Also build animated HTML viewer "
+                                   "(self-contained, time scrubber)", gb_out)
+        self.cb_viewer.setChecked(False)
         go.addWidget(self.cb_meso, 0, 0, 1, 2)
         go.addWidget(self.cb_micro, 1, 0, 1, 2)
         go.addWidget(self.cb_aerial, 2, 0, 1, 4)
+        go.addWidget(self.cb_viewer, 4, 0, 1, 4)
         go.addWidget(QLabel("Lane width (ft)", gb_out), 1, 2)
         self.sp_lanew = QDoubleSpinBox(gb_out)
         self.sp_lanew.setRange(6.0, 30.0)
@@ -219,6 +223,13 @@ class VisualizerDialog(QDialog):
                         layer=self.ed_layer.text().strip() or None, hours=hours,
                         time_res=self.cmb_res.currentData(),
                         lane_width_ft=self.sp_lanew.value())
+                    if self.cb_viewer.isChecked() and aerial_path:
+                        _pv = os.path.join(os.path.dirname(__file__), "Apps",
+                                           "Visualizer", "aerial_viewer.py")
+                        _sv = _u.spec_from_file_location("tsm_aerial_viewer", _pv)
+                        _mv = _u.module_from_spec(_sv); _sv.loader.exec_module(_mv)
+                        _mv.build(aerial_path,
+                                  title="Micro Lane Aerial — HyDRA")
             finally:
                 builtins.print = orig_print
             if self.cb_load.isChecked():

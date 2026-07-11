@@ -13,7 +13,12 @@ node 1226693376 (GP 4→3: the outer lane closes to a point at the boundary).
 **Phase 3 adds ramps + gores**: ramp links touching a corridor node become
 their own one-lane ribbons that wedge to a point at the junction, with the
 paved gore nose filled as a `gores` polygon layer (45 ramps + 45 gores on the
-tri-county corridor). Phases 4–5 (QML styles, deck.gl viewer) remain design.*
+tri-county corridor). **Phase 4** pre-styles the layers (graduated LOS ribbons,
+categorized markings, hatched gores) via `aerial_style.py` + `.qml` sidecars.
+**Phase 5** (`aerial_viewer.py`) writes a self-contained animated HTML viewer:
+Canvas lane pavement colored by LOS, a time scrubber (play/pause, HH:MM),
+pan/zoom, hover tooltips, LOS legend, light/dark toggle — no external CDN or
+tiles (strict-CSP safe). All five phases BUILT.*
 
 ## 0. The consolidation question — resolved (no utility needed for phase 1)
 
@@ -176,13 +181,26 @@ aerial, animated lane view:
    panel loads the three sublayers pre-styled and `saveNamedStyle()` drops a
    `<gpkg>_<sublayer>.qml` sidecar for standalone reuse; styling is wrapped so a
    failure falls back to the raw layer.
-5. **JS viewer** (MapLibre/deck.gl) with time slider; optional vehicle-dot
-   playback from trajectories.
+5. **JS viewer** with time slider; optional vehicle-dot playback from
+   trajectories. **DONE** (dependency-free variant) — `aerial_viewer.py` reads
+   the aerial gpkg and writes ONE self-contained HTML: a Canvas renderer of the
+   lane pavement colored by per-lane speed (LOS), a bottom time scrubber with
+   play/pause and an HH:MM readout that animates across the built periods,
+   pan (drag) + zoom (wheel), hover tooltips (lane, type, speed, flow), a LOS
+   legend, and a light/dark theme toggle. The deck.gl/MapLibre route was NOT
+   taken: the self-contained / strict-CSP constraint blocks external CDNs and
+   basemap tile servers, so the viewer inlines all data + code and draws its own
+   Canvas (no library, no network) — works as a local file and as a shareable
+   artifact. Vehicle-dot playback (TripsLayer equivalent) from the micro
+   trajectories remains the one open extension. Verified on the tri-county
+   corridor (502 ribbons, 12 periods): ribbons render as pavement, ramps + gores
+   read at an interchange, the scrubber steps 08:00→17:30, both themes work.
+   Wired into the Visualizer dialog as an optional "animated HTML viewer" box.
 
 Phases 1–2 deliver the "real lane view" the request is about; 3 makes
 interchanges read; 4–5 make it animate and ship. Each phase is a self-contained
-addition to `build_resolution_gpkg.py` and does not disturb the existing
-offset-line output (keep it as the lightweight schematic mode).
+addition and does not disturb the existing offset-line output (kept as the
+lightweight schematic mode in `build_resolution_gpkg.py`).
 
 ## 7. Open questions to settle before building
 
