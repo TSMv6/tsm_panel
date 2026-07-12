@@ -238,6 +238,13 @@ class TsmPanelPlugin():
                 grid.addWidget(rep_btn, 2, 0, 1, 2)
                 rep_btn.clicked.connect(
                     lambda _, tool="ScenarioReport": self.open_settings(tool))
+                ixd_btn = _QtW.QPushButton("Interchange Volumes", host)
+                ixd_btn.setToolTip("Limited-access dashboard: group interchanges, "
+                                   "aggregate mainline/ramp volumes + turning "
+                                   "movements, build the interactive HTML.")
+                grid.addWidget(ixd_btn, 3, 0, 1, 2)
+                ixd_btn.clicked.connect(
+                    lambda _, tool="InterchangeDashboard": self.open_settings(tool))
         except Exception:
             pass
 
@@ -499,6 +506,7 @@ class TsmPanelPlugin():
         "SummaryLoadedVolume": "Summarization",
         "Visualizer": "Visualizations",
         "ScenarioReport": "Scenario Report",
+        "InterchangeDashboard": "Interchange Volumes",
     }
 
     def open_settings(self, tool_name):
@@ -553,6 +561,9 @@ class TsmPanelPlugin():
         if tool_name == 'ScenarioReport':
             from .scenario_report_plugin import ScenarioReportDialog
             dialog = ScenarioReportDialog()
+        if tool_name == 'InterchangeDashboard':
+            from .interchange_dashboard_plugin import InterchangeDashboardDialog
+            dialog = InterchangeDashboardDialog()
 
         print("Dialog instance created")
         # Auto-log every interaction in this dialog (fields, browse, checks, OK).
