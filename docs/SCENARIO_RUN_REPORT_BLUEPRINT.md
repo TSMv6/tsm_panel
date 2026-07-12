@@ -133,11 +133,24 @@ step's output files.
    Verified on exp_tri_tollcmp (102 metrics; both themes render; the by-county
    table correctly exposes it as a tri-county subarea run).
 2. Demand sections (SDT/LDT trip-length + DMA + mode/purpose) and the trip-list
-   section.
-3. PopSyn + Skims sections; the header/provenance card.
-4. HTML polish (demo-page quality, theme, table views) + panel button +
-   run-complete auto-hook.
-5. Scenario compare (two-run deltas).
+   section. **DONE** — chunked+cached trip-list aggregation (market composition,
+   VOT, purpose, market×purpose, occupancy clamped [1,8] against raw outliers,
+   departure profile) + SDT/LDT subsections via the market tag (string labels,
+   no code-map guessing). Trip-length/DMA heatmap remain refinements needing
+   the raw SDT/LDT files with code maps.
+3. PopSyn + Skims sections; the header/provenance card. **DONE** — PopSyn:
+   expansion-weighted HH/persons vs tsm_landuse control totals (overall + top-12
+   counties, deviation pills), HH-size distribution. Skims: coverage sanity ONLY
+   (zones / disconnected ODs / isolated fallbacks) — the skim is free-flow, so
+   OD-time stats are deliberately not reported (user ruling 2026-07-11).
+   Sections ordered along the pipeline: PopSyn → Skims → SDT → LDT → trip list →
+   assignment (user request).
+4. HTML polish + panel button + run-complete auto-hook. **DONE (button)** —
+   "Scenario Report" button added to the Analyst group in code (the .ui has no
+   placeholder), opening `scenario_report_plugin.ScenarioReportDialog` (run dir,
+   demand dir, title, min-mainline, open-when-done). Run-complete auto-hook
+   deferred until the HyDRA runner has a completion callback to attach to.
+5. Scenario compare (two-run deltas). — open
 
 ## 7. Why HTML + markdown, not just Excel
 

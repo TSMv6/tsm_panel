@@ -223,6 +223,23 @@ class TsmPanelPlugin():
             Viz_button.setToolTip("Build meso-segment / micro-lane GPKG layers "
                                   "from a HyDRA run (time periods as columns).")
             Viz_button.clicked.connect(lambda _, tool="Visualizer": self.open_settings(tool))
+        # Scenario Report: one report card for the whole model chain (PopSyn ->
+        # Skims -> SDT -> LDT -> trip list -> assignment). The .ui has no
+        # placeholder for it, so add the button to the Analyst grid in code.
+        try:
+            from qgis.PyQt import QtWidgets as _QtW
+            grid = getattr(self.ui, "gridLayout_11", None)
+            host = getattr(self.ui, "Step_4_Analyst", None)
+            if grid is not None and host is not None:
+                rep_btn = _QtW.QPushButton("Scenario Report", host)
+                rep_btn.setToolTip("Generate scenario_report.html/.md + "
+                                   "scenario_metrics.csv from a HyDRA run "
+                                   "(whole model chain report card).")
+                grid.addWidget(rep_btn, 2, 0, 1, 2)
+                rep_btn.clicked.connect(
+                    lambda _, tool="ScenarioReport": self.open_settings(tool))
+        except Exception:
+            pass
 
         # Demand & Route Choice Models — each model's single button opens its
         # dialog (Hydra-style); the per-row "..." settings buttons were removed.
@@ -481,6 +498,7 @@ class TsmPanelPlugin():
         "SubareaAssignDialog": "Subarea Assignment", "hydra": "HyDRA",
         "SummaryLoadedVolume": "Summarization",
         "Visualizer": "Visualizations",
+        "ScenarioReport": "Scenario Report",
     }
 
     def open_settings(self, tool_name):
@@ -532,6 +550,9 @@ class TsmPanelPlugin():
         if tool_name == 'Visualizer':
             from .visualizer_plugin import VisualizerDialog
             dialog = VisualizerDialog()
+        if tool_name == 'ScenarioReport':
+            from .scenario_report_plugin import ScenarioReportDialog
+            dialog = ScenarioReportDialog()
 
         print("Dialog instance created")
         # Auto-log every interaction in this dialog (fields, browse, checks, OK).
