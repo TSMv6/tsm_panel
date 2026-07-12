@@ -124,7 +124,15 @@ For a selected interchange (or the whole system), report daily + by-period:
    `--county`/`--route` filtered): mainline / ramp / cross-street tables. Also
    writes `interchange_volumes.csv` (feeds the phase-4 HTML dashboard).
 3. **Cross-streets + turning movements** (wire in `agentAnalysis turns`) →
-   TM tables + spider diagrams.
+   TM tables + spider diagrams. **DONE** — `Apps/Dashboard/interchange_turns.py`:
+   finds ramp-terminal nodes (shared by a ramp + a cross-street member), runs
+   `agentAnalysis turns` on them (from `agentPaths.duckdb`), classifies each
+   from→thru→to movement Left/Through/Right/U-turn and the approach NB/SB/EB/WB
+   from node geometry, and writes `interchange_turns.csv`. `spider_svg()` renders
+   the classic turning-movement diagram (curved arcs, width ∝ √volume, L blue /
+   T grey / R green, volume labels, cardinal legs) — reusable by the workbook and
+   the phase-4 dashboard. Verified on 20 interchanges (48 terminal nodes, 143
+   movements: 83 T / 26 L / 32 R / 2 U).
 4. **HTML dashboard** (map + drill-down + period selector).
 5. **Panel button** + QGIS layer loading + FDOT-interchange-layer option.
 
