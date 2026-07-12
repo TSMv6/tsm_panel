@@ -133,7 +133,16 @@ For a selected interchange (or the whole system), report daily + by-period:
    T grey / R green, volume labels, cardinal legs) — reusable by the workbook and
    the phase-4 dashboard. Verified on 20 interchanges (48 terminal nodes, 143
    movements: 83 T / 26 L / 32 R / 2 U).
-4. **HTML dashboard** (map + drill-down + period selector).
+4. **HTML dashboard** (map + drill-down + period selector). **DONE** —
+   `Apps/Dashboard/interchange_dashboard.py` writes ONE self-contained,
+   theme-aware `interchange_dashboard.html`: a Canvas **interchange map** (points
+   sized by mainline AADT, red where model/obs is off >20%, pan/zoom/click), a
+   **drill-down** panel (header + tiles + mainline / ramp / cross-street volume
+   tables + turning-movement **spiders** from phase 3), a **Daily / AM / PM**
+   period selector driving the tables, a filter box, and a **sortable system
+   table** of all interchanges. Reuses `interchange_volumes.aggregate/summarize`
+   (per-member volumes) and `interchange_turns.spider_svg` (pre-rendered).
+   Verified: 840 interchanges on the map, 80 detailed, 48 spiders, 309 KB.
 5. **Panel button** + QGIS layer loading + FDOT-interchange-layer option.
 
 ## 9. Relationship to the other blueprints
