@@ -118,6 +118,20 @@ step's output files.
 
 1. `scenario_metrics.csv` schema + the assignment section (reuses existing
    figure generators + count validation). Delivers the highest-value half.
+   **DONE** — `Apps/Report/scenario_report.py` reads a run dir and writes
+   `scenario_report.html` (self-contained, inline CSS + **static inline SVG**
+   charts that theme via CSS vars — no JS charting, no external assets),
+   `scenario_report.md` (diffable twin), and `scenario_metrics.csv` (tidy long:
+   stage,section,metric,segment,value,unit). Assignment section covers: header/
+   provenance card; network totals (VMT/VHT/volume-weighted mean speed by
+   facility, summed over the disjoint tiers, length = speed×tt, connectors
+   dropped); count validation (canonical `valstats`: model/obs ratio, R², %RMSE,
+   GEH<5/<10 — overall + by facility + by county, with obs-vs-model scatter and
+   ratio pills); tolling (EL toll profile, peak, revenue proxy); convergence
+   proxy (weighted gap÷cost) + resolution split. Demand sections render
+   "not run — phase 2–3". Metric formulas match `model_performance_summary.py`.
+   Verified on exp_tri_tollcmp (102 metrics; both themes render; the by-county
+   table correctly exposes it as a tri-county subarea run).
 2. Demand sections (SDT/LDT trip-length + DMA + mode/purpose) and the trip-list
    section.
 3. PopSyn + Skims sections; the header/provenance card.
