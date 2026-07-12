@@ -102,9 +102,27 @@ For a selected interchange (or the whole system), report daily + by-period:
 ## 8. Build phases
 
 1. **Interchange grouping** (`interchanges.gpkg` + membership table) and the
-   link-role classifier. Everything else keys off this.
+   link-role classifier. Everything else keys off this. **DONE** —
+   `Apps/Dashboard/interchange_build.py`: seeds on ramp-to-mainline junction
+   nodes (limited-access FTYPE {11,91,96,97,98} ∩ ramp FTYPE {71,72}), unions
+   junctions within `--radius-m` (800 m) via a spatial-grid union-find, and per
+   cluster gathers mainline through-links, on/off/system ramps, ramp-terminal
+   nodes and the cross-street arterials/collectors touching them. Roles +
+   NB/SB/EB/WB direction from node geometry; route = mainline `ST_NAME` (I-95,
+   FLORIDA'S TPKE…), name = cross-street. Writes `interchanges` (points) +
+   `members` (table) layers + a members CSV. Statewide: **840 interchanges,
+   9,618 member links** (3,167 junctions).
 2. **Mainline + ramp aggregation** → the Excel workbook (summary + per-
-   interchange sheets). Delivers the core deliverable.
+   interchange sheets). Delivers the core deliverable. **DONE** —
+   `Apps/Dashboard/interchange_volumes.py`: daily/AM/PM volume + vol-weighted
+   speed (clamped ≤85 mph) + peak toll per link from the three
+   `link_performance_*` tiers, joined to members. **Summary sheet** (all 840):
+   route, cross-street, county, representative two-way **mainline AADT** (median
+   daily per direction × GP/EL class — not a naive sum over sequential
+   segments), ramp volume, on/off/system counts, cross-street volume, model-vs-
+   count with a color-graded ratio cell. **Detail sheets** (top-N by AADT or
+   `--county`/`--route` filtered): mainline / ramp / cross-street tables. Also
+   writes `interchange_volumes.csv` (feeds the phase-4 HTML dashboard).
 3. **Cross-streets + turning movements** (wire in `agentAnalysis turns`) →
    TM tables + spider diagrams.
 4. **HTML dashboard** (map + drill-down + period selector).
