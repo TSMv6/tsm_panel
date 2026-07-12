@@ -195,6 +195,7 @@ class VisualizerDialog(QDialog):
             (self.ed_hours.text().strip() or "8,17,18")
         out_dir = self.ed_out.text().strip() or os.path.join(run_dir, "visualizer")
         self.btn_run.setEnabled(False)
+        self._viewer_html = None
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         try:
             builder = _load_builder()
@@ -228,8 +229,8 @@ class VisualizerDialog(QDialog):
                                            "Visualizer", "aerial_viewer.py")
                         _sv = _u.spec_from_file_location("tsm_aerial_viewer", _pv)
                         _mv = _u.module_from_spec(_sv); _sv.loader.exec_module(_mv)
-                        _mv.build(aerial_path,
-                                  title="Micro Lane Aerial — HyDRA")
+                        self._viewer_html = _mv.build(
+                            aerial_path, title="Micro Lane Aerial — HyDRA")
             finally:
                 builtins.print = orig_print
             if self.cb_load.isChecked():
@@ -258,6 +259,19 @@ class VisualizerDialog(QDialog):
                         lyr = QgsVectorLayer(aerial_path, "Micro Lanes Aerial", "ogr")
                         if lyr.isValid():
                             QgsProject.instance().addMapLayer(lyr)
+            # the HTML viewer is a standalone web page (not a QGIS layer):
+            # surface its path and open it in the browser so the play button
+            # is actually reachable.
+            vh = getattr(self, "_viewer_html", None)
+            if vh and os.path.exists(vh):
+                self._say(f"[viewer] animated HTML written:\n    {vh}")
+                self._say("[viewer] opening in your web browser "
+                          "(play button ▶ is at the bottom of that page)…")
+                try:
+                    import webbrowser
+                    webbrowser.open("file:///" + vh.replace("\\", "/"))
+                except Exception:
+                    pass
             self._say("[done]")
         except SystemExit as e:      # builder sys.exit messages
             QMessageBox.critical(self, "Visualizer", str(e))
