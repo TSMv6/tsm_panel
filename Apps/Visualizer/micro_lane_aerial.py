@@ -33,11 +33,15 @@ import argparse
 import csv
 import math
 import os
+import sys
 from collections import defaultdict
 
 from osgeo import ogr, osr
 
-# reuse geometry helpers from the schematic builder
+# reuse geometry helpers from the schematic builder. When this file is loaded by
+# path (the QGIS plugin uses importlib), its own directory is not on sys.path, so
+# a bare `import build_resolution_gpkg` fails -- add the directory first.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_resolution_gpkg import (read_link_lines, line_length, substring,
                                     offset_line, dedupe, make_line, build_periods)
 
