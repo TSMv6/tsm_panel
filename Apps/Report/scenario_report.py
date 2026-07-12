@@ -164,6 +164,93 @@ def convergence(run_dir):
     return out
 
 
+def _find(paths, *names):
+    """First existing file among names, searched over paths."""
+    for p in paths:
+        for n in names:
+            fp = os.path.join(p, n)
+            if os.path.exists(fp):
+                return fp
+    return None
+
+
+def _market_group(m):
+    m = str(m)
+    if m.startswith("SDT_Res"):
+        return "SDT resident"
+    if m.startswith("SDT_Vis"):
+        return "SDT visitor"
+    if m.startswith("LDT_Res") or m.startswith("LDT_Vis") or m.startswith("LDT"):
+        return "LDT visitor" if "Vis" in m else "LDT resident"
+    if m.startswith("OS") or "External" in m or "ext" in m.lower():
+        return "External / OS"
+    return m
+
+
+def triplist_summary(demand_paths, cache_dir, chunk=4_000_000):
+    """Chunked aggregation of the assembled tripList (the demand handed to
+    assignment): vehicle- and person-trips by market / VOT segment / purpose,
+    occupancy, and the departure-time profile. Cached to a small JSON keyed on
+    the source mtime so re-runs are instant (the file can be tens of millions
+    of rows)."""
+    import json
+    fp = _find(demand_paths, "tripList_30min.csv.gz", "tripList_30min.csv",
+               "tripList.csv.gz", "tripList.csv")
+    if not fp:
+        return None
+    cache = os.path.join(cache_dir, ".triplist_cache.json")
+    src_mt = os.path.getmtime(fp)
+    if os.path.exists(cache):
+        try:
+            c = json.load(open(cache))
+            if abs(c.get("_mtime", 0) - src_mt) < 1 and c.get("_src") == fp:
+                return c
+        except Exception:
+            pass
+    from collections import defaultdict
+    veh_mkt, per_mkt, cnt_mkt = defaultdict(float), defaultdict(float), defaultdict(int)
+    veh_vot, veh_pur = defaultdict(float), defaultdict(float)
+    veh_hr = defaultdict(float)
+    veh_mkt_pur = defaultdict(float)   # (market_group, purpose) -> vehTrips
+    tot_v = tot_p = 0.0
+    use = ["purpose", "depart_time", "marketVot", "vehTrips", "occupancy", "market"]
+    for ch in pd.read_csv(fp, usecols=use, chunksize=chunk,
+                          dtype={"purpose": "category", "marketVot": "category",
+                                 "market": "category"}):
+        v = ch["vehTrips"].to_numpy(float)
+        # occupancy has garbage outliers (seen up to 12,306) and sub-1 noise;
+        # clamp to a physical auto range so person-trips aren't polluted.
+        occ = ch["occupancy"].fillna(1.0).clip(1.0, 8.0).to_numpy(float)
+        p = v * occ
+        tot_v += v.sum(); tot_p += p.sum()
+        gm = ch["market"].map(_market_group)
+        for key, sv in ch.groupby(gm, observed=True).indices.items():
+            veh_mkt[key] += v[sv].sum(); per_mkt[key] += p[sv].sum()
+            cnt_mkt[key] += len(sv)
+        for key, sv in ch.groupby("marketVot", observed=True).indices.items():
+            veh_vot[str(key)] += v[sv].sum()
+        for key, sv in ch.groupby("purpose", observed=True).indices.items():
+            veh_pur[str(key)] += v[sv].sum()
+        ch2 = ch.assign(_mg=gm)
+        for (mgk, pk), sv in ch2.groupby(["_mg", "purpose"], observed=True).indices.items():
+            veh_mkt_pur[f"{mgk}||{pk}"] += v[sv].sum()
+        hr = ch["depart_time"].astype(str).str.slice(0, 2)
+        hr = pd.to_numeric(hr, errors="coerce").fillna(0).astype(int).clip(0, 23)
+        for h_, sv in ch.groupby(hr).indices.items():
+            veh_hr[int(h_)] += v[sv].sum()
+    out = {"_src": fp, "_mtime": src_mt, "total_veh": tot_v, "total_per": tot_p,
+           "by_market": dict(veh_mkt), "per_market": dict(per_mkt),
+           "cnt_market": dict(cnt_mkt), "by_vot": dict(veh_vot),
+           "by_purpose": dict(veh_pur),
+           "by_market_purpose": dict(veh_mkt_pur),
+           "by_hour": {str(k): v for k, v in veh_hr.items()}}
+    try:
+        json.dump(out, open(cache, "w"))
+    except Exception:
+        pass
+    return out
+
+
 def load_validation(run_dir, min_mainline=5000):
     fp = os.path.join(run_dir, "count_validation.csv")
     if not os.path.exists(fp):
@@ -256,8 +343,9 @@ def line_profile(pairs, w=560, h=220, unit="$", ylab="EL toll ($)"):
     for gy in (0, vmax):
         b.append(f'<line x1="{M["l"]}" y1="{Y(gy):.1f}" x2="{M["l"]+pw}" '
                  f'y2="{Y(gy):.1f}" class="grid"/>')
+        gl = f"{unit}{gy:.2f}" if unit else _fmt(gy)
         b.append(f'<text x="{M["l"]-6}" y="{Y(gy)+3:.1f}" font-size="10.5" '
-                 f'text-anchor="end" fill="var(--muted)">{unit}{gy:.2f}</text>')
+                 f'text-anchor="end" fill="var(--muted)">{gl}</text>')
     for hh in (0, 6, 12, 18, 23):
         lab = "12A" if hh == 0 else (f"{hh}A" if hh < 12 else ("12P" if hh == 12 else f"{hh-12}P"))
         b.append(f'<text x="{X(hh):.0f}" y="{h-8}" font-size="10.5" '
@@ -380,22 +468,28 @@ def _ratio_pill(ratio):
     return _pill(f"{ratio:.2f}", k)
 
 
-def build(run_dir, out_dir=None, title=None, min_mainline=5000):
+def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None):
     run_dir = os.path.abspath(run_dir)
     out_dir = out_dir or run_dir
     os.makedirs(out_dir, exist_ok=True)
     title = title or f"Scenario Report — {os.path.basename(run_dir)}"
     metrics = []   # (stage,section,metric,segment,value,unit)
 
-    def M(section, metric, segment, value, unit=""):
-        metrics.append(("Assignment", section, metric, segment,
+    def M(section, metric, segment, value, unit="", stage="Assignment"):
+        metrics.append((stage, section, metric, segment,
                         "" if value is None else value, unit))
+
+    def D(section, metric, segment, value, unit=""):
+        M(section, metric, segment, value, unit, stage="Demand")
 
     # ---- compute ----
     net, tier_links = network_totals(run_dir)
     cv = load_validation(run_dir, min_mainline)
     toll = tolling(run_dir)
     conv = convergence(run_dir)
+    # demand outputs live in the run dir, a given demand dir, or the parent scenario dir
+    demand_paths = [p for p in (demand_dir, run_dir, os.path.dirname(run_dir)) if p]
+    tlist = triplist_summary(demand_paths, out_dir)
 
     sections = []
 
@@ -549,12 +643,95 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000):
         "three resolutions.",
         conv_html + '<h3>Resolution split</h3>' + mr))
 
-    # ---- demand placeholders (phase 2-3) ----
-    for name in ("Population synthesis", "Short-distance travel (SDT)",
-                 "Long-distance travel (LDT)", "Trip-list assembly"):
-        sections.append((name, "",
-            '<p class="notrun">Demand-side reporting lands in phase 2–3 '
-            '(reads the PopSyn / SDT / LDT / agentPlans outputs).</p>'))
+    # ---- population synthesis (phase 3 placeholder) ----
+    sections.append(("Population synthesis", "",
+        '<p class="notrun">PopSyn marginals + synthesized totals land in phase 3 '
+        '(reads the synthetic household / person files).</p>'))
+
+    # ---- demand composition from the assembled trip list ----
+    MKT_ORDER = ["SDT resident", "SDT visitor", "LDT resident", "LDT visitor",
+                 "Truck", "External / OS"]
+    MKT_COLOR = {"SDT resident": "--gp", "SDT visitor": "--el",
+                 "LDT resident": "--macro", "LDT visitor": "--micro",
+                 "Truck": "--meso", "External / OS": "--warn"}
+    if tlist:
+        tv, tp = tlist["total_veh"], tlist["total_per"]
+        occ = tp / tv if tv else float("nan")
+        D("TripList", "vehicle_trips", "all", round(tv, 0), "veh-trips")
+        D("TripList", "person_trips", "all", round(tp, 0), "person-trips")
+        D("TripList", "mean_occupancy", "all", round(occ, 2))
+        bm, pm = tlist["by_market"], tlist["per_market"]
+        order = [m for m in MKT_ORDER if m in bm] + [m for m in bm if m not in MKT_ORDER]
+        mkt_rows = []
+        for m in order:
+            mv, mp = bm[m], pm.get(m, 0.0)
+            D("TripList", "vehicle_trips", m, round(mv, 0), "veh-trips")
+            mkt_rows.append((m, _fmt(mv), _fmt(mp),
+                             f"{mp/mv:.2f}" if mv else "—",
+                             f"{100*mv/tv:.1f}%" if tv else "—"))
+        mkt_tbl = table(["Market", "Vehicle-trips", "Person-trips", "Occ", "Share"],
+                        mkt_rows, num_cols=(1, 2, 3, 4))
+        mbar = hbars([(m, bm[m], MKT_COLOR.get(m, "--muted")) for m in order])
+        hours = [(h, tlist["by_hour"].get(str(h), 0.0)) for h in range(24)]
+        for h_, hv in hours:
+            D("TripList", "departures", f"hour:{h_}", round(hv, 0), "veh-trips")
+        dep = line_profile(hours, unit="", ylab="Vehicle-trips",
+                           w=560, h=200)
+        # purpose bar (top 8)
+        pur = sorted(tlist["by_purpose"].items(), key=lambda kv: -kv[1])[:8]
+        pbar = hbars([(k, v, "--macro") for k, v in pur])
+        tl_tiles = tiles([(f'{_fmt(tp)}', "Person-trips"),
+                          (f'{_fmt(tv)}', "Vehicle-trips"),
+                          (f'{occ:.2f}', "Mean occupancy"),
+                          (f'{len(bm)}', "Demand markets")])
+        sections.append(("Trip-list assembly & demand composition",
+            "The assembled trip list handed to assignment: person-trips reduced "
+            "to vehicle-trips by occupancy, split across the demand markets (the "
+            "SDT/LDT × resident/visitor pool), with the loaded departure-time "
+            "profile. This is the full demand pool; the assignment section above "
+            "is what THIS run loaded onto the network.",
+            tl_tiles + '<div class="cols2"><div class="chart">' + mbar +
+            '<p class="fignote">Vehicle-trips by market.</p>' + dep +
+            '<p class="fignote">Departure-time profile (vehicle-trips by hour).</p>'
+            '</div><div>' + mkt_tbl + '<h3>Trips by purpose</h3>' + pbar + '</div></div>'))
+
+        # SDT / LDT sub-sections from the market×purpose cross
+        def _market_section(name, groups, note):
+            mp_cross = tlist["by_market_purpose"]
+            tot = sum(bm.get(g, 0.0) for g in groups)
+            if tot <= 0:
+                return (name, "", f'<p class="notrun">{note}</p>')
+            # per-purpose totals across the groups
+            pur_tot = {}
+            for k, val in mp_cross.items():
+                g, p = k.split("||", 1)
+                if g in groups:
+                    pur_tot[p] = pur_tot.get(p, 0.0) + val
+            prows = [(p, _fmt(v), f"{100*v/tot:.1f}%")
+                     for p, v in sorted(pur_tot.items(), key=lambda kv: -kv[1])[:10]]
+            ptbl = table(["Purpose", "Vehicle-trips", "Share"], prows, num_cols=(1, 2))
+            gtiles = tiles([(f'{_fmt(bm.get(g, 0.0))}', g) for g in groups if g in bm])
+            for g in groups:
+                D(name.split(" ")[0], "vehicle_trips", g, round(bm.get(g, 0.0), 0), "veh-trips")
+            return (name,
+                    f"Vehicle-trips in the {name.split(' (')[0].lower()} markets, "
+                    "by trip purpose (from the assembled trip list). " + note,
+                    gtiles + '<h3>By purpose</h3>' + ptbl)
+
+        sections.append(_market_section(
+            "Short-distance travel (SDT)", ["SDT resident", "SDT visitor"],
+            "Trip-length distribution and mode split need the raw SDT trip file "
+            "with its code maps — a later refinement."))
+        sections.append(_market_section(
+            "Long-distance travel (LDT)", ["LDT resident", "LDT visitor"],
+            "Ground LDT only (air tours are not in the vehicle trip list); the "
+            "DMA-to-DMA matrix is a later refinement."))
+    else:
+        for name in ("Trip-list assembly & demand composition",
+                     "Short-distance travel (SDT)", "Long-distance travel (LDT)"):
+            sections.append((name, "",
+                '<p class="notrun">tripList_30min not found in the run or parent '
+                'scenario directory — pass --demand-dir to point at it.</p>'))
 
     # ---- write metrics.csv ----
     mpath = os.path.join(out_dir, "scenario_metrics.csv")
@@ -585,7 +762,7 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000):
 
     # ---- markdown twin ----
     md = build_markdown(title, run_dir, n_links, counties, veh, when, net, cv,
-                        toll, conv, tier_links, min_mainline)
+                        toll, conv, tier_links, min_mainline, tlist)
     mdpath = os.path.join(out_dir, "scenario_report.md")
     with open(mdpath, "w", encoding="utf-8") as fh:
         fh.write(md)
@@ -597,7 +774,7 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000):
 
 
 def build_markdown(title, run_dir, n_links, counties, veh, when, net, cv,
-                   toll, conv, tier_links, min_mainline):
+                   toll, conv, tier_links, min_mainline, tl=None):
     L = [f"# {title}", "",
          f"*HyDRA · Turnpike State Model (TSM v6) · assignment report card*", "",
          f"- **Run:** `{os.path.basename(run_dir)}`",
@@ -643,9 +820,23 @@ def build_markdown(title, run_dir, n_links, counties, veh, when, net, cv,
               f"Mean relative gap (proxy) **{rgs}** · "
               f"macro {tier_links.get('macro',0):,} / meso {tier_links.get('meso',0):,} / "
               f"micro {tier_links.get('micro',0):,} links", ""]
-    L += ["## Demand sections", "",
-          "*Population synthesis, SDT, LDT, and trip-list assembly are added in "
-          "phase 2–3.*", ""]
+    if tl:
+        tv, tp = tl["total_veh"], tl["total_per"]
+        L += ["## Trip-list assembly & demand composition", "",
+              f"Assembled demand pool: **{_fmt(tp)}** person-trips → "
+              f"**{_fmt(tv)}** vehicle-trips (mean occupancy "
+              f"**{tp/tv:.2f}**) across {len(tl['by_market'])} markets.", "",
+              "| Market | Vehicle-trips | Person-trips | Occ | Share |",
+              "|---|--:|--:|--:|--:|"]
+        for m, mv in sorted(tl["by_market"].items(), key=lambda kv: -kv[1]):
+            mp = tl["per_market"].get(m, 0.0)
+            L.append(f"| {m} | {_fmt(mv)} | {_fmt(mp)} | "
+                     f"{mp/mv:.2f} | {100*mv/tv:.1f}% |")
+        L.append("")
+    else:
+        L += ["## Demand sections", "",
+              "*tripList not found; PopSyn / Skims and detailed SDT/LDT land in "
+              "later phases.*", ""]
     return "\n".join(L)
 
 
@@ -655,5 +846,7 @@ if __name__ == "__main__":
     ap.add_argument("--out-dir")
     ap.add_argument("--title")
     ap.add_argument("--min-mainline", type=int, default=5000)
+    ap.add_argument("--demand-dir", help="dir with tripList_30min / SDT / LDT "
+                    "outputs (default: run dir, then its parent)")
     a = ap.parse_args()
-    build(a.run_dir, a.out_dir, a.title, a.min_mainline)
+    build(a.run_dir, a.out_dir, a.title, a.min_mainline, a.demand_dir)
