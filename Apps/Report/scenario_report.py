@@ -251,6 +251,89 @@ def triplist_summary(demand_paths, cache_dir, chunk=4_000_000):
     return out
 
 
+def popsyn_summary(demand_paths, cache_dir, chunk=2_000_000):
+    """PopSyn report: synthesized households/persons overall + by county vs the
+    land-use control totals (TotHH, POP), plus HH-size / workers / vehicles
+    distributions. Chunked + mtime-cached (the HH file is ~9.4M rows)."""
+    import json
+    hh_fp = _find(demand_paths, "Syn_households.csv")
+    lu_fp = _find(demand_paths, "tsm_landuse.csv")
+    if not hh_fp:
+        return None
+    cache = os.path.join(cache_dir, ".popsyn_cache.json")
+    src_mt = os.path.getmtime(hh_fp)
+    if os.path.exists(cache):
+        try:
+            c = json.load(open(cache))
+            if abs(c.get("_mtime", 0) - src_mt) < 1 and c.get("_src") == hh_fp:
+                return c
+        except Exception:
+            pass
+    taz_cty = {}
+    ctrl = {}
+    if lu_fp:
+        lu = pd.read_csv(lu_fp, usecols=["TAZ", "County", "TotHH", "POP"])
+        taz_cty = dict(zip(lu["TAZ"], lu["County"]))
+        g = lu.groupby("County")[["TotHH", "POP"]].sum()
+        ctrl = {c: (float(r["TotHH"]), float(r["POP"])) for c, r in g.iterrows()}
+    from collections import defaultdict
+    hh_cty, per_cty = defaultdict(float), defaultdict(float)
+    size_d, work_d, veh_d = defaultdict(float), defaultdict(float), defaultdict(float)
+    tot_hh = tot_per = 0.0
+    for ch in pd.read_csv(hh_fp, usecols=["TAZ", "NP", "workers", "VEH", "hhexpfac"],
+                          chunksize=chunk):
+        w = ch["hhexpfac"].fillna(1.0).to_numpy(float)
+        np_ = ch["NP"].fillna(0).to_numpy(float)
+        tot_hh += w.sum(); tot_per += (w * np_).sum()
+        cty = ch["TAZ"].map(taz_cty).fillna("Unknown")
+        for c, idx in ch.groupby(cty, observed=True).indices.items():
+            hh_cty[str(c)] += w[idx].sum(); per_cty[str(c)] += (w * np_)[idx].sum()
+        for col, dst, cap in (("NP", size_d, 7), ("workers", work_d, 4), ("VEH", veh_d, 4)):
+            vals = ch[col].fillna(0).clip(0, cap).astype(int)
+            for k, idx in ch.groupby(vals, observed=True).indices.items():
+                dst[str(int(k))] += w[idx].sum()
+    out = {"_src": hh_fp, "_mtime": src_mt, "total_hh": tot_hh, "total_per": tot_per,
+           "hh_county": dict(hh_cty), "per_county": dict(per_cty),
+           "ctrl_county": {k: list(v) for k, v in ctrl.items()},
+           "size": dict(size_d), "workers": dict(work_d), "veh": dict(veh_d)}
+    try:
+        json.dump(out, open(cache, "w"))
+    except Exception:
+        pass
+    return out
+
+
+def skims_summary(demand_paths):
+    """Skims: coverage sanity only. The skim is FREE-FLOW (no congested time),
+    so OD-time statistics would imply meaning they don't have -- report just
+    zones skimmed, disconnected OD pairs, and isolated-zone fallbacks."""
+    out = {}
+    log = _find(demand_paths, "Skimmy.log")
+    if log:
+        try:
+            import re
+            for ln in open(log, errors="ignore"):
+                if "Intrazonals" in ln:
+                    mm = re.search(r"for (\d+) zones, fallback [\d.]+ for (\d+)", ln)
+                    if mm:
+                        out["zones"] = int(mm.group(1))
+                        out["isolated"] = int(mm.group(2))
+        except Exception:
+            pass
+    dis = _find(demand_paths, "disconnected_OD_list.csv")
+    if dis:
+        try:
+            with open(dis) as fh:
+                out["disconnected"] = max(0, sum(1 for _ in fh) - 1)
+        except Exception:
+            pass
+    omx = _find(demand_paths, "FF_Skim2.omx", "FF_Skim.omx")
+    if omx:
+        out["omx"] = os.path.basename(omx)
+        out["omx_gb"] = os.path.getsize(omx) / 1e9
+    return out or None
+
+
 def load_validation(run_dir, min_mainline=5000):
     fp = os.path.join(run_dir, "count_validation.csv")
     if not os.path.exists(fp):
@@ -643,10 +726,82 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
         "three resolutions.",
         conv_html + '<h3>Resolution split</h3>' + mr))
 
-    # ---- population synthesis (phase 3 placeholder) ----
-    sections.append(("Population synthesis", "",
-        '<p class="notrun">PopSyn marginals + synthesized totals land in phase 3 '
-        '(reads the synthetic household / person files).</p>'))
+    # ---- population synthesis ----
+    ps = popsyn_summary(demand_paths, out_dir)
+    if ps:
+        thh, tper = ps["total_hh"], ps["total_per"]
+        D("PopSyn", "households", "all", round(thh, 0))
+        D("PopSyn", "persons", "all", round(tper, 0))
+        D("PopSyn", "persons_per_hh", "all", round(tper / thh, 2) if thh else None)
+        ctrl_hh = sum(v[0] for v in ps["ctrl_county"].values())
+        ctrl_pop = sum(v[1] for v in ps["ctrl_county"].values())
+        dev_hh = 100 * (thh / ctrl_hh - 1) if ctrl_hh else float("nan")
+        dev_pop = 100 * (tper / ctrl_pop - 1) if ctrl_pop else float("nan")
+        D("PopSyn", "hh_dev_vs_control", "all", round(dev_hh, 2), "%")
+        D("PopSyn", "pop_dev_vs_control", "all", round(dev_pop, 2), "%")
+        ps_tiles = tiles([
+            (f'{_fmt(thh)}', "Households synthesized"),
+            (f'{_fmt(tper)}', "Persons"),
+            (f'{tper/thh:.2f}' if thh else "—", "Persons / household"),
+            (_pill(f"{dev_hh:+.1f}%", "good" if abs(dev_hh) <= 1 else
+                   ("warn" if abs(dev_hh) <= 3 else "bad")) if ctrl_hh else "—",
+             "HH vs control"),
+            (_pill(f"{dev_pop:+.1f}%", "good" if abs(dev_pop) <= 1 else
+                   ("warn" if abs(dev_pop) <= 3 else "bad")) if ctrl_pop else "—",
+             "Pop vs control")])
+        # county fit table (largest 12 by control HH)
+        crow = []
+        byc = sorted(ps["ctrl_county"].items(), key=lambda kv: -kv[1][0])[:12]
+        for c, (chh, cpop) in byc:
+            shh = ps["hh_county"].get(c, 0.0)
+            dv = 100 * (shh / chh - 1) if chh else float("nan")
+            D("PopSyn", "hh_dev_vs_control", f"county:{c}", round(dv, 2), "%")
+            crow.append((c, _fmt(chh), _fmt(shh),
+                         _pill(f"{dv:+.1f}%", "good" if abs(dv) <= 1 else
+                               ("warn" if abs(dv) <= 3 else "bad"))))
+        ctbl = table(["County", "Control HH", "Synthesized HH", "Deviation"],
+                     crow, num_cols=(1, 2))
+        # HH size distribution bar
+        sz = [(f"{k}{'+' if k=='7' else ''} person", ps["size"].get(k, 0.0), "--gp")
+              for k in map(str, range(1, 8))]
+        for k, v, _c in sz:
+            D("PopSyn", "hh_by_size", k, round(v, 0))
+        szbar = hbars(sz)
+        sections.append(("Population synthesis",
+            "Synthesized households and persons vs the land-use control totals "
+            "(TotHH / POP), expansion-weighted. Deviation pills: green ≤1%, "
+            "amber ≤3%.",
+            ps_tiles + '<div class="cols2"><div>' + ctbl +
+            '</div><div class="chart">' + szbar +
+            '<p class="fignote">Households by size (expansion-weighted).</p>'
+            '</div></div>'))
+    else:
+        sections.append(("Population synthesis", "",
+            '<p class="notrun">Syn_households.csv not found in the run or parent '
+            'scenario directory.</p>'))
+
+    # ---- skims ----
+    sk = skims_summary(demand_paths)
+    if sk:
+        it = []
+        if "zones" in sk:
+            it.append((f'{sk["zones"]:,}', "Zones skimmed"))
+            D("Skims", "zones", "all", sk["zones"])
+        if "disconnected" in sk:
+            k = "good" if sk["disconnected"] == 0 else "bad"
+            it.append((_pill(str(sk["disconnected"]), k), "Disconnected OD pairs"))
+            D("Skims", "disconnected_od", "all", sk["disconnected"])
+        if "isolated" in sk:
+            it.append((f'{sk["isolated"]}', "Isolated zones (fallback intrazonal)"))
+            D("Skims", "isolated_zones", "all", sk["isolated"])
+        sub = (f'Coverage sanity only — {sk.get("omx","the skim")} '
+               f'({sk.get("omx_gb",0):.2f} GB) is FREE-FLOW, so OD travel-time '
+               'statistics are not meaningful and are deliberately not reported.')
+        sections.append(("Skims", sub, tiles(it) if it else
+                         '<p class="notrun">Skimmy.log found but no stats parsed.</p>'))
+    else:
+        sections.append(("Skims", "",
+            '<p class="notrun">No Skimmy.log / FF_Skim OMX found.</p>'))
 
     # ---- demand composition from the assembled trip list ----
     MKT_ORDER = ["SDT resident", "SDT visitor", "LDT resident", "LDT visitor",
@@ -740,6 +895,15 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
         wr.writerow(["stage", "section", "metric", "segment", "value", "unit"])
         wr.writerows(metrics)
 
+    # ---- order sections along the model pipeline ----
+    # PopSyn -> Skims -> SDT -> LDT -> trip list (agentPlans) -> assignment (HyDRA)
+    PIPE = ["Population synthesis", "Skims",
+            "Short-distance travel (SDT)", "Long-distance travel (LDT)",
+            "Trip-list assembly & demand composition",
+            "Network totals", "Count validation", "Tolling — express lanes",
+            "Convergence & multi-resolution"]
+    sections.sort(key=lambda s: PIPE.index(s[0]) if s[0] in PIPE else len(PIPE))
+
     # ---- HTML ----
     body = []
     for i, (name, sub, content) in enumerate(sections, 1):
@@ -753,8 +917,9 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
             f'<button class="tog">◐ theme</button><div class="wrap">'
             f'<div class="eyebrow">HyDRA · Turnpike State Model (TSM v6) · Scenario Report</div>'
             f'<h1>{html.escape(title)}</h1>'
-            f'<p class="sub">Assignment report card generated from the run\'s own '
-            f'outputs. Demand-side sections are added in later phases.</p>{prov}'
+            f'<p class="sub">One report card for the whole model chain — population '
+            f'synthesis → skims → SDT → LDT → trip-list assembly → HyDRA assignment '
+            f'— generated from the run\'s own outputs.</p>{prov}'
             f'{"".join(body)}</div>{_THEME_JS}</body></html>')
     hpath = os.path.join(out_dir, "scenario_report.html")
     with open(hpath, "w", encoding="utf-8") as fh:
