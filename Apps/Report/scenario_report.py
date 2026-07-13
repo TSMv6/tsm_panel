@@ -55,6 +55,14 @@ VOL_BINS = [0, 5000, 10000, 20000, 40000, 60000, 1e9]
 VOL_LABELS = ["<5k", "5-10k", "10-20k", "20-40k", "40-60k", ">60k"]
 NI = 96
 
+# priced express-lane facilities keyed by their gantry toll policy (+ I-595
+# reversible, which is capacity-only / untolled). Order drives the report.
+FACPOL = {4: "I-95 Express · Miami-Dade", 6: "I-95 Express · Broward/PB",
+          5: "I-4 Express", 7: "I-75 Express", 9: "I-295 Express (ToD)"}
+FAC_DISPLAY_ORDER = ["I-95 Express · Miami-Dade", "I-95 Express · Broward/PB",
+                     "I-4 Express", "I-75 Express", "I-295 Express (ToD)",
+                     "I-595 Reversible"]
+
 
 def fac(ft):
     return FACILITY.get(int(ft), "Other")
@@ -128,8 +136,11 @@ def tolling(run_dir):
     if el.empty or el["toll_rate"].fillna(0).max() <= 0:
         return None
     el["rev"] = el["volume"] * el["toll_rate"]
-    # volume-weighted mean toll by hour
-    prof = el.groupby("hour").apply(
+    # volume-weighted mean toll by hour, over TOLLED link-intervals only
+    # (toll_rate > 0) so time-of-day facilities' free hours don't dilute the
+    # curve into a sub-floor average.
+    tel = el[el["toll_rate"] > 0]
+    prof = tel.groupby("hour").apply(
         lambda g: (g["volume"] * g["toll_rate"]).sum() / max(g["volume"].sum(), 1e-9),
         include_groups=False
     ).reindex(range(24)).fillna(0.0)
@@ -137,6 +148,118 @@ def tolling(run_dir):
             "peak": float(el["toll_rate"].max()),
             "revenue": float(el["rev"].sum()),
             "el_vol": float(el["volume"].sum())}
+
+
+def facility_dir_map(net_paths):
+    """Map each priced/reversible link -> (facility, travel direction). Facility
+    from toll_policy_id (the gantry policy) or dta_reversible (I-595); direction
+    from node geometry along the facility's dominant axis (NB/SB or EB/WB)."""
+    lk = _find(net_paths, "Link.csv")
+    nd = _find(net_paths, "Node.csv")
+    if not lk or not nd:
+        return None
+    nodes = pd.read_csv(nd, usecols=["N", "X", "Y"])
+    xy = {int(n): (float(x), float(y))
+          for n, x, y in zip(nodes["N"], nodes["X"], nodes["Y"])}
+    L = pd.read_csv(lk, usecols=["A", "B", "FTYPE", "toll_policy_id",
+                                 "dta_reversible"])
+
+    def facof(tp, rev, ft):
+        # gantry policy links are EL-only already; the reversible flag spans the
+        # whole I-595 cross-section (GP + ramps + EL), so restrict that bucket to
+        # its managed (EL) segments — the priced/operated reversible lanes.
+        tp = int(tp) if pd.notna(tp) else 0
+        if tp in FACPOL:
+            return FACPOL[tp]
+        if (int(rev) if pd.notna(rev) else 0) == 1 and int(ft) in EL_FT:
+            return "I-595 Reversible"
+        return None
+    L["fac"] = [facof(t, r, f) for t, r, f in
+                zip(L["toll_policy_id"], L["dta_reversible"], L["FTYPE"])]
+    L = L[L["fac"].notna()].copy()
+    if L.empty:
+        return None
+    # coords (loop is tiny -- only the ~200 priced/reversible links survive)
+    L["xa"] = L["A"].map(lambda a: xy.get(int(a), (np.nan, np.nan))[0])
+    L["ya"] = L["A"].map(lambda a: xy.get(int(a), (np.nan, np.nan))[1])
+    L["xb"] = L["B"].map(lambda a: xy.get(int(a), (np.nan, np.nan))[0])
+    L["yb"] = L["B"].map(lambda a: xy.get(int(a), (np.nan, np.nan))[1])
+    L["dx"] = L["xb"] - L["xa"]
+    L["dy"] = L["yb"] - L["ya"]
+    prim = {}
+    for f_, g in L.groupby("fac"):
+        prim[f_] = "NS" if g["dy"].abs().sum() >= g["dx"].abs().sum() else "EW"
+
+    def dirlab(f_, dx, dy):
+        if pd.isna(dx) or pd.isna(dy):
+            return "—"
+        if prim[f_] == "NS":
+            return "NB" if dy >= 0 else "SB"
+        return "EB" if dx >= 0 else "WB"
+    L["dir"] = [dirlab(f_, dx, dy) for f_, dx, dy in zip(L["fac"], L["dx"], L["dy"])]
+    # reversible = one alternating carriageway; a geometric N/S/E/W split is
+    # meaningless, so report it as a single series (AM/PM reversal shows in time).
+    L.loc[L["fac"] == "I-595 Reversible", "dir"] = "REV"
+    return L.rename(columns={"A": "a_node", "B": "b_node"})[
+        ["a_node", "b_node", "fac", "dir"]]
+
+
+def facility_profiles(run_dir, fm):
+    """Per-facility, per-direction hourly volume / speed / toll from the tier each
+    facility runs on (I-95 Miami-Dade micro; the rest meso). Toll is always the
+    meso-posted rate; the summary mean excludes zero-toll hours (ToD off-peak)."""
+    if fm is None or fm.empty:
+        return None
+    frames = []
+    for tier in ("meso", "micro"):
+        fp = os.path.join(run_dir, f"link_performance_{tier}DTA.csv")
+        if not os.path.exists(fp):
+            continue
+        d = pd.read_csv(fp, usecols=["a_node", "b_node", "hour", "interval",
+                                     "volume", "speed_mph", "toll_rate"])
+        d = d[d["interval"] < NI]
+        d = d.merge(fm, on=["a_node", "b_node"], how="inner")
+        if not d.empty:
+            frames.append(d)
+    if not frames:
+        return None
+    d = pd.concat(frames, ignore_index=True)
+    out = {}
+    for fname in FAC_DISPLAY_ORDER:
+        sub = d[d["fac"] == fname]
+        if sub.empty:
+            continue
+        dirs = {}
+        for dname, g in sub.groupby("dir"):
+            if dname == "—":
+                continue
+            gh = g.groupby("hour")
+            vol = gh["volume"].sum().reindex(range(24)).fillna(0.0)
+            vs = (g["volume"] * g["speed_mph"]).groupby(g["hour"]).sum()
+            sp = (vs / gh["volume"].sum().replace(0, np.nan)
+                  ).reindex(range(24)).fillna(0.0)
+            t = g[g["toll_rate"] > 0]
+            if not t.empty:
+                vt = (t["volume"] * t["toll_rate"]).groupby(t["hour"]).sum()
+                tp = (vt / t.groupby("hour")["volume"].sum().replace(0, np.nan)
+                      ).reindex(range(24)).fillna(0.0)
+            else:
+                tp = pd.Series(0.0, index=range(24))
+            dirs[dname] = {
+                "vol": [(h, float(vol[h])) for h in range(24)],
+                "speed": [(h, float(sp[h])) for h in range(24)],
+                "toll": [(h, float(tp[h])) for h in range(24)]}
+        tolled = sub[(sub["toll_rate"] > 0) & (sub["volume"] > 0)]
+        mean_toll = float((tolled["volume"] * tolled["toll_rate"]).sum() /
+                          max(tolled["volume"].sum(), 1e-9)) if not tolled.empty else 0.0
+        out[fname] = {
+            "dirs": dirs,
+            "daily_vol": float(sub.loc[sub["volume"] > 0, "volume"].sum()),
+            "mean_toll": mean_toll,
+            "peak_toll": float(sub["toll_rate"].max()),
+            "revenue": float((sub["volume"] * sub["toll_rate"]).sum()),
+            "tolled": bool(sub["toll_rate"].max() > 0)}
+    return out or None
 
 
 def convergence(run_dir):
@@ -438,6 +561,38 @@ def line_profile(pairs, w=560, h=220, unit="$", ylab="EL toll ($)"):
     return _svg(w, h, "".join(b))
 
 
+def dir_profile(series, ylab, unit="", fmt=None, w=352, h=168):
+    """Multi-line 24-h profile, one line per direction.
+    series = [(dir_label, [(hour, value)], color_var)]."""
+    allv = [v for _, pts, _ in series for _, v in pts]
+    vmax = max(allv) if allv else 1.0
+    if vmax <= 0:
+        vmax = 1.0
+    M = {"l": 44, "b": 24, "t": 10, "r": 10}
+    pw, ph = w - M["l"] - M["r"], h - M["t"] - M["b"]
+    def X(hh): return M["l"] + pw * hh / 23.0
+    def Y(v): return M["t"] + ph * (1 - v / (vmax * 1.12))
+    def lab(v): return fmt(v) if fmt else f"{unit}{_fmt(v)}"
+    b = []
+    for gy in (0.0, vmax / 2.0, vmax):
+        b.append(f'<line x1="{M["l"]}" y1="{Y(gy):.1f}" x2="{M["l"]+pw}" '
+                 f'y2="{Y(gy):.1f}" class="grid"/>')
+        b.append(f'<text x="{M["l"]-5}" y="{Y(gy)+3:.1f}" font-size="9.5" '
+                 f'text-anchor="end" fill="var(--muted)">{lab(gy)}</text>')
+    for hh in (0, 6, 12, 18):
+        t = "12A" if hh == 0 else (f"{hh}A" if hh < 12 else ("12P" if hh == 12 else f"{hh-12}P"))
+        b.append(f'<text x="{X(hh):.0f}" y="{h-8}" font-size="9.5" '
+                 f'text-anchor="middle" fill="var(--muted)">{t}</text>')
+    for dname, pts, col in series:
+        d = "".join(("L" if i else "M") + f"{X(x):.1f} {Y(y):.1f}"
+                    for i, (x, y) in enumerate(pts))
+        b.append(f'<path d="{d}" fill="none" stroke="var({col})" '
+                 f'stroke-width="1.8"/>')
+    b.append(f'<text transform="translate(11,{M["t"]+ph/2}) rotate(-90)" '
+             f'font-size="9.5" text-anchor="middle" fill="var(--ink2)">{ylab}</text>')
+    return _svg(w, h, "".join(b))
+
+
 def _fmt(v):
     if v is None or (isinstance(v, float) and math.isnan(v)):
         return "—"
@@ -511,6 +666,8 @@ h3{font-size:14px;margin:24px 0 6px;color:var(--ink2)}
 .tile .k{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.35}
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 @media(max-width:820px){.cols2{grid-template-columns:1fr}}
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+ gap:14px;align-items:start;margin-top:6px}
 table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}
 th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
  color:var(--muted);font-weight:600;padding:6px 12px 6px 0;border-bottom:1px solid var(--axis)}
@@ -569,6 +726,11 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
     net, tier_links = network_totals(run_dir)
     cv = load_validation(run_dir, min_mainline)
     toll = tolling(run_dir)
+    net_paths = [run_dir,
+                 os.path.join(os.path.dirname(run_dir), "netprep_ML"),
+                 os.path.dirname(run_dir)]
+    fmap = facility_dir_map(net_paths)
+    fprof = facility_profiles(run_dir, fmap) if fmap is not None else None
     conv = convergence(run_dir)
     # demand outputs live in the run dir, a given demand dir, or the parent scenario dir
     demand_paths = [p for p in (demand_dir, run_dir, os.path.dirname(run_dir)) if p]
@@ -703,6 +865,66 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
     else:
         sections.append(("Tolling — express lanes", "",
                          '<p class="notrun">No EL toll_rate in the meso link performance.</p>'))
+
+    # ---- facility profiles (volume / speed / toll by direction) ----
+    if fprof:
+        blocks = []
+        for fname in FAC_DISPLAY_ORDER:
+            if fname not in fprof:
+                continue
+            p = fprof[fname]
+            dirs = p["dirs"]
+            order = sorted(dirs)
+            colmap = {dn: ("--macro" if i == 0 else "--el")
+                      for i, dn in enumerate(order)}
+            legend = " &nbsp; ".join(
+                f'<span style="color:var({colmap[dn]});font-weight:800">■</span> '
+                f'<span style="font-size:12px;color:var(--ink2)">{dn}</span>'
+                for dn in order)
+            chips = tiles([
+                (f'{_fmt(p["daily_vol"])} <small>veh</small>', "Daily volume (both dir)"),
+                (f'${p["mean_toll"]:.2f}' if p["tolled"] else "—", "Mean toll · tolled hours"),
+                (f'${p["peak_toll"]:.2f}' if p["tolled"] else "untolled", "Peak toll"),
+                (f'${_fmt(p["revenue"])}' if p["tolled"] else "—", "Revenue proxy (day)")])
+            vser = [(dn, dirs[dn]["vol"], colmap[dn]) for dn in order]
+            sser = [(dn, dirs[dn]["speed"], colmap[dn]) for dn in order]
+            tser = [(dn, dirs[dn]["toll"], colmap[dn]) for dn in order]
+            if p["tolled"]:
+                toll_chart = ('<div><div class="chart">' +
+                              dir_profile(tser, "toll ($)", fmt=lambda v: f"${v:.2f}") +
+                              '</div><p class="fignote">Toll ($) — meso-posted '
+                              'rate.</p></div>')
+            else:
+                toll_chart = ('<div class="card"><p class="notrun">Untolled — '
+                              'reversible capacity only (no gantry). Add a '
+                              'reversible toll policy to price it.</p></div>')
+            charts = ('<div class="cols3"><div><div class="chart">' +
+                      dir_profile(vser, "veh / hr") +
+                      '</div><p class="fignote">Volume (veh/hr).</p></div>'
+                      '<div><div class="chart">' +
+                      dir_profile(sser, "mph", fmt=lambda v: f"{v:.0f}") +
+                      '</div><p class="fignote">Speed (mph).</p></div>' +
+                      toll_chart + '</div>')
+            blocks.append(
+                f'<h3 style="font-size:15px;color:var(--ink);margin-top:26px">'
+                f'{html.escape(fname)} &nbsp; {legend}</h3>' + chips + charts)
+            M("Facility", "daily_volume", fname, round(p["daily_vol"], 0), "veh")
+            M("Facility", "mean_toll_tolled_hours", fname,
+              round(p["mean_toll"], 2) if p["tolled"] else None, "$")
+            M("Facility", "peak_toll", fname,
+              round(p["peak_toll"], 2) if p["tolled"] else None, "$")
+            M("Facility", "revenue_proxy", fname,
+              round(p["revenue"], 0) if p["tolled"] else None, "$")
+            for dn in order:
+                M("Facility", "daily_volume_dir", f"{fname}|{dn}",
+                  round(sum(v for _, v in dirs[dn]["vol"]), 0), "veh")
+        sections.append(("Facility profiles — volume · speed · toll by direction",
+            "Each priced express-lane facility (and I-595 reversible), split by "
+            "travel direction: hourly volume, volume-weighted speed, and the "
+            "meso-posted toll. Toll means exclude zero-toll hours, so time-of-day "
+            "facilities (I-295) report their in-window rate — not a day-diluted "
+            "one — and the density facilities sit at or above their $0.50 floor.",
+            "".join(blocks)))
 
     # ---- convergence + multi-resolution ----
     conv_html = ""
@@ -901,6 +1123,7 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
             "Short-distance travel (SDT)", "Long-distance travel (LDT)",
             "Trip-list assembly & demand composition",
             "Network totals", "Count validation", "Tolling — express lanes",
+            "Facility profiles — volume · speed · toll by direction",
             "Convergence & multi-resolution"]
     sections.sort(key=lambda s: PIPE.index(s[0]) if s[0] in PIPE else len(PIPE))
 
@@ -927,7 +1150,7 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
 
     # ---- markdown twin ----
     md = build_markdown(title, run_dir, n_links, counties, veh, when, net, cv,
-                        toll, conv, tier_links, min_mainline, tlist)
+                        toll, conv, tier_links, min_mainline, tlist, fprof)
     mdpath = os.path.join(out_dir, "scenario_report.md")
     with open(mdpath, "w", encoding="utf-8") as fh:
         fh.write(md)
@@ -939,7 +1162,7 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
 
 
 def build_markdown(title, run_dir, n_links, counties, veh, when, net, cv,
-                   toll, conv, tier_links, min_mainline, tl=None):
+                   toll, conv, tier_links, min_mainline, tl=None, profiles=None):
     L = [f"# {title}", "",
          f"*HyDRA · Turnpike State Model (TSM v6) · assignment report card*", "",
          f"- **Run:** `{os.path.basename(run_dir)}`",
@@ -978,6 +1201,21 @@ def build_markdown(title, run_dir, n_links, counties, veh, when, net, cv,
         L += ["## Tolling", "",
               f"Peak EL toll **${toll['peak']:.2f}** · revenue proxy "
               f"**${_fmt(toll['revenue'])}**/day · EL volume **{_fmt(toll['el_vol'])}** veh", ""]
+    if profiles:
+        L += ["## Facility profiles (by direction)", "",
+              "Volume/speed/toll split by direction in the HTML report; toll means "
+              "below exclude zero-toll (ToD off-peak) hours.", "",
+              "| Facility | Daily vol | Mean toll* | Peak | Revenue/day |",
+              "|---|--:|--:|--:|--:|"]
+        for fname in FAC_DISPLAY_ORDER:
+            if fname not in profiles:
+                continue
+            p = profiles[fname]
+            mt = f"${p['mean_toll']:.2f}" if p["tolled"] else "—"
+            pk = f"${p['peak_toll']:.2f}" if p["tolled"] else "untolled"
+            rv = f"${_fmt(p['revenue'])}" if p["tolled"] else "—"
+            L.append(f"| {fname} | {_fmt(p['daily_vol'])} | {mt} | {pk} | {rv} |")
+        L += ["", "*mean toll excludes zero-toll (ToD off-peak) hours.", ""]
     if conv:
         rg = conv.get("rel_gap")
         rgs = f"{rg*100:.1f}%" if rg is not None and not math.isnan(rg) else "—"
