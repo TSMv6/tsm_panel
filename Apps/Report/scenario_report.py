@@ -457,6 +457,30 @@ def skims_summary(demand_paths):
     return out or None
 
 
+# Physical plausibility bounds for observed counts. Violations are DATA-SOURCE
+# errors (bad station data, not a coding bug) -- they can't be auto-corrected, so
+# they are excluded from the calibration stats and flagged for manual review.
+COUNT_MAX_PER_LANE = 28000        # no lane carries >28k veh/day
+EL_COUNT_MAX = 35000              # 1-2 lane EL single-dir ceiling
+MAINLINE_MIN = 10000              # multi-lane freeway/toll floor
+MINOR_COUNT_MAX = 40000           # collector/ramp can't carry mainline volume
+
+
+def flag_bad_count(ftype, obs, nlanes):
+    """Reason string if an observed count is physically implausible, else ''."""
+    ft = int(ftype)
+    perlane = obs / nlanes if nlanes and nlanes > 0 else np.nan
+    if ft in EL_FT and obs > EL_COUNT_MAX:
+        return "EL_too_high (parallel GP count on EL link)"
+    if ft in (11, 12, 91, 92, 93, 94) and (nlanes or 0) >= 2 and obs < MAINLINE_MIN:
+        return "mainline_too_low (missing/placeholder)"
+    if not math.isnan(perlane) and perlane > COUNT_MAX_PER_LANE:
+        return "over_28k_per_lane (bidir AADT on 1-dir link)"
+    if ft not in EL_FT and ft not in (11, 12, 91, 92, 93, 94) and obs > MINOR_COUNT_MAX:
+        return "minor_road_too_high (mainline count on collector/ramp)"
+    return ""
+
+
 def load_validation(run_dir, min_mainline=5000, count_field="FTI_COUNT_24",
                     net_paths=None):
     """Load count_validation.csv. HyDRA bakes the observed column from whichever
@@ -476,8 +500,9 @@ def load_validation(run_dir, min_mainline=5000, count_field="FTI_COUNT_24",
         if lk:
             cols = pd.read_csv(lk, nrows=0).columns
             if count_field in cols:
-                fti = pd.read_csv(lk, usecols=["A", "B", count_field]).rename(
-                    columns={"A": "a_node", "B": "b_node"})
+                lcols = ["A", "B", count_field] + (["NLANES"] if "NLANES" in cols else [])
+                fti = pd.read_csv(lk, usecols=lcols).rename(
+                    columns={"A": "a_node", "B": "b_node", "NLANES": "nlanes"})
                 fti[count_field] = pd.to_numeric(fti[count_field], errors="coerce")
                 cv = cv.merge(fti, on=["a_node", "b_node"], how="left")
                 obs_new = cv[count_field]
@@ -492,15 +517,30 @@ def load_validation(run_dir, min_mainline=5000, count_field="FTI_COUNT_24",
                 cv["geh_daily"] = np.sqrt(2.0 * (m - obs_new) ** 2 /
                                           (m + obs_new).replace(0, np.nan))
                 cv["geh_hourly_avg"] = cv["geh_daily"] * hd
-                cv = cv[cv[count_field] > 0]
+                cv = cv[cv[count_field] > 0].copy()
                 src = f"{count_field} (Link.csv, re-scored)"
-    cv = cv[(cv["obs_24h"] > 0)]
+    cv = cv[(cv["obs_24h"] > 0)].copy()
+    # exclude physically implausible counts (data-source errors) from the stats
+    # and write them to a manual-review file rather than silently dropping.
+    n_flag = 0
+    if "nlanes" in cv.columns:
+        cv["count_flag"] = [flag_bad_count(ft, ob, ln) for ft, ob, ln in
+                            zip(cv["ftype"], cv["obs_24h"], cv["nlanes"])]
+        bad = cv[cv["count_flag"] != ""]
+        n_flag = len(bad)
+        if n_flag:
+            rf = os.path.join(run_dir, "count_review_flagged.csv")
+            bad[["a_node", "b_node", "county", "ftype", "nlanes", "obs_24h",
+                 "model_24h", "count_flag"]].sort_values(
+                ["count_flag", "obs_24h"], ascending=[True, False]).to_csv(rf, index=False)
+        cv = cv[cv["count_flag"] == ""].copy()
     # canonical mainline-trust filter: drop low-count mainline/toll links
     mask = cv["ftype"].isin([11, 12, 91, 92, 93, 94]) & (cv["obs_24h"] < min_mainline)
     cv = cv[~mask].copy()
     cv["fac"] = cv["ftype"].map(fac)
     cv["volgrp"] = pd.cut(cv["obs_24h"], VOL_BINS, labels=VOL_LABELS)
     cv.attrs["count_source"] = src
+    cv.attrs["n_flagged"] = n_flag
     return cv
 
 
@@ -872,7 +912,10 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None,
             "The headline calibration: modelled vs observed daily volumes on "
             f"{ov['links']:,} counted links (low-count mainline/toll links below "
             f"{min_mainline:,} filtered, per the canonical summary). Observed = "
-            f"{cv.attrs.get('count_source', 'count_validation.csv')}. Ratio pills: "
+            f"{cv.attrs.get('count_source', 'count_validation.csv')}. "
+            f"{cv.attrs.get('n_flagged', 0)} physically-implausible counts "
+            "(data-source errors) excluded from the stats and written to "
+            "count_review_flagged.csv for manual review. Ratio pills: "
             "green ≤10%, amber ≤20%, red beyond.",
             tl + '<div class="cols2"><div class="chart">' + sc +
             '<p class="fignote">Observed vs model daily volume (y=x reference).</p></div>'
