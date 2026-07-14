@@ -457,17 +457,50 @@ def skims_summary(demand_paths):
     return out or None
 
 
-def load_validation(run_dir, min_mainline=5000):
+def load_validation(run_dir, min_mainline=5000, count_field="FTI_COUNT_24",
+                    net_paths=None):
+    """Load count_validation.csv. HyDRA bakes the observed column from whichever
+    COUNT_FIELD column it was pointed at -- which, after the netPrep rebuild, is
+    the legacy TSMv5.COUNT_24 (half-magnitude, placeholder-ridden). Re-score
+    against the authoritative FTI_COUNT_24 daily counts from Link.csv so the
+    headline calibration reflects the real counts, not the legacy field. The
+    daily metrics (model/obs, R2, %RMSE) recompute directly; the hourly-avg GEH
+    is rescaled by each link's own hourly:daily GEH ratio (obs-magnitude stable)."""
     fp = os.path.join(run_dir, "count_validation.csv")
     if not os.path.exists(fp):
         return None
     cv = pd.read_csv(fp)
+    src = "count_validation.csv (as emitted)"
+    if count_field:
+        lk = _find(net_paths or [run_dir], "Link.csv")
+        if lk:
+            cols = pd.read_csv(lk, nrows=0).columns
+            if count_field in cols:
+                fti = pd.read_csv(lk, usecols=["A", "B", count_field]).rename(
+                    columns={"A": "a_node", "B": "b_node"})
+                fti[count_field] = pd.to_numeric(fti[count_field], errors="coerce")
+                cv = cv.merge(fti, on=["a_node", "b_node"], how="left")
+                obs_new = cv[count_field]
+                # per-link hourly:daily GEH ratio from the file (obs-independent),
+                # to carry the recomputed daily GEH back to an hourly-avg basis.
+                hd = (cv["geh_hourly_avg"] / cv["geh_daily"].replace(0, np.nan))
+                hd = hd.fillna(hd.median())
+                m = cv["model_24h"]
+                cv["obs_24h"] = obs_new
+                cv["ratio"] = m / obs_new.replace(0, np.nan)
+                cv["pct_err"] = 100.0 * (m - obs_new) / obs_new.replace(0, np.nan)
+                cv["geh_daily"] = np.sqrt(2.0 * (m - obs_new) ** 2 /
+                                          (m + obs_new).replace(0, np.nan))
+                cv["geh_hourly_avg"] = cv["geh_daily"] * hd
+                cv = cv[cv[count_field] > 0]
+                src = f"{count_field} (Link.csv, re-scored)"
     cv = cv[(cv["obs_24h"] > 0)]
     # canonical mainline-trust filter: drop low-count mainline/toll links
     mask = cv["ftype"].isin([11, 12, 91, 92, 93, 94]) & (cv["obs_24h"] < min_mainline)
     cv = cv[~mask].copy()
     cv["fac"] = cv["ftype"].map(fac)
     cv["volgrp"] = pd.cut(cv["obs_24h"], VOL_BINS, labels=VOL_LABELS)
+    cv.attrs["count_source"] = src
     return cv
 
 
@@ -708,7 +741,8 @@ def _ratio_pill(ratio):
     return _pill(f"{ratio:.2f}", k)
 
 
-def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None):
+def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None,
+          count_field="FTI_COUNT_24"):
     run_dir = os.path.abspath(run_dir)
     out_dir = out_dir or run_dir
     os.makedirs(out_dir, exist_ok=True)
@@ -723,12 +757,13 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
         M(section, metric, segment, value, unit, stage="Demand")
 
     # ---- compute ----
-    net, tier_links = network_totals(run_dir)
-    cv = load_validation(run_dir, min_mainline)
-    toll = tolling(run_dir)
     net_paths = [run_dir,
                  os.path.join(os.path.dirname(run_dir), "netprep_ML"),
                  os.path.dirname(run_dir)]
+    net, tier_links = network_totals(run_dir)
+    cv = load_validation(run_dir, min_mainline, count_field=count_field,
+                         net_paths=net_paths)
+    toll = tolling(run_dir)
     fmap = facility_dir_map(net_paths)
     fprof = facility_profiles(run_dir, fmap) if fmap is not None else None
     conv = convergence(run_dir)
@@ -836,7 +871,8 @@ def build(run_dir, out_dir=None, title=None, min_mainline=5000, demand_dir=None)
         sections.append(("Count validation",
             "The headline calibration: modelled vs observed daily volumes on "
             f"{ov['links']:,} counted links (low-count mainline/toll links below "
-            f"{min_mainline:,} filtered, per the canonical summary). Ratio pills: "
+            f"{min_mainline:,} filtered, per the canonical summary). Observed = "
+            f"{cv.attrs.get('count_source', 'count_validation.csv')}. Ratio pills: "
             "green ≤10%, amber ≤20%, red beyond.",
             tl + '<div class="cols2"><div class="chart">' + sc +
             '<p class="fignote">Observed vs model daily volume (y=x reference).</p></div>'
@@ -1251,5 +1287,9 @@ if __name__ == "__main__":
     ap.add_argument("--min-mainline", type=int, default=5000)
     ap.add_argument("--demand-dir", help="dir with tripList_30min / SDT / LDT "
                     "outputs (default: run dir, then its parent)")
+    ap.add_argument("--count-field", default="FTI_COUNT_24",
+                    help="Link.csv count column to score validation against "
+                    "(default FTI_COUNT_24; '' keeps count_validation.csv obs)")
     a = ap.parse_args()
-    build(a.run_dir, a.out_dir, a.title, a.min_mainline, a.demand_dir)
+    build(a.run_dir, a.out_dir, a.title, a.min_mainline, a.demand_dir,
+          a.count_field or None)
