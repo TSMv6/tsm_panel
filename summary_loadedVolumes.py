@@ -211,6 +211,20 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
                     removed += 1
             except Exception:
                 continue
+        if removed:
+            # removeMapLayer only SCHEDULES the layer's C++ destruction; its OGR/
+            # GeoPackage file handle lingers until the event loop + GC run. Without
+            # forcing that here the file stays locked and summarize.exe fails with
+            # "ERROR 1: ... already exists". Pump events + GC so the handle is
+            # released before the exe runs.
+            try:
+                import gc
+                from qgis.PyQt.QtWidgets import QApplication
+                gc.collect()
+                QApplication.processEvents()
+                gc.collect()
+            except Exception:
+                pass
         return removed
 
     def load_output_layer(self, file_path, layer_name):
