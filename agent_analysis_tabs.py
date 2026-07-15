@@ -49,6 +49,10 @@ def _browse_row(parent, label, mode="open", filt="All Files (*)", key=None):
             p, _ = QFileDialog.getSaveFileName(parent, "Select File", "", filt)
         if p:
             edit.setText(p)
+            # setText() does NOT emit editingFinished, so persist here too --
+            # otherwise a browsed path never reaches Config and is lost on save.
+            if key:
+                Config().set(key, p)
     btn.clicked.connect(pick)
 
     if key:
@@ -193,6 +197,13 @@ def _tab_trace(dlg):
     for e in (w.hh, w.person, w.tour, w.trip):
         ids.addWidget(e)
     v.addLayout(ids)
+    # Persist the ID hierarchy fields (not browse rows -> wire them by hand).
+    for e, k in ((w.hh, "aa_trace_hh"), (w.person, "aa_trace_person"),
+                 (w.tour, "aa_trace_tour"), (w.trip, "aa_trace_trip")):
+        saved = Config().get(k)
+        if saved:
+            e.setText(saved)
+        e.editingFinished.connect(lambda e=e, k=k: Config().set(k, e.text()))
     hint = QLabel("hh_id alone = all household trips; + person_id = that "
                   "person's; + tour_id = that tour's; + trip_id = one trip.", w)
     hint.setStyleSheet("color: gray;")
@@ -344,6 +355,12 @@ def _tab_selectlink(dlg):
     w.links.setMaximumHeight(70)
     w.links.setPlaceholderText("a1-b1, a2-b2 ...")
     v.addWidget(w.links)
+    # Persist the A-B link list.
+    saved_links = Config().get("aa_sl_links")
+    if saved_links:
+        w.links.setPlainText(saved_links)
+    w.links.textChanged.connect(
+        lambda: Config().set("aa_sl_links", w.links.toPlainText()))
 
     pick_lay = QHBoxLayout()
     use_sel = QPushButton("Use selected links from map layer", w)
@@ -352,11 +369,15 @@ def _tab_selectlink(dlg):
     gl = QHBoxLayout(grp)
     w.rb_or = QRadioButton("OR (any link)", grp)
     w.rb_and = QRadioButton("AND (all links)", grp)
-    w.rb_or.setChecked(True)
     gl.addWidget(w.rb_or)
     gl.addWidget(w.rb_and)
     pick_lay.addWidget(grp)
     v.addLayout(pick_lay)
+    # Persist the AND/OR choice (default OR).
+    w.rb_and.setChecked(Config().get("aa_sl_logic") == "AND")
+    w.rb_or.setChecked(not w.rb_and.isChecked())
+    w.rb_and.toggled.connect(
+        lambda ch: Config().set("aa_sl_logic", "AND" if ch else "OR"))
 
     out_lay, w.out = _browse_row(w, "output agents (csv)", mode="save",
                                  filt="CSV (*.csv)", key="aa_sl_out")
@@ -432,6 +453,15 @@ def _tab_turns(dlg):
     opts.addWidget(w.cb_five)
     opts.addWidget(w.cb_hour)
     v.addLayout(opts)
+    # Persist the two option checkboxes (by-hour defaults on).
+    _five = Config().get("aa_turns_five")
+    if _five is not None:
+        w.cb_five.setChecked(bool(_five))
+    _byhour = Config().get("aa_turns_byhour")
+    if _byhour is not None:
+        w.cb_hour.setChecked(bool(_byhour))
+    w.cb_five.toggled.connect(lambda ch: Config().set("aa_turns_five", ch))
+    w.cb_hour.toggled.connect(lambda ch: Config().set("aa_turns_byhour", ch))
     hint = QLabel("Periods are the agents' DEPARTURE hour (stored paths carry "
                   "no per-link arrival times).", w)
     hint.setStyleSheet("color: gray;")
@@ -470,13 +500,77 @@ def add_agent_analysis_tabs(dlg):
     (bottom of the dialog, SubareaAssignment-style)."""
     tabs = QTabWidget(dlg)
     tabs.setTabPosition(QTabWidget.North)
-    tabs.addTab(_tab_trace(dlg), "Path Trace")
-    tabs.addTab(_tab_subarea(dlg), "Subarea")
-    tabs.addTab(_tab_selectlink(dlg), "Select Link")
-    tabs.addTab(_tab_turns(dlg), "Turning Movements")
+    # Keep references to each tab's QWidget so save_agent_settings() can read
+    # every field back on OK (browse buttons don't emit editingFinished).
+    dlg._aa_trace = _tab_trace(dlg)
+    dlg._aa_subarea = _tab_subarea(dlg)
+    dlg._aa_selectlink = _tab_selectlink(dlg)
+    dlg._aa_turns = _tab_turns(dlg)
+    tabs.addTab(dlg._aa_trace, "Path Trace")
+    tabs.addTab(dlg._aa_subarea, "Subarea")
+    tabs.addTab(dlg._aa_selectlink, "Select Link")
+    tabs.addTab(dlg._aa_turns, "Turning Movements")
 
     grid = dlg.gridLayout
     row = grid.rowCount()
     grid.addWidget(tabs, row, 0, 1, 1)
     dlg.resize(dlg.width() + 140, dlg.height() + 420)
     return tabs
+
+
+def save_agent_settings(dlg):
+    """Push every meso/micro/agentAnalysis widget's current value into Config so
+    a single OK/save persists the whole dialog to the scenario settings JSON --
+    exactly like the macroDTA volume_file. Called from the dialog's OK handler.
+
+    Belt-and-suspenders: the live editingFinished/browse/toggled signals already
+    keep Config current, but reading the widgets here guarantees nothing is lost
+    if a signal never fired (e.g. a value typed but never de-focused)."""
+    cfg = Config()
+
+    # --- multi-DTA inputs + shared agentPaths db (exposed on the dialog) ---
+    if hasattr(dlg, "lineEdit_volumeMeso"):
+        cfg.set("volume_file_meso", dlg.lineEdit_volumeMeso.text().strip())
+    if hasattr(dlg, "lineEdit_volumeMicro"):
+        cfg.set("volume_file_micro", dlg.lineEdit_volumeMicro.text().strip())
+    if hasattr(dlg, "lineEdit_agentPaths"):
+        cfg.set("aa_trace_db", dlg.lineEdit_agentPaths.text().strip())
+
+    # --- Path Trace tab ---
+    # NB: the trip list uses the shared "aa_trips" key (also in Subarea/Select
+    # Link), so it is left to its own live signals rather than re-saved here --
+    # re-saving from one tab could clobber a newer edit made in another.
+    t = getattr(dlg, "_aa_trace", None)
+    if t is not None:
+        cfg.set("aa_trace_hh", t.hh.text().strip())
+        cfg.set("aa_trace_person", t.person.text().strip())
+        cfg.set("aa_trace_tour", t.tour.text().strip())
+        cfg.set("aa_trace_trip", t.trip.text().strip())
+        cfg.set("aa_trace_out", t.out.text().strip())
+
+    # --- Subarea tab (layer dropdowns store by layer name) ---
+    s = getattr(dlg, "_aa_subarea", None)
+    if s is not None:
+        cfg.set("aa_sub_boundary_lyr", s.boundary.currentText())
+        cfg.set("aa_sub_zones_lyr", s.zones.currentText())
+        cfg.set("aa_sub_nodes_lyr", s.nodes_lyr.currentText())
+        cfg.set("aa_sub_links_lyr", s.links_lyr.currentText())
+        cfg.set("aa_sub_out_links", s.out_links.text().strip())
+        cfg.set("aa_sub_out_nodes", s.out_nodes.text().strip())
+        cfg.set("aa_sub_out", s.out_trips.text().strip())
+
+    # --- Select Link tab ---
+    sl = getattr(dlg, "_aa_selectlink", None)
+    if sl is not None:
+        cfg.set("aa_sl_links", sl.links.toPlainText().strip())
+        cfg.set("aa_sl_logic", "AND" if sl.rb_and.isChecked() else "OR")
+        cfg.set("aa_sl_out", sl.out.text().strip())
+        cfg.set("aa_sl_vols", sl.vols.text().strip())
+
+    # --- Turning Movements tab ---
+    tn = getattr(dlg, "_aa_turns", None)
+    if tn is not None:
+        cfg.set("aa_turns_nodes", tn.nodes.text().strip())
+        cfg.set("aa_turns_five", tn.cb_five.isChecked())
+        cfg.set("aa_turns_byhour", tn.cb_hour.isChecked())
+        cfg.set("aa_turns_out", tn.out.text().strip())

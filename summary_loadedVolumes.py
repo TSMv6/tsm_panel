@@ -51,6 +51,15 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
                 self.comboBox_linkLayer.setCurrentText(link_layer_name)
         if settings.get("volume_file"):
             self.lineEdit_volume.setText(settings.get("volume_file"))
+        # Optional meso/micro DTA inputs read back just like the macro volume.
+        # (The injected browse rows also self-load from Config, but mirror the
+        # macro handling here so the read path is explicit and order-independent.)
+        if settings.get("volume_file_meso"):
+            self.lineEdit_volumeMeso.setText(settings.get("volume_file_meso"))
+        if settings.get("volume_file_micro"):
+            self.lineEdit_volumeMicro.setText(settings.get("volume_file_micro"))
+        if settings.get("aa_trace_db"):
+            self.lineEdit_agentPaths.setText(settings.get("aa_trace_db"))
         if settings.get("loadedOut_file"):
             self.lineEdit_loadedOut.setText(settings.get("loadedOut_file"))
         if settings.get("isSubareaLevel"):
@@ -173,7 +182,12 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             settings.set("isSubareaLevel", True)
         else:
             settings.set("isSubareaLevel", False)
-            
+
+        # Persist the optional meso/micro DTA inputs + every agentAnalysis tab
+        # field into the same scenario settings JSON, just like volume_file.
+        from .agent_analysis_tabs import save_agent_settings
+        save_agent_settings(self)
+
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
            # Keep the dialog open
