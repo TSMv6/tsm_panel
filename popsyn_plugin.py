@@ -197,7 +197,12 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
     def run_popsim_script(self, show_message=False):
         settings = Config()
         scenario_dir = settings.get("scenarioDir")
-        tsm_location = settings.get("tsm_location")
+        # Resolve to the v6 default if the General Configuration was never opened
+        # this session (in-memory setting), and seed it back so every downstream
+        # step (se_aggregate, popsim TOML) gets an absolute TSM root, not a path
+        # relative to the process cwd.
+        tsm_location = settings.tsm_root()
+        settings.set("tsm_location", tsm_location)
         plugin_dir = settings.get("plugin_dir")
         threads = settings.get("num_processors") or "0"
 
@@ -259,7 +264,7 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         # table is a MODEL input ({tsm_location}/Inputs/landuse), not a plugin asset.
         landuse_path = self.get_layer_path(landuse_layer)
         se_data = os.path.join(scenario_dir, "tsm_landuse.csv").replace("\\", "/")
-        lu_default = os.path.join(settings.get("tsm_location") or "", "Inputs", "landuse",
+        lu_default = os.path.join(tsm_location, "Inputs", "landuse",
                                   "tsm_landuse_default.csv").replace("\\", "/")
         prep_log = os.path.join(scenario_dir, "PopSyn_landuse.log")
         try:

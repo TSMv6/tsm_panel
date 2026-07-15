@@ -29,7 +29,11 @@ def run_sdt_models(flags):
     run_visitor = flags.get("visitor", False)
     settings = Config()
     scenario_dir = settings.get("scenarioDir")
-    tsm_location = settings.get("tsm_location")
+    # Resolve to the v6 default if General Configuration was never opened this
+    # session, and seed it back (in-memory setting) so no step builds a path
+    # relative to the process cwd. See Config.tsm_root().
+    tsm_location = settings.tsm_root()
+    settings.set("tsm_location", tsm_location)
     plugin_dir = settings.get("plugin_dir")
 
     if not (run_resident or run_visitor):
@@ -54,7 +58,7 @@ def run_sdt_models(flags):
     se_exe = settings.app_exe("utilities/se_aggregate.exe")
     tsm_landuse = os.path.join(scenario_dir, "tsm_landuse.csv")
     # Default land-use table is a MODEL input ({tsm_location}/Inputs/landuse), not a plugin asset.
-    tsm_landuse_default = os.path.join(settings.get("tsm_location") or "", "Inputs", "landuse",
+    tsm_landuse_default = os.path.join(tsm_location, "Inputs", "landuse",
                                        "tsm_landuse_default.csv").replace("\\", "/")
     if not os.path.exists(se_exe):
         return False, f"Land-use prep utility not found: {se_exe}"

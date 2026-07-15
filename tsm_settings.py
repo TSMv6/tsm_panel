@@ -23,6 +23,14 @@ class Config:
     def get_all(self):
         return self.settings.copy()
 
+    def tsm_root(self):
+        """TSM install root (all model inputs live under here). Falls back to the
+        v6 default when the General Configuration dialog hasn't been opened/saved
+        this session -- the setting is in-memory only, so without this a run
+        started before opening that dialog would read None and build paths
+        RELATIVE to the process cwd (e.g. C:/Program Files/Java/...)."""
+        return self.get("tsm_location") or "C:/TSM_NextGen_v6"
+
     def app_exe(self, rel):
         """Resolve a bundled executable shipped inside the plugin's Apps/ folder.
 
