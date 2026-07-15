@@ -1,5 +1,12 @@
 import json, os
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog
+from qgis.PyQt.QtCore import QSettings
+
+DEFAULT_TSM_LOCATION = "C:/TSM_NextGen_v6"
+# Keys mirrored to disk (QSettings) so they survive a QGIS restart instead of
+# living only in the in-memory singleton. Namespaced under "tsm_panel/".
+_PERSIST_KEYS = {"tsm_location"}
+_QS_PREFIX = "tsm_panel/"
 
 class Config:
     _instance = None
@@ -12,6 +19,10 @@ class Config:
 
     def set(self, key, value):
         self.settings[key] = value
+        # Mirror persisted keys to disk so a change here (e.g. the user editing
+        # TSM Location in General Configuration) is remembered next session.
+        if key in _PERSIST_KEYS:
+            QSettings().setValue(_QS_PREFIX + key, value)
 
     def get(self, key):
         return self.settings.get(key)
@@ -24,12 +35,18 @@ class Config:
         return self.settings.copy()
 
     def tsm_root(self):
-        """TSM install root (all model inputs live under here). Falls back to the
-        v6 default when the General Configuration dialog hasn't been opened/saved
-        this session -- the setting is in-memory only, so without this a run
-        started before opening that dialog would read None and build paths
-        RELATIVE to the process cwd (e.g. C:/Program Files/Java/...)."""
-        return self.get("tsm_location") or "C:/TSM_NextGen_v6"
+        """TSM install root (all model inputs live under here). Resolution order:
+        in-memory setting -> value persisted to disk in a prior session -> the v6
+        default. This guarantees an ABSOLUTE root even before the General
+        Configuration dialog is opened this session (the in-memory setting would
+        otherwise be None and build paths RELATIVE to the process cwd, e.g.
+        C:/Program Files/Java/...). The disk value is hydrated into memory but
+        NOT re-persisted, so a bare default is never written over an unset key."""
+        loc = self.get("tsm_location")
+        if not loc:
+            loc = QSettings().value(_QS_PREFIX + "tsm_location") or DEFAULT_TSM_LOCATION
+            self.settings["tsm_location"] = loc  # hydrate only; don't persist a default
+        return loc
 
     def app_exe(self, rel):
         """Resolve a bundled executable shipped inside the plugin's Apps/ folder.

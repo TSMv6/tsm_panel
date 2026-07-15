@@ -21,9 +21,10 @@ class GeneralConfigDialog(QDialog, Ui_Dialog_GenPrjSetting):
             return
         uic.loadUi(ui_file, self)
 
-        # TSM location (defaults to the v6 install)
-        tsm_location = settings.get("tsm_location") or DEFAULT_TSM_LOCATION
-        settings.set("tsm_location", tsm_location)
+        # TSM location: show the persisted value (survives restarts) or the v6
+        # default. tsm_root() reads in-memory -> disk -> default so the dialog
+        # never displays the default over a previously-saved custom path.
+        tsm_location = settings.tsm_root()
         self.lineEdit_ModelPath.setText(tsm_location)
 
         # Plugins path (this plugin's folder)
