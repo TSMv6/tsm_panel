@@ -369,15 +369,25 @@ def _tab_selectlink(dlg):
     gl = QHBoxLayout(grp)
     w.rb_or = QRadioButton("OR (any link)", grp)
     w.rb_and = QRadioButton("AND (all links)", grp)
+    w.rb_each = QRadioButton("EACH (per link)", grp)
+    w.rb_each.setToolTip("Run each link independently and produce one loaded-"
+                         "volume column per link (SL_<A>_<B>) in the output.")
     gl.addWidget(w.rb_or)
     gl.addWidget(w.rb_and)
+    gl.addWidget(w.rb_each)
     pick_lay.addWidget(grp)
     v.addLayout(pick_lay)
-    # Persist the AND/OR choice (default OR).
-    w.rb_and.setChecked(Config().get("aa_sl_logic") == "AND")
-    w.rb_or.setChecked(not w.rb_and.isChecked())
-    w.rb_and.toggled.connect(
-        lambda ch: Config().set("aa_sl_logic", "AND" if ch else "OR"))
+    # Persist the OR/AND/EACH choice (default OR).
+    _lg0 = Config().get("aa_sl_logic")
+    w.rb_and.setChecked(_lg0 == "AND")
+    w.rb_each.setChecked(_lg0 == "EACH")
+    w.rb_or.setChecked(_lg0 not in ("AND", "EACH"))
+
+    def _save_logic():
+        Config().set("aa_sl_logic", "AND" if w.rb_and.isChecked()
+                     else ("EACH" if w.rb_each.isChecked() else "OR"))
+    w.rb_and.toggled.connect(lambda ch: _save_logic())
+    w.rb_each.toggled.connect(lambda ch: _save_logic())
 
     out_lay, w.out = _browse_row(w, "output agents (csv)", mode="save",
                                  filt="CSV (*.csv)", key="aa_sl_out")
@@ -414,29 +424,110 @@ def _tab_selectlink(dlg):
 
     def go():
         pairs = _LINK_RE.findall(w.links.toPlainText())
-        if not (_db(dlg) and pairs):
+        db = _db(dlg)
+        if not (db and pairs):
             QMessageBox.warning(dlg, "Select Link",
                                 "agentPaths duckdb (common field above) and at least one A-B link are required.")
             return
-        args = ["agents", "--db", _db(dlg)]
+        logic = ("AND" if w.rb_and.isChecked()
+                 else ("EACH" if w.rb_each.isChecked() else "OR"))
+
+        # One-time link->key index (heavy, RAM-capped). Later runs reuse it and
+        # drop from ~20 min to seconds. Shared by Select Link / Subarea / Turns.
+        idx = os.path.join(os.path.dirname(db), "agentPaths_index.duckdb")
+        if not os.path.exists(idx):
+            if QMessageBox.question(
+                    dlg, "Build link index",
+                    "No link index found. Build it once now?\n\n"
+                    "It's heavy (a full path sort, capped at 64 GB RAM, spills to "
+                    "disk) but only happens once — every later Select Link / Subarea "
+                    "/ Turning-movement run is then fast.",
+                    QMessageBox.Yes | QMessageBox.No) != QMessageBox.Yes:
+                return
+            # The one-time build sorts 2.45B rows (~59GB) -- 64GB keeps it mostly
+            # in memory (far less spilling). The actual queries below stay at 32GB.
+            ri = _run(["index", "--db", db, "--mem", "64GB"], "agentAnalysis_index.log")
+            if ri.returncode != 0 or not os.path.exists(idx):
+                QMessageBox.critical(dlg, "Select Link", "Index build failed — see History log.")
+                return
+
+        args = ["agents", "--db", db, "--mem", "32GB", "--logic", logic]
         for a, b in pairs:
             args += ["--link", a, b]
-        args += ["--logic", "AND" if w.rb_and.isChecked() else "OR"]
         if w.trips.text():
             args += ["--trips", w.trips.text()]
         if w.out.text():
             args += ["--out", w.out.text()]
-        if w.vols.text():
-            args += ["--volumes", w.vols.text()]
+        vols = w.vols.text()
+        if vols:
+            args += ["--volumes", vols]
         r = _run(args, "agentAnalysis_selectlink.log")
-        if r.returncode == 0:
-            QMessageBox.information(dlg, "Select Link",
-                                    "Select-link outputs written (%d links, %s)." %
-                                    (len(pairs), "AND" if w.rb_and.isChecked() else "OR"))
-        else:
-            QMessageBox.critical(dlg, "Select Link", "agentAnalysis agents failed - see History log.")
+        if r.returncode != 0:
+            QMessageBox.critical(dlg, "Select Link", "agentAnalysis agents failed — see History log.")
+            return
+
+        # Loaded volumes CSV -> a GPKG with one loaded-volume column per select
+        # link (SL_<A>_<B>), joined onto the dialog's link layer via summarize.
+        gpkg_note = ""
+        if vols and os.path.exists(vols):
+            gp = _selectlink_to_gpkg(dlg, vols, pairs, logic)
+            gpkg_note = ("\nGPKG (loaded volumes on links): %s" % gp) if gp else \
+                        "\n(GPKG skipped: pick a Link layer in the dialog to enable it.)"
+        QMessageBox.information(dlg, "Select Link",
+                                "Select-link outputs written (%d links, %s).%s" %
+                                (len(pairs), logic, gpkg_note))
     run.clicked.connect(go)
     return w
+
+
+def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
+    """Join the select-link loaded-volumes CSV onto the dialog's link layer and
+    write a GPKG, adding one loaded-volume column per select-link (via the
+    bundled summarize.exe legacy mode). EACH -> one SL_<A>_<B> column per link;
+    OR/AND -> a single SL_VOL column. Returns the GPKG path, or None."""
+    settings = Config()
+    link_combo = getattr(dlg, "comboBox_linkLayer", None)
+    getpath = getattr(dlg, "get_layer_path", None)
+    if link_combo is None or getpath is None:
+        return None
+    link_path = getpath(link_combo.currentData())
+    if not link_path:
+        return None
+    sumexe = settings.app_exe("utilities/summarize.exe")
+    if not os.path.exists(sumexe):
+        return None
+    value_cols = (["SL_%s_%s" % (a, b) for a, b in pairs] if logic == "EACH"
+                  else ["veh_weight"])
+    out_gpkg = os.path.splitext(vols_csv)[0] + ".gpkg"
+    out_csv = os.path.splitext(vols_csv)[0] + "_loaded.csv"
+    sum_cols = ",\n  ".join('"%s"' % c for c in value_cols)
+    fwd = lambda p: p.replace("\\", "/")
+    toml = (
+        'name = "selectlink"\n'
+        'group_by = ["A", "B"]\n'
+        'sum_cols = [\n  %s\n]\n' % sum_cols +
+        'total_col = "SL_VOL"\n'
+        'emit_class_sums = %s\n\n' % ("true" if len(value_cols) > 1 else "false") +
+        '[input]\nformat = "csv"\npath = "%s"\nrename = ["a_node=A", "b_node=B"]\n\n' % fwd(vols_csv) +
+        '[join]\nformat = "gpkg"\npath = "%s"\n\n' % fwd(link_path) +
+        '[output]\ncsv = "%s"\ngpkg = "%s"\n' % (fwd(out_csv), fwd(out_gpkg)))
+    ctl = out_gpkg + ".toml"
+    try:
+        with open(ctl, "w") as f:
+            f.write(toml)
+    except Exception:
+        return None
+    r = settings.run_app([sumexe, ctl], log_path=os.path.splitext(ctl)[0] + ".log", console=True)
+    if r.returncode == 0 and os.path.exists(out_gpkg):
+        try:
+            from qgis.core import QgsVectorLayer, QgsProject
+            lyr = QgsVectorLayer(out_gpkg, "SelectLink loaded (%s)" % logic, "ogr")
+            if lyr.isValid():
+                QgsProject.instance().addMapLayer(lyr)
+        except Exception:
+            pass
+        return out_gpkg
+    return None
 
 
 def _tab_turns(dlg):
@@ -563,7 +654,8 @@ def save_agent_settings(dlg):
     sl = getattr(dlg, "_aa_selectlink", None)
     if sl is not None:
         cfg.set("aa_sl_links", sl.links.toPlainText().strip())
-        cfg.set("aa_sl_logic", "AND" if sl.rb_and.isChecked() else "OR")
+        cfg.set("aa_sl_logic", "AND" if sl.rb_and.isChecked()
+                else ("EACH" if sl.rb_each.isChecked() else "OR"))
         cfg.set("aa_sl_out", sl.out.text().strip())
         cfg.set("aa_sl_vols", sl.vols.text().strip())
 
