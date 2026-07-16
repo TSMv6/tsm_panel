@@ -342,6 +342,23 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             QMessageBox.critical(self, "Error", f"Error writing hydra_run.ctl: {e}")
             return False
 
+        # A new run rewrites agentPaths.duckdb, so any existing sidecar link
+        # index (agentPaths_index.duckdb) would describe the OLD paths. Delete
+        # it here -- the authoritative place to know the pairing is broken (a
+        # timestamp check can't: the index may legitimately be built later).
+        # Agent Analysis offers to rebuild it on demand, so nothing is lost.
+        if self.checkBox_AgentPaths.isChecked():
+            stale_idx = os.path.join(out_dir, "agentPaths_index.duckdb")
+            if os.path.exists(stale_idx):
+                try:
+                    os.remove(stale_idx)
+                    print(f"removed stale link index (new run rewrites agentPaths.duckdb): {stale_idx}")
+                except OSError as e:
+                    QMessageBox.warning(self, "Stale link index",
+                                        "Could not delete the old agentPaths_index.duckdb "
+                                        "(in use?). Delete it before running Agent Analysis "
+                                        "on the new results:\n%s" % e)
+
         hydra_log = os.path.join(out_dir, "Hydra.log")
         print(f"afdta   : {afdta}")
         print(f"control : {ctl}")
@@ -350,6 +367,68 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                                log_path=hydra_log, console=True):
             return False
 
+        # Loaded network: run summarize.exe on the link-performance outputs so
+        # every HyDRA run ends with loaded_network.gpkg/_daily.csv ready to map.
+        loaded_note = ""
+        try:
+            gp = self._auto_summarize(out_dir, link_path)
+            loaded_note = f"\nLoaded network: {gp}" if gp else \
+                          "\n(loaded-network summary failed - see summarize_hydra_run.log)"
+        except Exception as e:
+            loaded_note = f"\n(loaded-network summary failed: {e})"
+
         if show_message:
-            QMessageBox.information(self, "Success", f"HyDRA (AgentFlow-DTA) completed.\n\nOutputs in: {out_dir}")
+            QMessageBox.information(self, "Success",
+                                    f"HyDRA (AgentFlow-DTA) completed.\n\nOutputs in: {out_dir}{loaded_note}")
         return True
+
+    def _auto_summarize(self, out_dir, link_path):
+        """Post-run loaded network: summarize.exe (hydra mode) over the macro /
+        meso / micro link-performance CSVs joined to the run's link layer ->
+        loaded_network.gpkg (+ _daily.csv), loaded into QGIS with the standard
+        symbology. Returns the gpkg path, or None."""
+        from .summarize_runner import run_summary
+        macro_csv = os.path.join(out_dir, "link_performance_macroDTA.csv")
+        if not os.path.exists(macro_csv):
+            return None
+        meso_csv = os.path.join(out_dir, "link_performance_mesoDTA.csv")
+        micro_csv = os.path.join(out_dir, "link_performance_microDTA.csv")
+        out_gpkg = os.path.join(out_dir, "loaded_network.gpkg").replace("\\", "/")
+        # Release QGIS's handle if the previous run's loaded network is open --
+        # otherwise the GeoPackage rewrite fails ("already exists" lock).
+        proj = QgsProject.instance()
+        target = os.path.normcase(os.path.abspath(out_gpkg))
+        removed = 0
+        for lyr in list(proj.mapLayers().values()):
+            try:
+                src = lyr.source().split("|")[0]
+                if os.path.normcase(os.path.abspath(src)) == target:
+                    proj.removeMapLayer(lyr.id())
+                    removed += 1
+            except Exception:
+                continue
+        if removed:
+            try:
+                import gc
+                from qgis.PyQt.QtWidgets import QApplication
+                gc.collect(); QApplication.processEvents(); gc.collect()
+            except Exception:
+                pass
+        r = run_summary("summarize_hydra.toml", link_path, macro_csv, out_gpkg,
+                        subarea=False,
+                        vol2=meso_csv if os.path.exists(meso_csv) else None,
+                        vol3=micro_csv if os.path.exists(micro_csv) else None)
+        if r.returncode != 0 or not os.path.exists(out_gpkg):
+            return None
+        try:
+            from qgis.core import QgsVectorLayer
+            lyr = QgsVectorLayer(out_gpkg, "LoadedNetwork", "ogr")
+            if lyr.isValid():
+                qml = os.path.join(Config().get("plugin_dir") or "",
+                                   "qgis_styles/TSM_Loaded_Symbology.qml")
+                if os.path.exists(qml):
+                    lyr.loadNamedStyle(qml)
+                QgsProject.instance().addMapLayer(lyr)
+        except Exception:
+            pass
+        return out_gpkg
