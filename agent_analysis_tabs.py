@@ -322,7 +322,9 @@ def _tab_subarea(dlg):
         except Exception as e:
             QMessageBox.critical(dlg, "Subarea", "Boundary processing failed:\n%s" % e)
             return
-        args = ["subarea", "--db", _db(dlg), "--nodes", nodes_csv,
+        if not _ensure_index(dlg, _db(dlg), "Subarea"):
+            return
+        args = ["subarea", "--db", _db(dlg), "--mem", "32GB", "--nodes", nodes_csv,
                 "--trips", w.trips.text(),
                 "--links", _layer_path(links_lyr),
                 "--out", w.out_trips.text()]
@@ -340,6 +342,33 @@ def _tab_subarea(dlg):
 
 
 _LINK_RE = re.compile(r"(\d+)\s*[->]+\s*(\d+)")
+
+
+def _ensure_index(dlg, db, what):
+    """One-time link->key sidecar index (agentPaths_index.duckdb beside the db).
+    Shared by every link-keyed query (Select Link / Subarea / Turning Movements)
+    -- built once at 64 GB (the 2.45B-row sort mostly fits in RAM; queries then
+    run at 32 GB), reused forever after. Returns True when the index exists (or
+    the user declines and accepts the slow full-scan path)."""
+    idx = os.path.join(os.path.dirname(db), "agentPaths_index.duckdb")
+    if os.path.exists(idx):
+        return True
+    resp = QMessageBox.question(
+        dlg, "Build link index",
+        "No link index found for this run. Build it once now?\n\n"
+        "It's heavy (a full path sort, capped at 64 GB RAM, spills to disk) but "
+        "only happens once — every later Select Link / Subarea / Turning-movement "
+        "run is then fast.\n\nNo = run %s without the index (slow full scan)." % what,
+        QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+    if resp == QMessageBox.Cancel:
+        return False
+    if resp == QMessageBox.No:
+        return True     # proceed on the engine's fallback scan
+    ri = _run(["index", "--db", db, "--mem", "64GB"], "agentAnalysis_index.log")
+    if ri.returncode != 0 or not os.path.exists(idx):
+        QMessageBox.critical(dlg, what, "Index build failed — see History log.")
+        return False
+    return True
 
 
 def _tab_selectlink(dlg):
@@ -434,22 +463,8 @@ def _tab_selectlink(dlg):
 
         # One-time link->key index (heavy, RAM-capped). Later runs reuse it and
         # drop from ~20 min to seconds. Shared by Select Link / Subarea / Turns.
-        idx = os.path.join(os.path.dirname(db), "agentPaths_index.duckdb")
-        if not os.path.exists(idx):
-            if QMessageBox.question(
-                    dlg, "Build link index",
-                    "No link index found. Build it once now?\n\n"
-                    "It's heavy (a full path sort, capped at 64 GB RAM, spills to "
-                    "disk) but only happens once — every later Select Link / Subarea "
-                    "/ Turning-movement run is then fast.",
-                    QMessageBox.Yes | QMessageBox.No) != QMessageBox.Yes:
-                return
-            # The one-time build sorts 2.45B rows (~59GB) -- 64GB keeps it mostly
-            # in memory (far less spilling). The actual queries below stay at 32GB.
-            ri = _run(["index", "--db", db, "--mem", "64GB"], "agentAnalysis_index.log")
-            if ri.returncode != 0 or not os.path.exists(idx):
-                QMessageBox.critical(dlg, "Select Link", "Index build failed — see History log.")
-                return
+        if not _ensure_index(dlg, db, "Select Link"):
+            return
 
         args = ["agents", "--db", db, "--mem", "32GB", "--logic", logic]
         for a, b in pairs:
@@ -570,7 +585,9 @@ def _tab_turns(dlg):
             QMessageBox.warning(dlg, "Turning Movements",
                                 "agentPaths duckdb (common field above), node list csv and output are required.")
             return
-        args = ["turns", "--db", _db(dlg), "--nodes", w.nodes.text(),
+        if not _ensure_index(dlg, _db(dlg), "Turning Movements"):
+            return
+        args = ["turns", "--db", _db(dlg), "--mem", "32GB", "--nodes", w.nodes.text(),
                 "--out", w.out.text()]
         if w.cb_five.isChecked():
             args += ["--five"]
