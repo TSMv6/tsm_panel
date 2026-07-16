@@ -344,6 +344,18 @@ def _tab_subarea(dlg):
 _LINK_RE = re.compile(r"(\d+)\s*[->]+\s*(\d+)")
 
 
+def _seg_file():
+    """Segment-params CSV (pce column) so agent-tool volumes are PCE-consistent
+    with the loaded network: the HyDRA dialog's persisted setting, else the
+    standard model-input location under the TSM root."""
+    seg = Config().get("hydra_segment_params")
+    if seg and os.path.exists(seg):
+        return seg
+    cand = os.path.join(Config().tsm_root(), "Inputs", "toll_policy",
+                        "market_segment_vot.csv")
+    return cand if os.path.exists(cand) else None
+
+
 def _ensure_index(dlg, db, what):
     """One-time link->key sidecar index (agentPaths_index.duckdb beside the db).
     Shared by every link-keyed query (Select Link / Subarea / Turning Movements)
@@ -468,10 +480,9 @@ def _tab_selectlink(dlg):
 
         args = ["agents", "--db", db, "--mem", "32GB", "--logic", logic]
         # Segment params (pce): lets the engine report volumes in the same PCE
-        # units the loaded network uses (trucks count > 1). Falls back to the
-        # SEGMENT_PARAM_FILE named in the run's .ctl beside the duckdb.
-        seg = Config().get("hydra_segment_params")
-        if seg and os.path.exists(seg):
+        # units the loaded network uses (trucks count > 1).
+        seg = _seg_file()
+        if seg:
             args += ["--segments", seg]
         for a, b in pairs:
             args += ["--link", a, b]
@@ -598,8 +609,8 @@ def _tab_turns(dlg):
             return
         args = ["turns", "--db", _db(dlg), "--mem", "32GB", "--nodes", w.nodes.text(),
                 "--out", w.out.text()]
-        seg = Config().get("hydra_segment_params")
-        if seg and os.path.exists(seg):
+        seg = _seg_file()
+        if seg:
             args += ["--segments", seg]   # pce_vol column matches loaded network
         if w.cb_five.isChecked():
             args += ["--five"]

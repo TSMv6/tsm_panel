@@ -5,7 +5,7 @@ from qgis.PyQt.QtCore import QSettings
 DEFAULT_TSM_LOCATION = "C:/TSM_NextGen_v6"
 # Keys mirrored to disk (QSettings) so they survive a QGIS restart instead of
 # living only in the in-memory singleton. Namespaced under "tsm_panel/".
-_PERSIST_KEYS = {"tsm_location"}
+_PERSIST_KEYS = {"tsm_location", "hydra_segment_params"}
 _QS_PREFIX = "tsm_panel/"
 
 class Config:
@@ -25,7 +25,15 @@ class Config:
             QSettings().setValue(_QS_PREFIX + key, value)
 
     def get(self, key):
-        return self.settings.get(key)
+        v = self.settings.get(key)
+        # Persisted keys: hydrate from disk when not set this session, so tools
+        # that need them (e.g. segment params for PCE) work before the dialog
+        # that owns the field has been opened.
+        if v in (None, "") and key in _PERSIST_KEYS:
+            v = QSettings().value(_QS_PREFIX + key)
+            if v:
+                self.settings[key] = v
+        return v
     
     def remove(self, key):
         if key in self.settings:
@@ -122,9 +130,22 @@ class Config:
         high = getattr(subprocess, "HIGH_PRIORITY_CLASS", 0)
         if console:
             q = lambda s: "'" + str(s).replace("'", "''") + "'"
-            inner = "& " + " ".join(q(a) for a in args)
             if log_path:
-                inner += " 2>&1 | Tee-Object -FilePath " + q(log_path) + (" -Append" if append else "")
+                # Merge stderr into stdout at the CMD level (one-line batch)
+                # BEFORE PowerShell sees it. A native "2>&1" inside PowerShell
+                # wraps every stderr line in a NativeCommandError record, so
+                # ordinary progress messages (the engines print progress to
+                # stderr to keep stdout clean CSV) showed up as big red error
+                # blocks even on successful exit-0 runs.
+                import tempfile
+                bf = tempfile.NamedTemporaryFile("w", suffix=".cmd", prefix="tsm_run_",
+                                                 delete=False)
+                bf.write("@" + " ".join('"%s"' % a for a in args) + " 2>&1\n")
+                bf.close()
+                inner = ("& " + q(bf.name) + " | Tee-Object -FilePath " + q(log_path) +
+                         (" -Append" if append else ""))
+            else:
+                inner = "& " + " ".join(q(a) for a in args)
             inner += "; exit $LASTEXITCODE"
             pwsh = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
                                 "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
