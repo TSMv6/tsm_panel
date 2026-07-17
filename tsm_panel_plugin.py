@@ -92,8 +92,9 @@ class TsmPanelPlugin():
 
 
     def open_website(self):
-        """Open the TSM Overview website."""
-        webbrowser.open('https://rawcdn.githack.com/4Step/NextGen_StoryTelling/81080ccbe072f7c2c4f408c1236f94fd97ed5d52/index.html')
+        """Open the TSM Overview website (agent-based model story, hosted from
+        TSMv6/overview via GitHub Pages; future home: overview.tsm-nextgen.com)."""
+        webbrowser.open('https://tsmv6.github.io/overview/')
 
     def open_website2(self):
         """Open the TSM AI Chat web app (primary), falling back to the Vercel host
