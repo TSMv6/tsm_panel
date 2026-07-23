@@ -8,23 +8,22 @@ from .model_run import run_gated_model, begin_run_console, closes_run_console
 
 from .hydra_ui import Ui_DialogHydra
 
+# Default meso extent: the full limited-access system (freeways 11/12, ramps
+# 71-79, toll roads 91-94, express lanes 96-98) runs mesoscopic so flow
+# conserves across it.
+MESO_LIMITED_ACCESS = "11,12,71,72,75,76,79,91,92,93,94,96,97,98"
+
 # Run-mode preset -> (MACRO_MODEL, default Meso FTYPEs, signals on).
-#   PointQueue           = point queue, free-flow below capacity
-#   PointQueue + BPR     = point queue with BPR/VDF running time below capacity (hybrid)
-#   LTM                  = Link Transmission Model (spillback)
-#   LTM + Meso           = LTM + selected FTYPEs run mesoscopic
-#   LTM + Meso + Signals = + signal-delay model at signalized nodes
+#   PointQueue + BPR = point queue with BPR/VDF running time below capacity (hybrid)
+#   Node-conserving loaders (NodeDnl): N_out == N_in at every interior node.
+#   NodePQ = inflow-capacity receiving, NodeLTM = spatial storage/spillback.
+#   Default = Node + Spatial/LTM with meso on the limited-access system.
 MACRO_PRESETS = {
-    "PointQueue":           ("DTA_PointQueue", "", False),
-    "PointQueue + BPR":     ("DTA_PointQueue", "", False),
-    "LTM":                  ("DTA_LTM", "", False),
-    "LTM + Meso":           ("DTA_LTM", "11,91,93,94", False),
-    "LTM + Meso + Signals": ("DTA_LTM", "11,91,93,94", True),
-    # Node-conserving loaders (NodeDnl): N_out == N_in at every interior node.
-    # NodePQ = inflow-capacity receiving, NodeLTM = spatial storage/spillback.
-    "Node + PointQueue (nodeDNL)":   ("DTA_NodePQ", "", False),
-    "Node + Spatial/LTM (nodeDNL)":  ("DTA_NodeLTM", "", False),
+    "PointQueue + BPR":              ("DTA_PointQueue", "", False),
+    "Node + PointQueue (nodeDNL)":   ("DTA_NodePQ", MESO_LIMITED_ACCESS, False),
+    "Node + Spatial/LTM (nodeDNL)":  ("DTA_NodeLTM", MESO_LIMITED_ACCESS, False),
 }
+_DEFAULT_PRESET = ("DTA_NodeLTM", MESO_LIMITED_ACCESS, False)
 
 # Per-iteration node-DNL refresh stride (NODE_SCHEDULE). Maps the GUI label to the
 # control-file value; "hybrid" is expanded to an iteration ramp at write time
@@ -146,7 +145,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self.textBrowser.setPlainText(md)
 
     def apply_macro_preset(self, name):
-        _, meso, _ = MACRO_PRESETS.get(name, ("DTA_PointQueue", "", False))
+        _, meso, _ = MACRO_PRESETS.get(name, _DEFAULT_PRESET)
         self.lineEdit_MesoFtypes.setText(meso)
 
     def _select_node_schedule(self, value):
@@ -165,9 +164,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if val != "hybrid":
             return val
         try:
-            iters = int(float(self.lineEdit_Iters.text().strip() or "30"))
+            iters = int(float(self.lineEdit_Iters.text().strip() or "10"))
         except ValueError:
-            iters = 30
+            iters = 10
         split = max(1, iters - max(3, round(iters * 0.15)))
         return "per_chunk" if split >= iters else f"1-{split}:iter, {split+1}-{iters}:chunk"
 
@@ -254,7 +253,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         begin_run_console(os.path.join(out_dir, "Hydra.log"), "AgentFlow / Hydra - run log")
 
         macro = self.comboBox_Macro.currentText()
-        macro_model, _, signals = MACRO_PRESETS.get(macro, ("DTA_PointQueue", "", False))
+        macro_model, _, signals = MACRO_PRESETS.get(macro, _DEFAULT_PRESET)
         meso = self.lineEdit_MesoFtypes.text().strip()
         toll_policy = self.lineEdit_TollPolicy.text().strip()
 
@@ -291,7 +290,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write(f"TRIP_FILE             {trip_file}\n")
                 f.write(f"OUTPUT_DIRECTORY      {out_dir}\n")
                 f.write(f"MACRO_MODEL           {macro_model}\n")
-                f.write(f"MAX_ITERATIONS        {self.lineEdit_Iters.text().strip() or '30'}\n")
+                f.write(f"MAX_ITERATIONS        {self.lineEdit_Iters.text().strip() or '10'}\n")
                 f.write(f"RELATIVE_GAP          {self.lineEdit_Gap.text().strip() or '0.01'}\n")
                 f.write(f"ROUTE_CHUNKS          {self.lineEdit_Chunks.text().strip() or '10'}\n")
                 # Node-DNL refresh stride (per_iter / per_chunk / hybrid ramp).
@@ -299,6 +298,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 # harmless for the others.
                 f.write(f"NODE_SCHEDULE         {self._node_schedule_value()}\n")
                 f.write(f"THREADS               {self.lineEdit_Threads.text().strip() or '0'}\n")
+                # Per-purpose volume columns in every link_performance_
+                # <Macro|Meso|Micro>DTA.csv (vol_<purpose> sums to volume).
+                f.write("LINK_VOLUME_BREAKDOWN Purpose\n")
                 if meso:
                     f.write(f"MESO_FTYPE            {meso}\n")
                 if signals:

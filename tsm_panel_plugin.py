@@ -275,13 +275,13 @@ class TsmPanelPlugin():
         self.ui.pushButton_UncheckAll.clicked.connect(self._uncheck_all_steps)
         self.ui.pushButton_FullRun.clicked.connect(self._check_full_run)
 
-    # Step checkboxes that make up a "full run": steps 1-9 + step 10 ELToD. HyDRA
+    # Step checkboxes that make up a "full run": steps 1-9 + step 10 HyDRA. ELToD
     # (the alternative step 10) and Subarea Assignment (optional) are NOT included.
     _FULL_RUN_CHECKBOXES = ("checkBox_Many2One", "checkBox_Skimmy", "checkBox_PopSIM",
                             "checkBox_SDTRes", "checkBox_SDTVis", "checkBox_LDTRes",
                             "checkBox_LDTVis", "checkBox_Truck", "checkBox_TripTable",
-                            "checkBox_TSMAssign")
-    _ALL_STEP_CHECKBOXES = _FULL_RUN_CHECKBOXES + ("checkBox_Hydra", "checkBox_SubAssign")
+                            "checkBox_Hydra")
+    _ALL_STEP_CHECKBOXES = _FULL_RUN_CHECKBOXES + ("checkBox_TSMAssign", "checkBox_SubAssign")
 
     def _uncheck_all_steps(self):
         """Uncheck every step checkbox."""
@@ -291,7 +291,7 @@ class TsmPanelPlugin():
                 cb.setChecked(False)
 
     def _check_full_run(self):
-        """Select a full run: steps 1-9 + ELToD (step 10). Clears HyDRA and Subarea."""
+        """Select a full run: steps 1-9 + HyDRA (step 10). Clears ELToD and Subarea."""
         full = set(self._FULL_RUN_CHECKBOXES)
         for name in self._ALL_STEP_CHECKBOXES:
             cb = getattr(self.ui, name, None)
@@ -348,6 +348,8 @@ class TsmPanelPlugin():
             selected_tools.append("TripList2Table")
         if self.ui.checkBox_TSMAssign.isChecked():
             selected_tools.append("tsm_assign")
+        if self.ui.checkBox_Hydra.isChecked():
+            selected_tools.append("hydra")
 
         # Mark a full run so downstream steps (Skimmy/ELToD/HyDRA) chain their
         # network input from the Link Consolidator outputs instead of the
@@ -470,6 +472,16 @@ class TsmPanelPlugin():
                         self.mark_step_failed(self.ui.label_TSMAssign)
                         return False
                     self.mark_step_completed(self.ui.label_TSMAssign)
+                    QApplication.processEvents()
+                elif tool_name == 'hydra':
+                    self.mark_step_in_progress(self.ui.label_Hydra)
+                    QApplication.processEvents()
+                    dialog = HydraAssignModel()
+                    result = dialog.run_hydra()
+                    if not result:
+                        self.mark_step_failed(self.ui.label_Hydra)
+                        return False
+                    self.mark_step_completed(self.ui.label_Hydra)
                     QApplication.processEvents()
                 elif tool_name == 'SubareaAssignDialog':
                     self.mark_step_in_progress(self.ui.label_SubAssign)

@@ -4,9 +4,6 @@ HyDRA routes **individual agents** over the network and loads them through a dyn
 network-loading (DNL) flow model with iterative equilibrium. It reads the **agent
 trip list** directly (`*_tt_List_hourly.csv.gz` from agentPlans) — no trip table.
 
-> **Experimental:** many features (LTM, meso, micro, tolling, ODME, subarea) are
-> still under test. Start with **PointQueue + BPR**.
-
 **Inputs:** Link & Node **GeoPackage** layers (converted to CSV via `gpkgcsv` at run),
 the trip list, and an optional toll-policy CSV.
 
@@ -14,22 +11,17 @@ the trip list, and an optional toll-policy CSV.
 
 ## Run Mode (flow model)
 
-1. **PointQueue** — vertical point queue; links run at **free-flow below capacity**,
-   queues form only above capacity (no spillback).
-2. **PointQueue + BPR** — point queue where the running time below capacity comes from
-   the **BPR/VDF** curve (V ≤ C); over-capacity still queues. General-purpose hybrid.
-3. **LTM** — Link Transmission Model: kinematic-wave loading with explicit
-   **spillback** between links.
-4. **LTM + Meso** — LTM globally, with selected facility types run **mesoscopic**
-   (vehicle packets) for sharper dynamics on freeways/managed lanes.
-5. **LTM + Meso + Signals** — adds the **signal-delay model** at signalized nodes.
-6. **Node + PointQueue (nodeDNL)** — node-conserving loader (`NodeDnl`, `DTA_NodePQ`):
+1. **PointQueue + BPR** — point queue where the running time below capacity comes from
+   the **BPR/VDF** curve (V ≤ C); over-capacity still queues. General-purpose hybrid
+   fallback.
+2. **Node + PointQueue (nodeDNL)** — node-conserving loader (`NodeDnl`, `DTA_NodePQ`):
    flow is propagated through an explicit **node model** so `N_out = N_in` at every
    interior node, with **inflow-capacity** receiving (point-queue style).
-7. **Node + Spatial/LTM (nodeDNL)** — the node-conserving loader with **spatial
-   storage/spillback** receiving (`DTA_NodeLTM`). This is the AgentFlow engine's **own
-   default** now (the conserving loader) — pick it for the most physically consistent
-   volumes.
+3. **Node + Spatial/LTM (nodeDNL)** — the node-conserving loader with **spatial
+   storage/spillback** receiving (`DTA_NodeLTM`). **The default** — pick it for the
+   most physically consistent volumes. By default the **limited-access system**
+   (freeways 11/12, ramps 71–79, toll roads 91–94, express lanes 96–98) runs
+   **mesoscopic** on top of it (the Meso FTYPEs box).
 
 ### Node refresh — per iteration vs per chunk (node loaders)
 
@@ -43,10 +35,10 @@ an equilibrium iteration, trading speed for tightness:
 - **Per chunk** (`per_chunk`) — refresh the node sim **after every routing chunk**
   (≈ *Route Chunks* passes). Cleanest convergence, ~10× the node passes —
   **county-scale**.
-- **Hybrid (per-iter → per-chunk)** — cheap `per_iter` through the early/sampling
-  iterations, then a short `per_chunk` polish over the last few to restore the
-  directional AM/PM peaks. The dialog expands this to an iteration ramp from
-  *Max Iterations* (e.g. 30 iters → `1-25:iter, 26-30:chunk`).
+- **Hybrid (per-iter → per-chunk)** (default) — cheap `per_iter` through the
+  early/sampling iterations, then a short `per_chunk` polish over the last few to
+  restore the directional AM/PM peaks. The dialog expands this to an iteration ramp
+  from *Max Iterations* (e.g. 10 iters → `1-7:iter, 8-10:chunk`).
 
 (*Route Chunks* is the number of incremental routing batches per pass; a "chunk" is a
 batch of routing groups, not a VOT class. Node refresh applies to the node loaders;
@@ -120,7 +112,10 @@ person / tour / trip that made it.
 
 - **Link performance** — always written, one file per resolution actually used:
   `link_performance_macroDTA.csv`, `…_mesoDTA.csv` (and micro). Time-sliced volume,
-  speed, delay by link.
+  speed, delay by link, plus per-**purpose** volume columns
+  (`LINK_VOLUME_BREAKDOWN Purpose`, written by the dialog's control file).
+  **All volumes are actual vehicles** — PCE is applied only inside the flow model
+  for congestion, never in the outputs.
 - **Agent plans** — per-agent chosen plan/route summary.
 - **Agent paths** — full per-agent link paths (**large**; enable only when needed).
 - **DuckDB** — tick *Write to DuckDB* to emit `agent_results.duckdb` (agent results +

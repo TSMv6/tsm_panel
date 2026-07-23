@@ -344,18 +344,6 @@ def _tab_subarea(dlg):
 _LINK_RE = re.compile(r"(\d+)\s*[->]+\s*(\d+)")
 
 
-def _seg_file():
-    """Segment-params CSV (pce column) so agent-tool volumes are PCE-consistent
-    with the loaded network: the HyDRA dialog's persisted setting, else the
-    standard model-input location under the TSM root."""
-    seg = Config().get("hydra_segment_params")
-    if seg and os.path.exists(seg):
-        return seg
-    cand = os.path.join(Config().tsm_root(), "Inputs", "toll_policy",
-                        "market_segment_vot.csv")
-    return cand if os.path.exists(cand) else None
-
-
 def _ensure_index(dlg, db, what):
     """One-time link->key sidecar index (agentPaths_index.duckdb beside the db).
     Shared by every link-keyed query (Select Link / Subarea / Turning Movements)
@@ -479,11 +467,6 @@ def _tab_selectlink(dlg):
             return
 
         args = ["agents", "--db", db, "--mem", "32GB", "--logic", logic]
-        # Segment params (pce): lets the engine report volumes in the same PCE
-        # units the loaded network uses (trucks count > 1).
-        seg = _seg_file()
-        if seg:
-            args += ["--segments", seg]
         for a, b in pairs:
             args += ["--link", a, b]
         if w.trips.text():
@@ -516,10 +499,9 @@ def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
     """Join the select-link loaded-volumes CSV onto the dialog's link layer and
     write a GPKG, adding one loaded-volume column per select-link (via the
     bundled summarize.exe legacy mode). EACH -> one SL_<A>_<B> column per link;
-    OR/AND -> a single SL_VOL column. Columns are in PCE units (each agent
-    weighted by its segment pce) so they reconcile with the loaded network's
-    link_performance volumes; raw vehicle weights stay in the CSVs
-    (veh_weight / VEH_* columns). Returns the GPKG path, or None."""
+    OR/AND -> a single SL_VOL column. All columns are actual vehicles, matching
+    the loaded network's vehicle-unit link_performance volumes.
+    Returns the GPKG path, or None."""
     settings = Config()
     link_combo = getattr(dlg, "comboBox_linkLayer", None)
     getpath = getattr(dlg, "get_layer_path", None)
@@ -532,7 +514,7 @@ def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
     if not os.path.exists(sumexe):
         return None
     value_cols = (["SL_%s_%s" % (a, b) for a, b in pairs] if logic == "EACH"
-                  else ["pce_vol"])
+                  else ["veh_weight"])
     out_gpkg = os.path.splitext(vols_csv)[0] + ".gpkg"
     out_csv = os.path.splitext(vols_csv)[0] + "_loaded.csv"
     sum_cols = ",\n  ".join('"%s"' % c for c in value_cols)
@@ -609,9 +591,6 @@ def _tab_turns(dlg):
             return
         args = ["turns", "--db", _db(dlg), "--mem", "32GB", "--nodes", w.nodes.text(),
                 "--out", w.out.text()]
-        seg = _seg_file()
-        if seg:
-            args += ["--segments", seg]   # pce_vol column matches loaded network
         if w.cb_five.isChecked():
             args += ["--five"]
         if w.cb_hour.isChecked():

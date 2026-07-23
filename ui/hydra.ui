@@ -75,11 +75,10 @@
           <property name="toolTip">
            <string>Preset configures the DNL flow model plus meso/micro defaults.</string>
           </property>
-          <item><property name="text"><string>PointQueue</string></property></item>
+          <property name="currentIndex">
+           <number>2</number>
+          </property>
           <item><property name="text"><string>PointQueue + BPR</string></property></item>
-          <item><property name="text"><string>LTM</string></property></item>
-          <item><property name="text"><string>LTM + Meso</string></property></item>
-          <item><property name="text"><string>LTM + Meso + Signals</string></property></item>
           <item><property name="text"><string>Node + PointQueue (nodeDNL)</string></property></item>
           <item><property name="text"><string>Node + Spatial/LTM (nodeDNL)</string></property></item>
          </widget>
@@ -102,7 +101,7 @@
          <item row="0" column="1">
           <widget class="QLineEdit" name="lineEdit_Iters">
            <property name="text">
-            <string>30</string>
+            <string>10</string>
            </property>
           </widget>
          </item>
@@ -160,6 +159,9 @@
            <property name="toolTip">
             <string>Node-DNL refresh stride for the DTA_Node* loaders: per_iter (fast, statewide), per_chunk (tight, county), or a hybrid ramp.</string>
            </property>
+           <property name="currentIndex">
+            <number>2</number>
+           </property>
            <item><property name="text"><string>Per iteration (fast - statewide)</string></property></item>
            <item><property name="text"><string>Per chunk (tight - county)</string></property></item>
            <item><property name="text"><string>Hybrid (per-iter -&gt; per-chunk)</string></property></item>
@@ -184,7 +186,7 @@
          <item row="0" column="1" colspan="3">
           <widget class="QLineEdit" name="lineEdit_MesoFtypes">
            <property name="toolTip">
-            <string>Comma-separated FTYPEs run as meso (e.g. limited-access: 11,91,93,94).</string>
+            <string>Comma-separated FTYPEs run as meso. Default: the limited-access system - freeways 11/12, ramps 71-79, toll roads 91-94, express lanes 96-98.</string>
            </property>
           </widget>
          </item>
