@@ -43,6 +43,19 @@ def _pick_count_col(df, preferred):
     return cands[0] if cands else None
 
 
+def _pick_assigned_col(df, preferred):
+    """Resolve the model-volume column: the caller's preference if present,
+    else the known daily-total names -- legacy summarize CSVs carry 'Total',
+    HyDRA-mode loaded networks carry 'VOL_DAILY' (matched case-insensitively)."""
+    if preferred and preferred in df.columns:
+        return preferred
+    lower = {c.lower(): c for c in df.columns}
+    for name in ("total", "vol_daily"):
+        if name in lower:
+            return lower[name]
+    return None
+
+
 def _stats_row(label, a, c):
     """Validation metrics for one group: a=assigned array, c=count array."""
     import numpy as np
@@ -89,9 +102,10 @@ def write_validation_xlsx(csv_path, xlsx_path, count_field=None,
     count_col = _pick_count_col(df, count_field)
     if not count_col:
         raise RuntimeError("no ground-count column found in the loaded CSV")
-    if assigned_col not in df.columns:
-        raise RuntimeError("assigned-volume column '%s' not in the loaded CSV"
-                           % assigned_col)
+    assigned_col = _pick_assigned_col(df, assigned_col)
+    if not assigned_col:
+        raise RuntimeError("no assigned-volume column ('Total' / 'VOL_DAILY') "
+                           "in the loaded CSV")
     if facility_col is None:
         facility_col = "FNAME" if "FNAME" in df.columns else (
             "FTYPE" if "FTYPE" in df.columns else None)
