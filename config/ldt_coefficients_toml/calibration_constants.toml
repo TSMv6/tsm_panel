@@ -1,19 +1,1249 @@
 # calibration_constants.toml
-# Rewritten by calibrate.py each MSA iteration — do not hand-edit.
-#
-# Each [[adjust]] entry adds 'delta' to the specified coefficient after
-# estimated values are loaded.  Use index=0 to apply to all segments.
-#
-# model  = base model name (matches the .toml filename without extension)
-# index  = segment index (1-based); 0 = all segments
-# coef   = coefficient id number
-# delta  = additive adjustment (positive = shift utility up)
-# note   = optional human label (ignored by engine)
-#
-# Example:
-# [[adjust]]
-# model = "mode_choice"
-# index = 3          # leisure
-# coef  = 401        # air ASC
-# delta = -0.25
-# note  = "air ASC, leisure — iteration 4"
+# Written by calibrate_loop.py — iteration 13
+# key = (model, segment index, coef id); delta is cumulative.
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 31
+delta = -0.399610
+note  = "OS dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 32
+delta = -2.219406
+note  = "OS dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 33
+delta = -1.030619
+note  = "OS dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 34
+delta = -0.263279
+note  = "OS dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 35
+delta = -0.773033
+note  = "OS dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 36
+delta = -0.114349
+note  = "OS dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 37
+delta = -0.034992
+note  = "OS dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 38
+delta = 0.189930
+note  = "OS dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 39
+delta = 3.289504
+note  = "OS dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 41
+delta = 0.670844
+note  = "OS inc>=100k x DMA 1"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 42
+delta = 0.290964
+note  = "OS inc>=100k x DMA 2"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 43
+delta = 0.676889
+note  = "OS inc>=100k x DMA 3"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 44
+delta = 0.100855
+note  = "OS inc>=100k x DMA 4"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 45
+delta = 0.381025
+note  = "OS inc>=100k x DMA 5"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 46
+delta = 0.146561
+note  = "OS inc>=100k x DMA 6"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 47
+delta = 0.719208
+note  = "OS inc>=100k x DMA 7"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 48
+delta = 0.305129
+note  = "OS inc>=100k x DMA 8"
+
+[[adjust]]
+model = "dest_choice"
+index = 1
+coef  = 49
+delta = 0.290824
+note  = "OS inc>=100k x DMA 9"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 26
+delta = 0.800000
+note  = "lodging size term seed: hotel rooms (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 27
+delta = 1.200000
+note  = "lodging size term seed: vacation rentals (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 31
+delta = -0.399610
+note  = "OS dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 32
+delta = -2.219406
+note  = "OS dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 33
+delta = -1.030619
+note  = "OS dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 34
+delta = -0.263279
+note  = "OS dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 35
+delta = -0.773033
+note  = "OS dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 36
+delta = -0.114349
+note  = "OS dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 37
+delta = -0.034992
+note  = "OS dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 38
+delta = 0.189930
+note  = "OS dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 39
+delta = 3.289504
+note  = "OS dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 41
+delta = 0.670844
+note  = "OS inc>=100k x DMA 1"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 42
+delta = 0.290964
+note  = "OS inc>=100k x DMA 2"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 43
+delta = 0.676889
+note  = "OS inc>=100k x DMA 3"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 44
+delta = 0.100855
+note  = "OS inc>=100k x DMA 4"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 45
+delta = 0.381025
+note  = "OS inc>=100k x DMA 5"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 46
+delta = 0.146561
+note  = "OS inc>=100k x DMA 6"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 47
+delta = 0.719208
+note  = "OS inc>=100k x DMA 7"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 48
+delta = 0.305129
+note  = "OS inc>=100k x DMA 8"
+
+[[adjust]]
+model = "dest_choice"
+index = 2
+coef  = 49
+delta = 0.290824
+note  = "OS inc>=100k x DMA 9"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 26
+delta = 0.800000
+note  = "lodging size term seed: hotel rooms (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 27
+delta = 1.200000
+note  = "lodging size term seed: vacation rentals (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 31
+delta = -0.399610
+note  = "OS dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 32
+delta = -2.219406
+note  = "OS dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 33
+delta = -1.030619
+note  = "OS dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 34
+delta = -0.263279
+note  = "OS dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 35
+delta = -0.773033
+note  = "OS dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 36
+delta = -0.114349
+note  = "OS dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 37
+delta = -0.034992
+note  = "OS dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 38
+delta = 0.189930
+note  = "OS dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 39
+delta = 3.289504
+note  = "OS dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 41
+delta = 0.670844
+note  = "OS inc>=100k x DMA 1"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 42
+delta = 0.290964
+note  = "OS inc>=100k x DMA 2"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 43
+delta = 0.676889
+note  = "OS inc>=100k x DMA 3"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 44
+delta = 0.100855
+note  = "OS inc>=100k x DMA 4"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 45
+delta = 0.381025
+note  = "OS inc>=100k x DMA 5"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 46
+delta = 0.146561
+note  = "OS inc>=100k x DMA 6"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 47
+delta = 0.719208
+note  = "OS inc>=100k x DMA 7"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 48
+delta = 0.305129
+note  = "OS inc>=100k x DMA 8"
+
+[[adjust]]
+model = "dest_choice"
+index = 3
+coef  = 49
+delta = 0.290824
+note  = "OS inc>=100k x DMA 9"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 31
+delta = -0.399610
+note  = "OS dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 32
+delta = -2.219406
+note  = "OS dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 33
+delta = -1.030619
+note  = "OS dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 34
+delta = -0.263279
+note  = "OS dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 35
+delta = -0.773033
+note  = "OS dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 36
+delta = -0.114349
+note  = "OS dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 37
+delta = -0.034992
+note  = "OS dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 38
+delta = 0.189930
+note  = "OS dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 39
+delta = 3.289504
+note  = "OS dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 41
+delta = 0.670844
+note  = "OS inc>=100k x DMA 1"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 42
+delta = 0.290964
+note  = "OS inc>=100k x DMA 2"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 43
+delta = 0.676889
+note  = "OS inc>=100k x DMA 3"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 44
+delta = 0.100855
+note  = "OS inc>=100k x DMA 4"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 45
+delta = 0.381025
+note  = "OS inc>=100k x DMA 5"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 46
+delta = 0.146561
+note  = "OS inc>=100k x DMA 6"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 47
+delta = 0.719208
+note  = "OS inc>=100k x DMA 7"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 48
+delta = 0.305129
+note  = "OS inc>=100k x DMA 8"
+
+[[adjust]]
+model = "dest_choice"
+index = 4
+coef  = 49
+delta = 0.290824
+note  = "OS inc>=100k x DMA 9"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 31
+delta = -0.399610
+note  = "OS dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 32
+delta = -2.219406
+note  = "OS dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 33
+delta = -1.030619
+note  = "OS dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 34
+delta = -0.263279
+note  = "OS dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 35
+delta = -0.773033
+note  = "OS dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 36
+delta = -0.114349
+note  = "OS dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 37
+delta = -0.034992
+note  = "OS dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 38
+delta = 0.189930
+note  = "OS dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 39
+delta = 3.289504
+note  = "OS dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 41
+delta = 0.670844
+note  = "OS inc>=100k x DMA 1"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 42
+delta = 0.290964
+note  = "OS inc>=100k x DMA 2"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 43
+delta = 0.676889
+note  = "OS inc>=100k x DMA 3"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 44
+delta = 0.100855
+note  = "OS inc>=100k x DMA 4"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 45
+delta = 0.381025
+note  = "OS inc>=100k x DMA 5"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 46
+delta = 0.146561
+note  = "OS inc>=100k x DMA 6"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 47
+delta = 0.719208
+note  = "OS inc>=100k x DMA 7"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 48
+delta = 0.305129
+note  = "OS inc>=100k x DMA 8"
+
+[[adjust]]
+model = "dest_choice"
+index = 5
+coef  = 49
+delta = 0.290824
+note  = "OS inc>=100k x DMA 9"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 31
+delta = 1.788096
+note  = "FL dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 32
+delta = -1.671711
+note  = "FL dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 33
+delta = -0.227368
+note  = "FL dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 34
+delta = -0.616341
+note  = "FL dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 35
+delta = -1.636171
+note  = "FL dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 36
+delta = -0.552848
+note  = "FL dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 37
+delta = -0.302265
+note  = "FL dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 38
+delta = 0.185841
+note  = "FL dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 6
+coef  = 39
+delta = 2.424986
+note  = "FL dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 26
+delta = 0.800000
+note  = "lodging size term seed: hotel rooms (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 27
+delta = 1.200000
+note  = "lodging size term seed: vacation rentals (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 31
+delta = 1.788096
+note  = "FL dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 32
+delta = -1.671711
+note  = "FL dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 33
+delta = -0.227368
+note  = "FL dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 34
+delta = -0.616341
+note  = "FL dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 35
+delta = -1.636171
+note  = "FL dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 36
+delta = -0.552848
+note  = "FL dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 37
+delta = -0.302265
+note  = "FL dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 38
+delta = 0.185841
+note  = "FL dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 7
+coef  = 39
+delta = 2.424986
+note  = "FL dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 26
+delta = 0.800000
+note  = "lodging size term seed: hotel rooms (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 27
+delta = 1.200000
+note  = "lodging size term seed: vacation rentals (2022 data)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 31
+delta = 1.788096
+note  = "FL dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 32
+delta = -1.671711
+note  = "FL dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 33
+delta = -0.227368
+note  = "FL dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 34
+delta = -0.616341
+note  = "FL dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 35
+delta = -1.636171
+note  = "FL dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 36
+delta = -0.552848
+note  = "FL dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 37
+delta = -0.302265
+note  = "FL dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 38
+delta = 0.185841
+note  = "FL dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 8
+coef  = 39
+delta = 2.424986
+note  = "FL dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 31
+delta = 1.788096
+note  = "FL dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 32
+delta = -1.671711
+note  = "FL dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 33
+delta = -0.227368
+note  = "FL dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 34
+delta = -0.616341
+note  = "FL dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 35
+delta = -1.636171
+note  = "FL dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 36
+delta = -0.552848
+note  = "FL dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 37
+delta = -0.302265
+note  = "FL dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 38
+delta = 0.185841
+note  = "FL dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 9
+coef  = 39
+delta = 2.424986
+note  = "FL dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 31
+delta = 1.788096
+note  = "FL dest DMA 1 (Northwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 32
+delta = -1.671711
+note  = "FL dest DMA 2 (North Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 33
+delta = -0.227368
+note  = "FL dest DMA 3 (Northeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 34
+delta = -0.616341
+note  = "FL dest DMA 4 (Central East)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 35
+delta = -1.636171
+note  = "FL dest DMA 5 (Central)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 36
+delta = -0.552848
+note  = "FL dest DMA 6 (Central West)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 37
+delta = -0.302265
+note  = "FL dest DMA 7 (Southwest)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 38
+delta = 0.185841
+note  = "FL dest DMA 8 (Southeast)"
+
+[[adjust]]
+model = "dest_choice"
+index = 10
+coef  = 39
+delta = 2.424986
+note  = "FL dest DMA 9 (Disney)"
+
+[[adjust]]
+model = "mode_choice"
+index = 1
+coef  = 400
+delta = 2.516171
+note  = "OS air share"
+
+[[adjust]]
+model = "mode_choice"
+index = 2
+coef  = 400
+delta = 2.516171
+note  = "OS air share"
+
+[[adjust]]
+model = "mode_choice"
+index = 3
+coef  = 400
+delta = 2.516171
+note  = "OS air share"
+
+[[adjust]]
+model = "mode_choice"
+index = 4
+coef  = 400
+delta = 2.516171
+note  = "OS air share"
+
+[[adjust]]
+model = "mode_choice"
+index = 5
+coef  = 400
+delta = 2.516171
+note  = "OS air share"
+
+[[adjust]]
+model = "nights_away"
+index = 1
+coef  = 20
+delta = 0.083827
+note  = "OS nights n1_3"
+
+[[adjust]]
+model = "nights_away"
+index = 1
+coef  = 30
+delta = 0.107294
+note  = "OS nights n4_7"
+
+[[adjust]]
+model = "nights_away"
+index = 1
+coef  = 40
+delta = -0.191120
+note  = "OS nights n8_plus"
+
+[[adjust]]
+model = "nights_away"
+index = 2
+coef  = 20
+delta = 0.083827
+note  = "OS nights n1_3"
+
+[[adjust]]
+model = "nights_away"
+index = 2
+coef  = 30
+delta = 0.107294
+note  = "OS nights n4_7"
+
+[[adjust]]
+model = "nights_away"
+index = 2
+coef  = 40
+delta = -0.191120
+note  = "OS nights n8_plus"
+
+[[adjust]]
+model = "nights_away"
+index = 3
+coef  = 20
+delta = 0.083827
+note  = "OS nights n1_3"
+
+[[adjust]]
+model = "nights_away"
+index = 3
+coef  = 30
+delta = 0.107294
+note  = "OS nights n4_7"
+
+[[adjust]]
+model = "nights_away"
+index = 3
+coef  = 40
+delta = -0.191120
+note  = "OS nights n8_plus"
+
+[[adjust]]
+model = "nights_away"
+index = 4
+coef  = 20
+delta = 0.083827
+note  = "OS nights n1_3"
+
+[[adjust]]
+model = "nights_away"
+index = 4
+coef  = 30
+delta = 0.107294
+note  = "OS nights n4_7"
+
+[[adjust]]
+model = "nights_away"
+index = 4
+coef  = 40
+delta = -0.191120
+note  = "OS nights n8_plus"
+
+[[adjust]]
+model = "nights_away"
+index = 5
+coef  = 20
+delta = 0.083827
+note  = "OS nights n1_3"
+
+[[adjust]]
+model = "nights_away"
+index = 5
+coef  = 30
+delta = 0.107294
+note  = "OS nights n4_7"
+
+[[adjust]]
+model = "nights_away"
+index = 5
+coef  = 40
+delta = -0.191120
+note  = "OS nights n8_plus"
+
+[[adjust]]
+model = "party_size"
+index = 1
+coef  = 201
+delta = -0.294171
+note  = "OS party couple"
+
+[[adjust]]
+model = "party_size"
+index = 1
+coef  = 301
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 1
+coef  = 401
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 2
+coef  = 201
+delta = -0.294171
+note  = "OS party couple"
+
+[[adjust]]
+model = "party_size"
+index = 2
+coef  = 301
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 2
+coef  = 401
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 3
+coef  = 201
+delta = -0.294171
+note  = "OS party couple"
+
+[[adjust]]
+model = "party_size"
+index = 3
+coef  = 301
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 3
+coef  = 401
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 4
+coef  = 201
+delta = -0.294171
+note  = "OS party couple"
+
+[[adjust]]
+model = "party_size"
+index = 4
+coef  = 301
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 4
+coef  = 401
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 5
+coef  = 201
+delta = -0.294171
+note  = "OS party couple"
+
+[[adjust]]
+model = "party_size"
+index = 5
+coef  = 301
+delta = -0.157384
+note  = "OS party group3plus"
+
+[[adjust]]
+model = "party_size"
+index = 5
+coef  = 401
+delta = -0.157384
+note  = "OS party group3plus"
