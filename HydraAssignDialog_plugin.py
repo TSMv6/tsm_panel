@@ -62,7 +62,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.populate_layer_combobox(self.comboBox_LinkLayer, "LineString")
         self.populate_layer_combobox(self.comboBox_NodeLayer, "Point")
 
-        # HyDRA always writes to the scenario directory (no separate output field).
+        # Default output location; the Output directory field (blank = scenario
+        # directory) overrides it at run time via _resolve_out_dir.
         self._out_dir = (settings.get("scenarioDir") or "").replace("\\", "/")
         if settings.get("link_layer_name"):
             self._select_combo(self.comboBox_LinkLayer, settings.get("link_layer_name"))
@@ -71,6 +72,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
 
         # Connections
         self.browse_TripFile.clicked.connect(lambda: self.select_file(self.lineEdit_TripFile, "Trip list (*.csv.gz *.csv)"))
+        self.browse_OutDir.clicked.connect(self._browse_out_dir)
         self.browse_TollPolicy.clicked.connect(lambda: self.select_file(self.lineEdit_TollPolicy, "CSV (*.csv)"))
         self.browse_SegParams.clicked.connect(lambda: self.select_file(self.lineEdit_SegParams, "CSV (*.csv)"))
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
@@ -97,6 +99,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self._select_node_schedule(settings.get("hydra_node_schedule"))
         if settings.get("hydra_trip_file"):
             self.lineEdit_TripFile.setText(settings.get("hydra_trip_file"))
+        if settings.get("hydra_out_dir"):
+            self.lineEdit_OutDir.setText(settings.get("hydra_out_dir"))
         if settings.get("hydra_toll_policy"):
             self.lineEdit_TollPolicy.setText(settings.get("hydra_toll_policy"))
         if settings.get("hydra_segment_params"):
@@ -180,6 +184,25 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if path:
             line_edit.setText(path)
 
+    def _browse_out_dir(self):
+        settings = Config()
+        start = self.lineEdit_OutDir.text().strip() or settings.get("scenarioDir") or ""
+        path = QFileDialog.getExistingDirectory(self, "Select HyDRA output directory", start)
+        if path:
+            self.lineEdit_OutDir.setText(path)
+
+    def _resolve_out_dir(self, settings):
+        """User's output directory, defaulting to the scenario directory when
+        blank (the panel-wide convention). Created if it does not exist."""
+        out_dir = (self.lineEdit_OutDir.text().strip()
+                   or settings.get("scenarioDir") or "").replace("\\", "/")
+        if out_dir and not os.path.isdir(out_dir):
+            try:
+                os.makedirs(out_dir, exist_ok=True)
+            except OSError:
+                pass
+        return out_dir
+
     def populate_layer_combobox(self, combobox, geom_type):
         combobox.clear()
         combobox.addItem("Select a layer", None)
@@ -206,8 +229,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_node_schedule",
                      NODE_SCHEDULES.get(self.comboBox_NodeSchedule.currentText(), "per_iter"))
         # Threads are NOT persisted here -- they come from General Configuration.
-        # Inputs / outputs (output dir is always the scenario directory)
+        # Inputs / outputs (blank output dir = scenario directory at run time)
         settings.set("hydra_trip_file", self.lineEdit_TripFile.text())
+        settings.set("hydra_out_dir", self.lineEdit_OutDir.text().strip())
         settings.set("link_layer_name", self.comboBox_LinkLayer.currentText())
         settings.set("node_layer_name", self.comboBox_NodeLayer.currentText())
         # Meso / Micro
@@ -245,7 +269,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         sel_node = self.get_layer_path(node_layer) if node_layer else ""
         link_path, node_path = settings.resolve_network_paths(sel_link, sel_node)
         trip_file = self.lineEdit_TripFile.text().strip()
-        out_dir = (settings.get("scenarioDir") or "").replace("\\", "/")
+        out_dir = self._resolve_out_dir(settings)
         if not (link_path and node_path and trip_file and out_dir):
             QMessageBox.critical(self, "Error", "Need a Link network, Node network, and Trip list. Pick the layers here, or run Link Consolidation first (output goes to the scenario directory).")
             return False

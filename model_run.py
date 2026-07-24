@@ -209,12 +209,29 @@ _RUN_CONSOLE = None  # Popen of the live-tail window, so end_run_console() can c
 
 
 def _close_console_proc(proc):
-    """Terminate a live-tail console process, which closes its window."""
+    """Terminate a live-tail console process, which closes its window. terminate()
+    alone can silently fail on a console-attached powershell (leaves the run-log
+    window lingering after the run), so escalate: terminate -> kill -> taskkill
+    of the whole tree by pid."""
     if proc is None:
         return
     try:
         if proc.poll() is None:
-            proc.terminate()  # kills the powershell tail -> its console window closes
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except Exception:
+                pass
+        if proc.poll() is None:
+            proc.kill()
+            try:
+                proc.wait(timeout=2)
+            except Exception:
+                pass
+        if proc.poll() is None:
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                           capture_output=True)
     except Exception:
         pass
 
