@@ -342,6 +342,22 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 # LTM / spillback (used by the LTM macro models)
                 f.write(f"LTM_MAX_SPILLBACK_MIN {self.lineEdit_LtmSpillback.text().strip() or '20'}\n")
                 f.write(f"JAM_DENSITY           {self.lineEdit_JamDensity.text().strip() or '240'}\n")
+                # Discharge calibration: QLOS planning capacities (LOS-E service
+                # volumes) under-state physical discharge in a hard-capacity DNL;
+                # the calibrated per-FTYPE scale-ups from the assignment of record
+                # are written by DEFAULT (omitting them collapses freeway loading
+                # -- limited-access ratio 0.58 vs 1.06 calibrated). Override via
+                # the hydra_discharge_factors setting ("ft:factor,ft:factor,...";
+                # "off" suppresses the block entirely).
+                df_setting = (settings.get("hydra_discharge_factors") or "").strip()
+                if df_setting.lower() != "off":
+                    factors = df_setting or ("11:1.15,21:1.15,31:1.15,41:1.15,"
+                                             "45:1.15,48:1.15,71:1.2,91:1.15,"
+                                             "93:1.15,94:1.15")
+                    for pair in factors.split(","):
+                        ft, _, val = pair.partition(":")
+                        if ft.strip() and val.strip():
+                            f.write(f"DISCHARGE_FACTOR_{ft.strip()}  {val.strip()}\n")
                 # Sampling / limits
                 f.write(f"MAX_TRIPS             {self.lineEdit_MaxTrips.text().strip() or '0'}\n")
                 f.write(f"SAMPLE_EVERY          {self.lineEdit_SampleEvery.text().strip() or '1'}\n")
