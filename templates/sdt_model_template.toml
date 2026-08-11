@@ -50,7 +50,15 @@ auto_skim_ev    = "{skim}"
 share = {wfh_share}
 
 [shadow_pricing]
-enabled        = false
+# ON by default: shadow prices push mandatory destinations away from nearby
+# oversaturated zones, which lengthens work/university trips and feeds the
+# limited-access system. With it off, mandatory destinations cluster near home
+# and the freeway network is starved (see the run27/28 validation report,
+# "Shadow pricing shifts mandatory destinations further from home on average").
+# NB: the SP loop still converges only to RMSE ~0.32 against a 0.01 target --
+# it draws with an empty CoeffTable (size terms, no utility), a documented open
+# bug -- so the prices are directionally right but not converged.
+enabled        = true
 max_iterations = 10
 rmse_target    = 0.01
 damp_factor    = 1.0
