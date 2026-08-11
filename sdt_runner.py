@@ -78,6 +78,19 @@ def run_sdt_models(flags):
     year = settings.get("scenarioYear") or settings.get("networkYear") or "2024"
     threads = settings.get("num_processors") or "0"
 
+    # Shadow prices are SCENARIO STATE, not a plugin asset: each scenario
+    # converges its own. Prefer the scenario's own file (written to
+    # scenario_dir by the previous run) and fall back to the shipped TSMv4 seed
+    # only to bootstrap a scenario that has never run shadow pricing -- so
+    # scenarios never inherit each other's prices via the plugin config.
+    # The engine writes and reads the same CSV layout
+    # (TAZ,WORK_0..WORK_4,UNIV_SP,SCHOOL_SP), so the file round-trips.
+    sp_scenario = os.path.join(scenario_dir, "shadowPrices")
+    sp_seed = os.path.join(plugin_dir, "config", "sdt_parameters",
+                           "shadowPrices_TSMv4_3.csv")
+    shadow_input = sp_scenario if os.path.exists(sp_scenario) else sp_seed
+    print("SDT shadow price seed: %s" % shadow_input)
+
     repl = {
         # SDT coefficient/parameter dirs (config/...) are shipped IN the plugin and
         # resolved relative to project_dir, so point project_dir at the plugin folder.
@@ -88,6 +101,7 @@ def run_sdt_models(flags):
         "{syn_per}": _fwd(syn_per),
         "{tsm_landuse}": _fwd(tsm_landuse),
         "{output_dir}": _fwd(scenario_dir).rstrip("/"),
+        "{shadow_input}": _fwd(shadow_input),
         "{skim}": _fwd(skim_file),
         "{wfh_share}": str(wfh_share),
         "{year}": str(year),

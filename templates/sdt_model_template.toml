@@ -62,7 +62,15 @@ enabled        = true
 max_iterations = 10
 rmse_target    = 0.01
 damp_factor    = 1.0
-input_file     = "config/sdt_parameters/shadowPrices_TSMv4_3.csv"
+# Both sides are scenario-local. input_file is resolved by sdt_runner to this
+# scenario's own shadowPrices (written by its previous run), falling back to the
+# shipped TSMv4 seed only on a scenario's first shadow-priced run -- scenarios
+# must not inherit each other's prices from the plugin config.
+# After that first run input and output are the SAME path, so the file is
+# self-updating state (the engine reads at startup and writes atomically via
+# .tmp+rename at the end). Delete the scenario's shadowPrices to re-bootstrap
+# from the shipped seed.
+input_file     = "{shadow_input}"
 output_file    = "{output_dir}/shadowPrices"
 
 [vot]
