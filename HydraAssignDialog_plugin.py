@@ -327,6 +327,33 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write("LINK_VOLUME_BREAKDOWN Purpose\n")
                 if meso:
                     f.write(f"MESO_FTYPE            {meso}\n")
+                    # Anti-gridlock breaker -- MESO ONLY, so these keys are
+                    # written inside the `if meso` block and never appear in a
+                    # macro-only control file.
+                    #
+                    # The engine defaults are meso_breaker_rate=0 ("legacy") and
+                    # meso_max_spillback_min=20, which together drain a
+                    # deadlocked movement at ONE packet (<=3 veh) per 20 min =
+                    # ~9 veh/hour. That cannot dissolve interchange rings: meso
+                    # gridlocked by ~11am, reported 0.0-0.4% of daily volume per
+                    # hour for the rest of the day, held 18.2% of freeway demand
+                    # out of the network entirely, and diverted the rest onto
+                    # arterials -- limited access scored ratio 0.588 / R2 0.060.
+                    #
+                    # Rate mode drains a timed-out movement at rate*capacity per
+                    # step; cap_credit still gates every release so the forced
+                    # rate can NEVER exceed link capacity (values >1.0 buy
+                    # nothing). With rate 1.0 + a 5-minute timeout, measured on
+                    # New_landuse: backlog 18.2% -> 5.1%, limited access
+                    # 0.588/0.060 -> 0.862/0.253, tolls 0.617 -> 1.160, ramps
+                    # 0.796 -> 1.106, statewide R2 0.353 -> 0.544, rel_gap
+                    # 0.1038 -> 0.0827.
+                    brk = (settings.get("hydra_meso_breaker_rate") or "1.0").strip()
+                    spb = (settings.get("hydra_meso_spillback_min") or "5").strip()
+                    if brk.lower() != "off":
+                        f.write(f"MESO_BREAKER_RATE     {brk}\n")
+                    if spb.lower() != "off":
+                        f.write(f"MESO_MAX_SPILLBACK_MIN {spb}\n")
                 if signals:
                     f.write("SIGNAL_MODEL          YES\n")
                 if toll_policy:
