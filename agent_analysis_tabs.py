@@ -359,10 +359,11 @@ def _ensure_index(dlg, db, what):
         "It's heavy (a full path sort, capped at 64 GB RAM, spills to disk) but "
         "only happens once — every later Select Link / Subarea / Turning-movement "
         "run is then fast.\n\nNo = run %s without the index (slow full scan)." % what,
-        QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-    if resp == QMessageBox.Cancel:
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        | QMessageBox.StandardButton.Cancel)
+    if resp == QMessageBox.StandardButton.Cancel:
         return False
-    if resp == QMessageBox.No:
+    if resp == QMessageBox.StandardButton.No:
         return True     # proceed on the engine's fallback scan
     ri = _run(["index", "--db", db, "--mem", "64GB"], "agentAnalysis_index.log")
     if ri.returncode != 0 or not os.path.exists(idx):
@@ -609,7 +610,7 @@ def add_agent_analysis_tabs(dlg):
     """Append the agentAnalysis QTabWidget under the Summarization controls
     (bottom of the dialog, SubareaAssignment-style)."""
     tabs = QTabWidget(dlg)
-    tabs.setTabPosition(QTabWidget.North)
+    tabs.setTabPosition(QTabWidget.TabPosition.North)
     # Keep references to each tab's QWidget so save_agent_settings() can read
     # every field back on OK (browse buttons don't emit editingFinished).
     dlg._aa_trace = _tab_trace(dlg)
