@@ -392,6 +392,48 @@
            <property name="toolTip"><string>SAMPLE_EVERY — load every Nth trip (1 = all).</string></property>
           </widget>
          </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_sampleSched">
+           <property name="text"><string>Sampling schedule</string></property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QComboBox" name="comboBox_SampleSchedule">
+           <property name="toolTip"><string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string></property>
+           <item><property name="text"><string>Progressive (25 -&gt; 50 -&gt; 100%)</string></property></item>
+           <item><property name="text"><string>Full sample every iteration</string></property></item>
+           <item><property name="text"><string>Custom</string></property></item>
+          </widget>
+         </item>
+         <item row="3" column="2">
+          <widget class="QLabel" name="label_sampleCustom">
+           <property name="text"><string>Custom schedule</string></property>
+          </widget>
+         </item>
+         <item row="3" column="3">
+          <widget class="QLineEdit" name="lineEdit_SampleSchedule">
+           <property name="placeholderText"><string>1-4:25, 5-8:50, 9-15:100</string></property>
+           <property name="toolTip"><string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string></property>
+          </widget>
+         </item>
+         <item row="4" column="0" colspan="2">
+          <widget class="QCheckBox" name="checkBox_Checkpoint">
+           <property name="text"><string>Write checkpoint (enables warm restart)</string></property>
+           <property name="checked"><bool>true</bool></property>
+           <property name="toolTip"><string>CHECKPOINT_FILE — writes checkpoint.bin in the output directory. Lets a later run resume with RESUME_FROM (2-3 iterations instead of a full cold run) and lets outputs be re-scored by loading the checkpoint without re-assigning.</string></property>
+          </widget>
+         </item>
+         <item row="4" column="2">
+          <widget class="QLabel" name="label_ckptEvery">
+           <property name="text"><string>Checkpoint every</string></property>
+          </widget>
+         </item>
+         <item row="4" column="3">
+          <widget class="QLineEdit" name="lineEdit_CheckpointEvery">
+           <property name="text"><string>3</string></property>
+           <property name="toolTip"><string>CHECKPOINT_EVERY — write the checkpoint every N iterations.</string></property>
+          </widget>
+         </item>
         </layout>
        </widget>
       </item>

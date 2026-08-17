@@ -92,8 +92,8 @@ def _run(args, log_name):
 def _hline(parent):
     """Horizontal separator line between dialog sections."""
     ln = QtWidgets.QFrame(parent)
-    ln.setFrameShape(QtWidgets.QFrame.HLine)
-    ln.setFrameShadow(QtWidgets.QFrame.Sunken)
+    ln.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+    ln.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
     return ln
 
 
