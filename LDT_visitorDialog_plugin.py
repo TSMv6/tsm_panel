@@ -1,5 +1,5 @@
 import os, shutil, subprocess, time
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QVBoxLayout, QHBoxLayout, QLabel
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QVBoxLayout, QHBoxLayout, QLabel, QWidget
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -164,24 +164,26 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             self.radio_extBase.setChecked(True)
 
         # ---- Regroup the bottom half by FEATURE, two columns -------------------
-        # Previously the run-mode checkbox, the external-calibration controls and
-        # the reference block were interleaved as loose rows, so it was not
-        # obvious which control belonged to which feature. Now:
-        #   LEFT  "Run mode and reference run" : absolute/incremental + the
-        #         reference year and reference tour file that an incremental run
-        #         needs (they are one decision, so they live together).
-        #   RIGHT "External station calibration": the on/off switch, the
-        #         base-year vs growth basis, and the station table it applies to.
-        # The widgets are the existing ones, re-parented -- nothing is recreated,
-        # so all the signal wiring above stays intact.
+        # LEFT  "Run mode and reference run": absolute/incremental plus the
+        #       reference year + reference tour file an incremental run needs.
+        # RIGHT "External station calibration": on/off, the base-year vs growth
+        #       basis, and the station table it applies to.
+        # gridLayout and the table start out as the two items of horizontalLayout,
+        # so they must be DETACHED first -- re-adding them without removing left
+        # the originals in place and produced a third column.
         hbox = self.findChild(QHBoxLayout, "horizontalLayout")
         ref_grid = self.findChild(QGridLayout, "gridLayout")
         label_11 = self.findChild(QLabel, "label_11")
         if hbox is not None and ref_grid is not None:
+            hbox.removeItem(ref_grid)
+            if self.table is not None:
+                hbox.removeWidget(self.table)
+
             self.grp_runmode = QGroupBox("Run mode and reference run")
             _lv = QVBoxLayout(self.grp_runmode)
             _lv.addWidget(self.checkBox_absolute)
-            _lv.addLayout(ref_grid)          # reparents the reference block
+            _lv.addLayout(ref_grid)
+            _lv.addStretch(1)
 
             self.grp_extcal = QGroupBox("External station calibration (I-10 / I-75 / I-95)")
             _rv = QVBoxLayout(self.grp_extcal)
@@ -192,13 +194,34 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             _mode.addStretch(1)
             _rv.addLayout(_mode)
             if self.table is not None:
-                _rv.addWidget(self.table)    # reparents the station table
+                _rv.addWidget(self.table)
 
             hbox.addWidget(self.grp_runmode, 1)
             hbox.addWidget(self.grp_extcal, 2)
-            # the old free-floating heading is now the right-hand box title
             if label_11 is not None:
                 label_11.setVisible(False)
+
+        # "Num of HHs (US - FL)" is derived internally by check_nHH(); it is not a
+        # user input, so it is not shown.
+        for _n in ("label_9", "lineEdit_NumHH", "pushButton_nHH"):
+            _w = self.findChild(QWidget, _n)
+            if _w is not None:
+                _w.setVisible(False)
+
+        # Absolute run drives whether a reference run is meaningful at all:
+        # absolute => no reference, so grey the whole reference block; incremental
+        # => hand control back to check_userRef().
+        def _sync_runmode():
+            inc = not self.checkBox_absolute.isChecked()
+            self.checkBox_userRef.setEnabled(inc)
+            if inc:
+                self.check_userRef()
+            else:
+                self.lineEdit_LDTRefYear.setEnabled(False)
+                self.pushButton.setEnabled(False)
+                self.lineEdit_prevOut.setEnabled(False)
+        self._sync_runmode = _sync_runmode
+        self.checkBox_absolute.toggled.connect(lambda _: _sync_runmode())
 
         # Base year (2024) has NO prior-year output to increment from, so it MUST run
         # absolute -- force it on and grey it out. Future years (> base) may be either
@@ -328,6 +351,11 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 "Year of the run being incremented FROM. Drives the syn-HH delta "
                 "(ref < Year <= scenario year) and pairs with the Reference Tour "
                 "File that the increment is appended onto.")
+
+        # Both groups must show their real state on open, not only after the first
+        # click -- the table was left enabled while its checkbox was off.
+        self._sync_ext_enabled()
+        self._sync_runmode()
 
     def check_userRef(self):
         settings = Config()
