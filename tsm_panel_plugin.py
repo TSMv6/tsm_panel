@@ -77,6 +77,13 @@ class TsmPanelPlugin():
             website_action2.triggered.connect(self.open_website2)
             help_menu.addSeparator()
             help_menu.addAction(website_action2)
+
+            # Version/build info, so a user can tell which build they are on
+            # without digging through the plugin folder.
+            about_action = QAction('About TSM Plugin', self.iface.mainWindow())
+            about_action.triggered.connect(self.show_about)
+            help_menu.addSeparator()
+            help_menu.addAction(about_action)
         else:
             print("Help menu not found. Unable to add website links.")
 
@@ -90,6 +97,69 @@ class TsmPanelPlugin():
         icon_path = os.path.join(plugin_dir, icon)
         iface.mainWindow().setWindowIcon(QIcon(icon_path))
 
+
+    def show_about(self):
+        """Help > About TSM Plugin: everything needed to identify this build.
+
+        Read live from metadata.txt rather than duplicated in code, so the
+        version can never disagree with what the plugin manager reports. Engine
+        build dates come from the deployed exes, because the panel version alone
+        does not say which engines sit next to it -- that mismatch is what
+        actually bites (a stale afdta cost a full run earlier).
+        """
+        import datetime
+        plugin_dir = os.path.dirname(__file__)
+        meta = {}
+        try:
+            with open(os.path.join(plugin_dir, "metadata.txt"), encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith(("#", "[")) or "=" not in line:
+                        continue
+                    k, _, v = line.partition("=")
+                    meta[k.strip()] = v.strip()
+        except OSError as e:
+            meta = {"name": "TSM Model Plugin", "version": "unknown (%s)" % e}
+
+        rows = [("Version", meta.get("version", "?")),
+                ("Author", meta.get("author", "?")),
+                ("Contact", meta.get("email", "?")),
+                ("QGIS", "%s - %s" % (meta.get("qgisMinimumVersion", "?"),
+                                      meta.get("qgisMaximumVersion", "?"))),
+                ("Qt6 support", meta.get("supportsQt6", "?")),
+                ("Plugin folder", plugin_dir.replace(chr(92), "/"))]
+
+        engines = []
+        for label, rel in (("afdta (HyDRA)", "Apps/Hydra/afdta.exe"),
+                           ("sdt-run", "Apps/sdt/sdt-run.exe"),
+                           ("ldt-run", "Apps/ldt/ldt-run.exe"),
+                           ("netPrep", "Apps/netPrep/netPrep.exe"),
+                           ("agentPlans", "Apps/agentPlans/agentPlans.exe"),
+                           ("agentAnalysis", "Apps/agentAnalysis/agentAnalysis.exe"),
+                           ("summarize", "Apps/utilities/summarize.exe")):
+            fp = os.path.join(plugin_dir, rel.replace("/", os.sep))
+            if os.path.exists(fp):
+                ts = datetime.datetime.fromtimestamp(os.path.getmtime(fp))
+                engines.append((label, ts.strftime("%Y-%m-%d %H:%M")))
+            else:
+                engines.append((label, "not installed"))
+
+        html = ["<h3>%s</h3>" % meta.get("name", "TSM Model Plugin"),
+                "<p>%s</p>" % meta.get("description", ""),
+                "<table cellpadding='3'>"]
+        for k, v in rows:
+            html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
+        html.append("</table><h4>Engine builds (deployed)</h4><table cellpadding='3'>")
+        for k, v in engines:
+            html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
+        html.append("</table>")
+
+        box = QMessageBox(self.iface.mainWindow())
+        box.setWindowTitle("About TSM Plugin")
+        box.setTextFormat(Qt.TextFormat.RichText)
+        box.setText("".join(html))
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        box.exec()
 
     def open_website(self):
         """Open the TSM Overview website (agent-based model story, hosted from
