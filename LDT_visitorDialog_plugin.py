@@ -61,16 +61,38 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # External-station overwrite table: col0 = Ext Zone ID, col1 = Base Count
         # (2024), col2 = Future Target or Growth %. Persisted per interstate in
         # Config as <name>_Zone / <name>_Count / <name>_Future.
-        ext_defaults = {"I-75": ("", "55000", "1.0%"),
-                        "I-10": ("", "30000", "1.0%"),
-                        "I-95": ("", "75000", "1.0%")}
+        # Ext Zone ID is NOT user data: it must equal the external-station zone the
+        # engine keys on (agentPlans settings.h ext_station_i10/i75/i95). It used
+        # to default to "" and be typed by hand; when left blank, agentPlans'
+        # load_ext_targets() converted "" -> 0, so all three rows collapsed onto
+        # zone 0 and no external scaling was ever applied
+        # ("[eltod] external 0: target=75000 modeled=0 scale=1.0000"). The column
+        # is now populated from the canonical ids and made read-only, and a stale
+        # blank in a saved scenario is ignored rather than restored.
+        EXT_ZONE_ID = {"I-10": "11504", "I-75": "11548", "I-95": "11560"}
+        # Base counts are the CALIBRATED external targets behind the 74.83M-trip
+        # revised trip list (externals matched exactly: I-10 36,000 /
+        # I-75 48,054 / I-95 75,636), not the older round placeholders
+        # (30,000 / 55,000 / 75,000). They must agree with the curated
+        # ldt_external_targets.csv, otherwise saving this dialog would merge the
+        # placeholders over the calibrated numbers and silently de-calibrate the
+        # externals. Zone ids verified three ways: agentPlans settings.h
+        # ext_station_*, the curated file's description column, and the network
+        # itself (11504 -> Escambia/I-10, 11548 -> Hamilton/I-75,
+        # 11560 -> Nassau/I-95).
+        ext_defaults = {"I-75": ("48054", "1.0%"),
+                        "I-10": ("36000", "1.0%"),
+                        "I-95": ("75636", "1.0%")}
         for row in range(self.table.rowCount()):
             name = self.table.verticalHeaderItem(row).text()
-            dz, dc, df = ext_defaults.get(name, ("", "", "1.0%"))
-            zone = settings.get(f"{name}_Zone")
+            dc, df = ext_defaults.get(name, ("", "1.0%"))
             count = settings.get(f"{name}_Count")
             future = settings.get(f"{name}_Future")
-            self.table.setItem(row, 0, QTableWidgetItem(zone if zone is not None else dz))
+            zone_item = QTableWidgetItem(EXT_ZONE_ID.get(name, ""))
+            zone_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            zone_item.setToolTip("Fixed external-station zone id; must match "
+                                 "ext_station_* in the agentPlans settings.")
+            self.table.setItem(row, 0, zone_item)
             self.table.setItem(row, 1, QTableWidgetItem(count if count else dc))
             self.table.setItem(row, 2, QTableWidgetItem(future if future else df))
         # Stretch the three columns to fill the table width.
@@ -236,22 +258,107 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             self.textBrowser.setPlainText(md)
 
     def _persist_external_targets(self):
-        """Write the external-station overwrite table to a CSV for the downstream
-        external-overwrite step (interstate, ext zone id, base count, future)."""
+        """Persist this dialog's external-station rows to ldt_external_targets.csv.
+
+        MERGES into an existing file rather than overwriting it. The production
+        targets file covers ~60 crossings with filled zone ids and absolute
+        counts; this table only knows the big three interstates, so a blind
+        rewrite silently discarded ~57 stations. When a targets file already
+        exists its header, row order and every other station are preserved, and
+        only rows matching this table's ext_zone_id are updated.
+
+        Rows with no zone id are skipped: agentPlans' load_ext_targets() maps a
+        blank id to zone 0, which collapses every row onto one key and disables
+        external scaling entirely.
+        """
+        import csv
         settings = Config()
         out = os.path.join(settings.get("scenarioDir"), "ldt_external_targets.csv")
+
+        mine = {}
+        for row in range(self.table.rowCount()):
+            name = self.table.verticalHeaderItem(row).text()
+            it0 = self.table.item(row, 0)
+            it1 = self.table.item(row, 1)
+            it2 = self.table.item(row, 2)
+            zone = it0.text().strip() if it0 else ""
+            count = it1.text().strip() if it1 else ""
+            future = it2.text().strip() if it2 else ""
+            if not zone:
+                print("External targets: row %s has no zone id - skipped" % name)
+                continue
+            mine[zone] = (name, count, future)
+        if not mine:
+            print("External targets: nothing written (no row carries a zone id)")
+            return
+
         try:
-            with open(out, "w", newline="") as f:
-                f.write("interstate,ext_zone_id,base_count_2024,future_target_or_growth\n")
-                for row in range(self.table.rowCount()):
-                    name = self.table.verticalHeaderItem(row).text()
-                    zone = self.table.item(row, 0).text() if self.table.item(row, 0) else ""
-                    count = self.table.item(row, 1).text() if self.table.item(row, 1) else ""
-                    future = self.table.item(row, 2).text() if self.table.item(row, 2) else ""
-                    f.write(f"{name},{zone},{count},{future}\n")
-            print(f"Wrote external targets: {out}")
+            header = None
+            existing = []
+            if os.path.exists(out):
+                with open(out, newline="") as f:
+                    rd = csv.reader(f)
+                    header = next(rd, None)
+                    for r in rd:
+                        if r:
+                            existing.append(r)
+
+            if header and "ext_zone_id" in header:
+                iz = header.index("ext_zone_id")
+                ic = None
+                for i, h in enumerate(header):
+                    if h.strip().lower().startswith("base_count"):
+                        ic = i
+                        break
+                isp = header.index("future_target_or_growth") if "future_target_or_growth" in header else None
+                touched = 0
+                for r in existing:
+                    if iz >= len(r):
+                        continue
+                    hit = mine.get(r[iz].strip())
+                    if not hit:
+                        continue
+                    count = hit[1]
+                    future = hit[2]
+                    if ic is not None and ic < len(r) and count:
+                        r[ic] = count
+                    if isp is not None and isp < len(r) and future:
+                        r[isp] = future
+                    touched += 1
+                have = set()
+                for r in existing:
+                    if iz < len(r):
+                        have.add(r[iz].strip())
+                for zone in mine:
+                    if zone in have:
+                        continue
+                    name, count, future = mine[zone]
+                    new = [""] * len(header)
+                    new[0] = name
+                    new[iz] = zone
+                    if ic is not None:
+                        new[ic] = count
+                    if isp is not None:
+                        new[isp] = future
+                    existing.append(new)
+                    touched += 1
+                with open(out, "w", newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(header)
+                    w.writerows(existing)
+                print("External targets: merged %d row(s), %d stations preserved -> %s"
+                      % (touched, len(existing), out))
+            else:
+                with open(out, "w", newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(["interstate", "ext_zone_id", "base_count_2024",
+                                "future_target_or_growth"])
+                    for zone in mine:
+                        name, count, future = mine[zone]
+                        w.writerow([name, zone, count, future])
+                print("External targets: wrote %d row(s) -> %s" % (len(mine), out))
         except Exception as e:
-            print(f"Could not write external targets: {e}")
+            print("Could not write external targets: %s" % e)
 
     def update_settings(self):
         settings = Config()
