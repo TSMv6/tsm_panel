@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=1.84
+version=2.45
 date=2026-07-09
 author=Amar Sarvepalli
 email=venkat.sarvepalli@dot.state.fl.us
@@ -35,7 +35,187 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (25 commits, 2026-06-19 to today):
+    One version per commit, newest first (86 commits, 2026-06-19 to 2026-08-20):
+    .
+    2.45 (2026-08-20): Help > About TSM Plugin: version and deployed
+    engine builds
+    .
+    2.44 (2026-08-20): LDT visitor GUI: fix the two-column regroup and
+    wire the group toggles
+    .
+    2.43 (2026-08-20): LDT visitor GUI: group the bottom half by feature;
+    drop the dead pre-sort box
+    .
+    2.42 (2026-08-20): LDT visitor: incremental is the future-year
+    default; reference year is a real input
+    .
+    2.41 (2026-08-20): LDT visitor GUI: external calibration is opt-in,
+    and its basis is explicit
+    .
+    2.40 (2026-08-20): LDT visitor GUI: fixed external-station zone ids,
+    calibrated targets, safe merge
+    .
+    2.39 (2026-08-19): Deploy afdta with the dta_micro output fix
+    (agentflow-dta bceb4a8)
+    .
+    2.38 (2026-08-17): Fix remaining Qt6 unscoped enums in
+    agent_analysis_tabs (Summarization crash)
+    .
+    2.37 (2026-08-17): HyDRA dialog: checkpoint + sampling-schedule
+    controls; fix two Qt6 enums
+    .
+    2.36 (2026-08-13): HyDRA dialog: write the meso anti-gridlock breaker
+    by default
+    .
+    2.35 (2026-08-11): Deploy sdt-run with the WFH shadow-pricing guard
+    fix (SDTModel d3e8fea)
+    .
+    2.34 (2026-08-10): Deploy sdt-run with the shadow-pricing CoeffTable
+    fix (SDTModel 2ddea36)
+    .
+    2.33 (2026-08-10): SDT: shadow prices are scenario state, not a plugin
+    asset
+    .
+    2.32 (2026-08-10): SDT: shadow pricing ON by default
+    .
+    2.31 (2026-08-10): Deploy afdta rebuilt at agentflow-dta 2b53eb1
+    (FTI_COUNT_24 count alias)
+    .
+    2.30 (2026-08-10): Fix HyDRA dialog crash on QGIS 4: hydra_ui.py was
+    back on raw PyQt5
+    .
+    2.29 (2026-07-28): HyDRA dialog writes the calibrated DISCHARGE_FACTOR
+    block by default
+    .
+    2.28 (2026-07-24): HyDRA output-directory field + robust run-console
+    close
+    .
+    2.27 (2026-07-24): LDT calibration constants: iteration-13 calibrated
+    deltas (was empty template)
+    .
+    2.26 (2026-07-24): validation_runner: resolve assigned column (Total
+    legacy / VOL_DAILY hydra)
+    .
+    2.25 (2026-07-24): Deploy afdta: FTI_COUNT_24 preferred for count
+    validation
+    .
+    2.24 (2026-07-24): Deploy afdta: fixed-policy toll from link TOLL +
+    per-axle toll in micro
+    .
+    2.23 (2026-07-23): HyDRA defaults + vehicle-unit outputs
+    .
+    2.22 (2026-07-18): Fix afdta deploy: rebuilt from correct source tree
+    (build_dev)
+    .
+    2.21 (2026-07-17): Help: point TSM Overview at the new hosted story
+    (tsmv6.github.io/overview)
+    .
+    2.20 (2026-07-16): Fix QGIS select-link PCE fallback + red
+    NativeCommandError blocks
+    .
+    2.19 (2026-07-16): Deploy afdta + agentAnalysis with native 4-part
+    trip identity
+    .
+    2.18 (2026-07-16): Select Link/Turns: pass segment params; GPKG
+    columns in PCE units
+    .
+    2.17 (2026-07-16): HyDRA: drop stale link index on rerun + auto-
+    summarize loaded network
+    .
+    2.16 (2026-07-16): agentAnalysis tabs: shared index offer for Select
+    Link / Subarea / Turns
+    .
+    2.15 (2026-07-15): Select Link: EACH logic, auto-build index, GPKG
+    loaded-volume columns
+    .
+    2.14 (2026-07-15): summarize: deploy parallel exe + release gpkg
+    handle before overwrite
+    .
+    2.13 (2026-07-15): Apps/utilities: rebundle C:/gdal DLLs + rebuilt
+    exes (netPrep model)
+    .
+    2.12 (2026-07-15): Summarization: persist meso/micro DTA + all
+    agentAnalysis tab settings
+    .
+    2.11 (2026-07-15): tsm_panel: persist tsm_location across sessions
+    (QSettings)
+    .
+    2.10 (2026-07-15): tsm_panel: default TSM root so paths never resolve
+    relative to cwd
+    .
+    2.09 (2026-07-13): scenario_report: exclude implausible counts, flag
+    for manual review
+    .
+    2.08 (2026-07-13): scenario_report: score count validation against
+    FTI_COUNT_24
+    .
+    2.07 (2026-07-13): scenario_report: per-facility volume/speed/toll
+    charts by direction
+    .
+    2.06 (2026-07-12): netprep bundle: C:/gdal-built exe + matching
+    C:/gdal DLLs + auth sidecar
+    .
+    2.05 (2026-07-12): interchange dashboard blueprint #3 phase 5: Analyst
+    panel button
+    .
+    2.04 (2026-07-12): interchange dashboard blueprint #3 phase 4:
+    interactive HTML dashboard
+    .
+    2.03 (2026-07-12): interchange dashboard blueprint #3 phase 3: turning
+    movements + spiders
+    .
+    2.02 (2026-07-11): interchange dashboard blueprint #3 phases 1-2:
+    grouping + volume workbook
+    .
+    2.01 (2026-07-11): visualizer: surface + auto-open the animated HTML
+    viewer
+    .
+    2.00 (2026-07-11): fix: micro_lane_aerial import fails when loaded by
+    path in QGIS
+    .
+    1.99 (2026-07-11): scenario report phase 4: Analyst-group panel button
+    + dialog
+    .
+    1.98 (2026-07-11): scenario report phase 3: PopSyn + Skims sections,
+    pipeline ordering
+    .
+    1.97 (2026-07-11): scenario report phase 2: demand sections from the
+    assembled trip list
+    .
+    1.96 (2026-07-11): scenario report blueprint #2 phase 1: assignment
+    section + metrics schema
+    .
+    1.95 (2026-07-11): aerial visualizer phase 5: self-contained animated
+    HTML viewer
+    .
+    1.94 (2026-07-11): aerial visualizer phase 4: pre-styled layers
+    (renderers + QML sidecars)
+    .
+    1.93 (2026-07-11): aerial visualizer phase 3: ramp ribbons + gores at
+    interchanges
+    .
+    1.92 (2026-07-11): aerial visualizer phase 2: lane tapers at add/drop
+    boundaries
+    .
+    1.91 (2026-07-11): Micro lane AERIAL visualizer (blueprint phase 1):
+    true-width lane ribbons
+    .
+    1.90 (2026-07-11): Blueprints: aerial micro-lane visualizer, scenario
+    run report, limited-access dashboard
+    .
+    1.89 (2026-07-11): Deploy afdta: multi-policy corridor + HOT/EV toll
+    discounts
+    .
+    1.88 (2026-07-11): Deploy afdta: meso reversible admission closure
+    .
+    1.87 (2026-07-11): Deploy afdta: meso cap_t (reversible), toll density
+    fix
+    .
+    1.86 (2026-07-11): Deploy afdta: density-toll k=flow/speed fix + meso
+    queue MSA-blend
+    .
+    1.85 (2026-07-11): Deploy afdta: toll_rate column + four-tier truck
+    restrictions
     .
     1.84 (2026-07-10): Visualizations button (Analyst group) activated ->
     new Visualizer dialog builds multi-resolution GPKG layers from a HyDRA
