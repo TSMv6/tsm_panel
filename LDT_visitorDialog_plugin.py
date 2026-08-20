@@ -1,5 +1,5 @@
 import os, shutil, subprocess, time
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout, QRadioButton, QButtonGroup
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QVBoxLayout, QHBoxLayout, QLabel
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -105,19 +105,10 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # run_LDT_visitor() to pick ldtprep's ref arg (ref==scen=absolute).
         self.checkBox_absolute = QCheckBox(
             "Absolute run (all HH ≤ scenario year, no increment/append)")
-        # One-time pre-sort of the all-years US syn-HH by hhnuma. The pure-stream
-        # synhh-incremental REQUIRES the file globally sorted by hhnuma; tick this
-        # once (after choosing a new all-years file) to sort it (~10 min). The run
-        # writes <name>_sorted.csv.gz, switches the syn-HH field to it, and unticks
-        # the box so the expensive sort is not repeated every run.
-        self.checkBox_sortSynHH = QCheckBox(
-            "Pre-sort syn-HH by hhnuma (one-time, ~10 min)")
-        self.checkBox_sortSynHH.setChecked(False)   # OFF by default; one-time op, not persisted
-        self.checkBox_sortSynHH.setToolTip(
-            "Run once before the first run with a new all-years syn-HH file. Sorts it "
-            "globally by hhnuma so the incremental step can pure-stream filter by year. "
-            "Takes ~10 minutes; writes <name>_sorted.csv.gz and repoints the syn-HH "
-            "field to it, then unticks itself.")
+        # (The old "Pre-sort syn-HH by hhnuma" checkbox lived here. It was dead:
+        # its whole run-time block is commented out because ldt_synhh_prep.py
+        # sorts and filters in a single pandas pass, so no separate one-time sort
+        # is needed. Removed rather than left on screen doing nothing.)
         # External-station calibration: OPT-IN, and the target basis is stated
         # explicitly rather than inferred. agentPlans decided base-year vs growth
         # purely from whether the spec string ended in "%", so a comma-formatted
@@ -172,13 +163,42 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         else:
             self.radio_extBase.setChecked(True)
 
-        grid2 = self.findChild(QGridLayout, "gridLayout_2")
-        if grid2 is not None:
-            grid2.addWidget(self.checkBox_absolute, 8, 0, 1, 6)
-            grid2.addWidget(self.checkBox_sortSynHH, 9, 0, 1, 6)
-            grid2.addWidget(self.checkBox_extCalib, 10, 0, 1, 6)
-            grid2.addWidget(self.radio_extBase, 11, 0, 1, 3)
-            grid2.addWidget(self.radio_extGrow, 11, 3, 1, 3)
+        # ---- Regroup the bottom half by FEATURE, two columns -------------------
+        # Previously the run-mode checkbox, the external-calibration controls and
+        # the reference block were interleaved as loose rows, so it was not
+        # obvious which control belonged to which feature. Now:
+        #   LEFT  "Run mode and reference run" : absolute/incremental + the
+        #         reference year and reference tour file that an incremental run
+        #         needs (they are one decision, so they live together).
+        #   RIGHT "External station calibration": the on/off switch, the
+        #         base-year vs growth basis, and the station table it applies to.
+        # The widgets are the existing ones, re-parented -- nothing is recreated,
+        # so all the signal wiring above stays intact.
+        hbox = self.findChild(QHBoxLayout, "horizontalLayout")
+        ref_grid = self.findChild(QGridLayout, "gridLayout")
+        label_11 = self.findChild(QLabel, "label_11")
+        if hbox is not None and ref_grid is not None:
+            self.grp_runmode = QGroupBox("Run mode and reference run")
+            _lv = QVBoxLayout(self.grp_runmode)
+            _lv.addWidget(self.checkBox_absolute)
+            _lv.addLayout(ref_grid)          # reparents the reference block
+
+            self.grp_extcal = QGroupBox("External station calibration (I-10 / I-75 / I-95)")
+            _rv = QVBoxLayout(self.grp_extcal)
+            _rv.addWidget(self.checkBox_extCalib)
+            _mode = QHBoxLayout()
+            _mode.addWidget(self.radio_extBase)
+            _mode.addWidget(self.radio_extGrow)
+            _mode.addStretch(1)
+            _rv.addLayout(_mode)
+            if self.table is not None:
+                _rv.addWidget(self.table)    # reparents the station table
+
+            hbox.addWidget(self.grp_runmode, 1)
+            hbox.addWidget(self.grp_extcal, 2)
+            # the old free-floating heading is now the right-hand box title
+            if label_11 is not None:
+                label_11.setVisible(False)
 
         # Base year (2024) has NO prior-year output to increment from, so it MUST run
         # absolute -- force it on and grey it out. Future years (> base) may be either
@@ -283,18 +303,27 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             # increment is appended to.
             if not self.checkBox_absolute.isChecked():
                 self.checkBox_userRef.setChecked(True)
-            if not (self.lineEdit_LDTRefYear.text() or "").strip():
+            # check_userRef() repopulates the reference-file field from settings,
+            # so it has to run BEFORE the prefill or it overwrites it.
+            self.check_userRef()
+            # The .ui ships "2023" as placeholder text in the year field, so an
+            # "is it empty" test never fires. Prefer a saved value; otherwise use
+            # the base year, and treat the stale placeholder as unset.
+            _saved_ref = (settings.get("LDTExtCountYear") or "").strip()
+            _cur = (self.lineEdit_LDTRefYear.text() or "").strip()
+            if _saved_ref:
+                self.lineEdit_LDTRefYear.setText(_saved_ref)
+            elif not _cur or _cur == "2023":
                 self.lineEdit_LDTRefYear.setText(str(BASE_YEAR))
-            if not (self.lineEdit_prevOut.text() or "").strip() or                self.lineEdit_prevOut.text() == "none":
-                # Scenario dirs for future years are set up as a subfolder of the
-                # run they increment from, so the parent's tour output is the
-                # natural reference. Only suggested when it actually exists.
+            if not (self.lineEdit_prevOut.text() or "").strip() or                self.lineEdit_prevOut.text().lower() in ("none", "null"):
+                # Future-year scenarios are set up as a subfolder of the run they
+                # increment from, so the parent's tour output is the natural
+                # reference. Only suggested when it actually exists.
                 parent_ref = os.path.join(
                     os.path.dirname(os.path.normpath(settings.get("scenarioDir") or "")),
                     "OS_LD_tour_out.csv")
                 if os.path.exists(parent_ref):
                     self.lineEdit_prevOut.setText(parent_ref.replace("\\", "/"))
-            self.check_userRef()
             self.lineEdit_LDTRefYear.setToolTip(
                 "Year of the run being incremented FROM. Drives the syn-HH delta "
                 "(ref < Year <= scenario year) and pairs with the Reference Tour "
