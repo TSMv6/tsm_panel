@@ -195,7 +195,13 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 f"Base year ({BASE_YEAR}) has no prior-year LDT output to increment from, "
                 "so it always runs absolute (all US HH ≤ scenario year). Locked for the base year.")
         else:
-            if settings.get("LDT_visitor_absolute"):
+            # Future years default to INCREMENTAL. The old code restored
+            # LDT_visitor_absolute, but that flag gets written as True by every
+            # base-year run (where the box is force-checked and disabled), so a
+            # future-year scenario inheriting a base-year json came up Absolute.
+            # A separate key is used that only an enabled -- i.e. genuinely
+            # user-chosen -- checkbox ever writes.
+            if str(settings.get("LDT_visitor_absolute_future")).lower() in ("true", "1", "yes"):
                 self.checkBox_absolute.setChecked(True)
             self.checkBox_absolute.setToolTip(
                 "Off (default): incremental - run only households added between the reference "
@@ -268,6 +274,31 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                     w = ref_grid.itemAt(i).widget()
                     if w is not None:
                         w.setEnabled(False)
+        else:
+            # Future year: the reference run is the normal way to work, so turn
+            # the block on and pre-fill it. Reference Year is a free input, not
+            # locked to the base year -- that is what lets runs chain
+            # (2024 absolute -> 2030 ref 2024 -> 2035 ref 2030). It drives BOTH
+            # the syn-HH delta (ref < Year <= scen) and which output the
+            # increment is appended to.
+            if not self.checkBox_absolute.isChecked():
+                self.checkBox_userRef.setChecked(True)
+            if not (self.lineEdit_LDTRefYear.text() or "").strip():
+                self.lineEdit_LDTRefYear.setText(str(BASE_YEAR))
+            if not (self.lineEdit_prevOut.text() or "").strip() or                self.lineEdit_prevOut.text() == "none":
+                # Scenario dirs for future years are set up as a subfolder of the
+                # run they increment from, so the parent's tour output is the
+                # natural reference. Only suggested when it actually exists.
+                parent_ref = os.path.join(
+                    os.path.dirname(os.path.normpath(settings.get("scenarioDir") or "")),
+                    "OS_LD_tour_out.csv")
+                if os.path.exists(parent_ref):
+                    self.lineEdit_prevOut.setText(parent_ref.replace("\\", "/"))
+            self.check_userRef()
+            self.lineEdit_LDTRefYear.setToolTip(
+                "Year of the run being incremented FROM. Drives the syn-HH delta "
+                "(ref < Year <= scenario year) and pairs with the Reference Tour "
+                "File that the increment is appended onto.")
 
     def check_userRef(self):
         settings = Config()
@@ -467,6 +498,11 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             settings.set("LDT_visitor_userRef", False)
             settings.set("LDT_visitor_userRef_filepath", None)
         settings.set("LDT_visitor_absolute", self.checkBox_absolute.isChecked())
+        # Only record a *chosen* absolute/incremental preference. For the base
+        # year the box is forced on and disabled, so writing it would poison the
+        # next future-year scenario that inherits this json.
+        if self.checkBox_absolute.isEnabled():
+            settings.set("LDT_visitor_absolute_future", self.checkBox_absolute.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
             
@@ -622,8 +658,19 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             ref_year = str(scenYear)
         else:
             ref_year = settings.get("LDTExtCountYear")
-            if ref_year is None:
-                ref_year = "2023"  # Default reference year if not provided
+            if not ref_year:
+                # Was silently defaulting to 2023, which is not this model's base
+                # year (2024) and would build the wrong syn-HH delta. The
+                # reference year is required for an incremental run: it defines
+                # both the delta (ref < Year <= scen) and the run whose output is
+                # being appended to.
+                QMessageBox.critical(
+                    self, "Error",
+                    "Incremental run needs a Reference Year. Tick 'User Reference File' "
+                    "and set the Reference Year to the year of the run you are "
+                    "incrementing from (e.g. 2024 when running 2030), plus its "
+                    "Reference Tour File.")
+                return False
         out_ldt_syn_hh = os.path.join(settings.get("scenarioDir"), "LDT_visitor_SynHH.dat").replace("/", "\\")
         settings.set("LDT_visitor_SynHH_updated", out_ldt_syn_hh)
 
