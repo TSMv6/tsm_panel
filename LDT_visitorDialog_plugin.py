@@ -1,5 +1,5 @@
 import os, shutil, subprocess, time
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout
+from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout, QRadioButton, QButtonGroup
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -118,10 +118,67 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             "globally by hhnuma so the incremental step can pure-stream filter by year. "
             "Takes ~10 minutes; writes <name>_sorted.csv.gz and repoints the syn-HH "
             "field to it, then unticks itself.")
+        # External-station calibration: OPT-IN, and the target basis is stated
+        # explicitly rather than inferred. agentPlans decided base-year vs growth
+        # purely from whether the spec string ended in "%", so a comma-formatted
+        # "36,000" silently became a target of 36 and a blank cell became 0. The
+        # dialog now writes an unambiguous spec, and the whole step can be turned
+        # off (apply_external_targets=false) instead of always running.
+        self.checkBox_extCalib = QCheckBox(
+            "Calibrate external stations to counts (I-10 / I-75 / I-95)")
+        self.checkBox_extCalib.setChecked(False)   # opt-in, not a silent default
+        self.checkBox_extCalib.setToolTip(
+            "ON: scale LDT out-of-state trips through each external station so the "
+            "station total matches its target (apply_external_targets=true).  "
+            "OFF: no external scaling at all -- the LDT model's own volumes stand.")
+        self.radio_extBase = QRadioButton("Base-year target (use the count as-is)")
+        self.radio_extGrow = QRadioButton("Grow to scenario year (linear %/yr)")
+        self.radio_extBase.setChecked(True)
+        self.radio_extBase.setToolTip(
+            "Target = Base Count exactly. Written as an absolute number, so no "
+            "growth is applied whatever the scenario year.")
+        self.radio_extGrow.setToolTip(
+            "Target = Base Count x (1 + rate/100 x (scenario year - base year)). "
+            "LINEAR, not compound: 1.0%/yr over 31 years is x1.31, not x1.36.")
+        self._ext_mode_group = QButtonGroup(self)
+        self._ext_mode_group.addButton(self.radio_extBase)
+        self._ext_mode_group.addButton(self.radio_extGrow)
+
+        def _sync_ext_enabled():
+            on = self.checkBox_extCalib.isChecked()
+            self.radio_extBase.setEnabled(on)
+            self.radio_extGrow.setEnabled(on)
+            if self.table is not None:
+                self.table.setEnabled(on)
+                # the growth column only means anything in growth mode
+                for r in range(self.table.rowCount()):
+                    it = self.table.item(r, 2)
+                    if it is None:
+                        continue
+                    f = it.flags()
+                    if on and self.radio_extGrow.isChecked():
+                        it.setFlags(f | Qt.ItemFlag.ItemIsEditable)
+                    else:
+                        it.setFlags(f & ~Qt.ItemFlag.ItemIsEditable)
+        self._sync_ext_enabled = _sync_ext_enabled
+        self.checkBox_extCalib.toggled.connect(lambda _: _sync_ext_enabled())
+        self.radio_extBase.toggled.connect(lambda _: _sync_ext_enabled())
+        # Restore saved state. Absent setting => OFF (opt-in), so an existing
+        # scenario does not silently start scaling externals on the next run.
+        _sv = settings.get("ldt_ext_calibrate")
+        self.checkBox_extCalib.setChecked(str(_sv).lower() in ("true", "1", "yes"))
+        if str(settings.get("ldt_ext_mode") or "base").lower() == "grow":
+            self.radio_extGrow.setChecked(True)
+        else:
+            self.radio_extBase.setChecked(True)
+
         grid2 = self.findChild(QGridLayout, "gridLayout_2")
         if grid2 is not None:
             grid2.addWidget(self.checkBox_absolute, 8, 0, 1, 6)
             grid2.addWidget(self.checkBox_sortSynHH, 9, 0, 1, 6)
+            grid2.addWidget(self.checkBox_extCalib, 10, 0, 1, 6)
+            grid2.addWidget(self.radio_extBase, 11, 0, 1, 3)
+            grid2.addWidget(self.radio_extGrow, 11, 3, 1, 3)
 
         # Base year (2024) has NO prior-year output to increment from, so it MUST run
         # absolute -- force it on and grey it out. Future years (> base) may be either
@@ -275,6 +332,11 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         settings = Config()
         out = os.path.join(settings.get("scenarioDir"), "ldt_external_targets.csv")
 
+        if not self.checkBox_extCalib.isChecked():
+            print("External targets: calibration is OFF - file left untouched "
+                  "(apply_external_targets=false)")
+            return
+
         mine = {}
         for row in range(self.table.rowCount()):
             name = self.table.verticalHeaderItem(row).text()
@@ -287,7 +349,15 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             if not zone:
                 print("External targets: row %s has no zone id - skipped" % name)
                 continue
-            mine[zone] = (name, count, future)
+            # Spec is written explicitly from the selected mode, never inferred.
+            # Base-year mode emits the absolute count (agentPlans returns it
+            # verbatim); growth mode emits "<rate>%" (linear, applied over
+            # scenario year - external_base_year).
+            if self.radio_extGrow.isChecked():
+                spec = future if future.endswith("%") else (future + "%" if future else "0%")
+            else:
+                spec = count
+            mine[zone] = (name, count, spec)
         if not mine:
             print("External targets: nothing written (no row carries a zone id)")
             return
@@ -371,6 +441,9 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         settings.set("landuse_layer", landuse_layer.name())  
         settings.set("LDT_visitor_SynHH", self.lineEdit_LDTSynHH.text())
         settings.set("scenarioDir", self.lineEdit_OutDir.text())
+
+        settings.set("ldt_ext_calibrate", self.checkBox_extCalib.isChecked())
+        settings.set("ldt_ext_mode", "grow" if self.radio_extGrow.isChecked() else "base")
 
         # Save the external-station overwrite table (zone / base count / future)
         for row in range(self.table.rowCount()):

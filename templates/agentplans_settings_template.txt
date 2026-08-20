@@ -45,7 +45,7 @@ write_hourly_table = true
 # --- external-station target calibration ---
 # Scales OD trips serving each ext_zone_id to target / modeled. The targets file
 # is written by the GUI; ext_station_* MUST match its ext_zone_id values.
-apply_external_targets = true
+apply_external_targets = {apply_external_targets}
 ldt_external_targets   = {ldt_external_targets}
 external_base_year     = {external_base_year}
 ext_station_i10 = {ext_station_i10}

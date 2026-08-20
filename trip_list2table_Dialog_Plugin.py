@@ -427,6 +427,11 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
             "trip_table_out": trip_out,
             # External-station target calibration. ext_station_* must match the
             # ext_zone_id values in ldt_external_targets.csv (written by the GUI).
+            # External calibration is opt-in from the LDT Visitor dialog; absent
+            # setting => false, so it never runs silently.
+            "apply_external_targets":
+                "true" if str(settings.get("ldt_ext_calibrate")).lower() in ("true", "1", "yes")
+                else "false",
             "ldt_external_targets": os.path.join(scenarioDir, "ldt_external_targets.csv").replace("\\", "/"),
             "external_base_year": settings.get("external_base_year") or "2024",
             "ext_station_i10": settings.get("ext_station_i10") or "11504",
