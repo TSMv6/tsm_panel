@@ -1,9 +1,9 @@
 [general]
 name=TSM Model Plugin
-version=2.45
+version=2.46
 date=2026-07-09
 author=Amar Sarvepalli
-email=venkat.sarvepalli@dot.state.fl.us
+email=Amar.Sarvepalli@dot.state.fl.us
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 supportsQt6=True
@@ -35,7 +35,11 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (86 commits, 2026-06-19 to 2026-08-20):
+    One version per commit, newest first (87 commits, 2026-06-19 to 2026-08-21):
+    .
+    2.46 (2026-08-21): About dialog drops the QGIS-range and Qt6 rows
+    (QGIS' own About already reports those); contact email corrected to
+    Amar.Sarvepalli@dot.state.fl.us.
     .
     2.45 (2026-08-20): Help > About TSM Plugin: version and deployed
     engine builds

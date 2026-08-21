@@ -124,9 +124,6 @@ class TsmPanelPlugin():
         rows = [("Version", meta.get("version", "?")),
                 ("Author", meta.get("author", "?")),
                 ("Contact", meta.get("email", "?")),
-                ("QGIS", "%s - %s" % (meta.get("qgisMinimumVersion", "?"),
-                                      meta.get("qgisMaximumVersion", "?"))),
-                ("Qt6 support", meta.get("supportsQt6", "?")),
                 ("Plugin folder", plugin_dir.replace(chr(92), "/"))]
 
         engines = []
