@@ -103,8 +103,13 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # (ref < Year <= scen), then append back to the previous year's output. ON =
         # absolute: all Year <= scen, no reference, no append. read in
         # run_LDT_visitor() to pick ldtprep's ref arg (ref==scen=absolute).
-        self.checkBox_absolute = QCheckBox(
-            "Absolute run (all HH ≤ scenario year, no increment/append)")
+        # Checked = INCREMENTAL. It used to read "Absolute run", i.e. the box
+        # meant the opposite of the thing that is normally wanted, and the
+        # future-year default (incremental) showed as an unticked "Absolute"
+        # box. Labelled for what it does now; every read below is inverted to
+        # match.
+        self.checkBox_incremental = QCheckBox(
+            "Run incremental (only HH added since the reference year, then append)")
         # (The old "Pre-sort syn-HH by hhnuma" checkbox lived here. It was dead:
         # its whole run-time block is commented out because ldt_synhh_prep.py
         # sorts and filters in a single pandas pass, so no separate one-time sort
@@ -163,6 +168,16 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         else:
             self.radio_extBase.setChecked(True)
 
+        # Columns 1 and 4 of the main form grid are empty spacers that pushed the
+        # fields far to the right, leaving a wide dead band beside the labels.
+        # Set in code rather than the .ui: uic maps a "columnstretch" property to
+        # setColumnstretch(), which does not exist, and refuses to load the file.
+        _g2 = self.findChild(QGridLayout, "gridLayout_2")
+        if _g2 is not None:
+            for _c, _st in ((0, 0), (1, 0), (2, 1), (3, 0), (4, 0), (5, 0)):
+                _g2.setColumnStretch(_c, _st)
+                _g2.setColumnMinimumWidth(_c, 0)
+
         # ---- Regroup the bottom half by FEATURE, two columns -------------------
         # LEFT  "Run mode and reference run": absolute/incremental plus the
         #       reference year + reference tour file an incremental run needs.
@@ -181,7 +196,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
 
             self.grp_runmode = QGroupBox("Run mode and reference run")
             _lv = QVBoxLayout(self.grp_runmode)
-            _lv.addWidget(self.checkBox_absolute)
+            _lv.addWidget(self.checkBox_incremental)
             _lv.addLayout(ref_grid)
             _lv.addStretch(1)
 
@@ -212,16 +227,20 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # absolute => no reference, so grey the whole reference block; incremental
         # => hand control back to check_userRef().
         def _sync_runmode():
-            inc = not self.checkBox_absolute.isChecked()
+            inc = self.checkBox_incremental.isChecked()
             self.checkBox_userRef.setEnabled(inc)
             if inc:
+                # An incremental run is meaningless without a reference run to
+                # increment from, so turning it on implies the reference block.
+                if not self.checkBox_userRef.isChecked():
+                    self.checkBox_userRef.setChecked(True)
                 self.check_userRef()
             else:
                 self.lineEdit_LDTRefYear.setEnabled(False)
                 self.pushButton.setEnabled(False)
                 self.lineEdit_prevOut.setEnabled(False)
         self._sync_runmode = _sync_runmode
-        self.checkBox_absolute.toggled.connect(lambda _: _sync_runmode())
+        self.checkBox_incremental.toggled.connect(lambda _: _sync_runmode())
 
         # Base year (2024) has NO prior-year output to increment from, so it MUST run
         # absolute -- force it on and grey it out. Future years (> base) may be either
@@ -232,9 +251,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         except (TypeError, ValueError):
             _yr = BASE_YEAR
         if _yr <= BASE_YEAR:
-            self.checkBox_absolute.setChecked(True)
-            self.checkBox_absolute.setEnabled(False)
-            self.checkBox_absolute.setToolTip(
+            self.checkBox_incremental.setChecked(False)
+            self.checkBox_incremental.setToolTip(
                 f"Base year ({BASE_YEAR}) has no prior-year LDT output to increment from, "
                 "so it always runs absolute (all US HH ≤ scenario year). Locked for the base year.")
         else:
@@ -244,9 +262,10 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             # future-year scenario inheriting a base-year json came up Absolute.
             # A separate key is used that only an enabled -- i.e. genuinely
             # user-chosen -- checkbox ever writes.
-            if str(settings.get("LDT_visitor_absolute_future")).lower() in ("true", "1", "yes"):
-                self.checkBox_absolute.setChecked(True)
-            self.checkBox_absolute.setToolTip(
+            self.checkBox_incremental.setChecked(
+                str(settings.get("LDT_visitor_absolute_future")).lower()
+                not in ("true", "1", "yes"))
+            self.checkBox_incremental.setToolTip(
                 "Off (default): incremental - run only households added between the reference "
                 "year and the scenario year, then append back to the previous output.\n"
                 "On: run every US household with Year ≤ scenario year; no reference, no append.")
@@ -324,7 +343,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             # (2024 absolute -> 2030 ref 2024 -> 2035 ref 2030). It drives BOTH
             # the syn-HH delta (ref < Year <= scen) and which output the
             # increment is appended to.
-            if not self.checkBox_absolute.isChecked():
+            if self.checkBox_incremental.isChecked():
                 self.checkBox_userRef.setChecked(True)
             # check_userRef() repopulates the reference-file field from settings,
             # so it has to run BEFORE the prefill or it overwrites it.
@@ -338,15 +357,6 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 self.lineEdit_LDTRefYear.setText(_saved_ref)
             elif not _cur or _cur == "2023":
                 self.lineEdit_LDTRefYear.setText(str(BASE_YEAR))
-            if not (self.lineEdit_prevOut.text() or "").strip() or                self.lineEdit_prevOut.text().lower() in ("none", "null"):
-                # Future-year scenarios are set up as a subfolder of the run they
-                # increment from, so the parent's tour output is the natural
-                # reference. Only suggested when it actually exists.
-                parent_ref = os.path.join(
-                    os.path.dirname(os.path.normpath(settings.get("scenarioDir") or "")),
-                    "OS_LD_tour_out.csv")
-                if os.path.exists(parent_ref):
-                    self.lineEdit_prevOut.setText(parent_ref.replace("\\", "/"))
             self.lineEdit_LDTRefYear.setToolTip(
                 "Year of the run being incremented FROM. Drives the syn-HH delta "
                 "(ref < Year <= scenario year) and pairs with the Reference Tour "
@@ -356,6 +366,21 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # click -- the table was left enabled while its checkbox was off.
         self._sync_ext_enabled()
         self._sync_runmode()
+
+        # Suggest the reference tour file LAST. check_userRef() clears the stored
+        # path on its second call, so a prefill written earlier does not survive
+        # the sync above. Future-year scenarios sit as a subfolder of the run they
+        # increment from, so the parent's tour output is the natural reference.
+        if _yr > BASE_YEAR and self.checkBox_incremental.isChecked():
+            _cur = (self.lineEdit_prevOut.text() or "").strip().lower()
+            if _cur in ("", "none", "null"):
+                _pref = os.path.join(
+                    os.path.dirname(os.path.normpath(settings.get("scenarioDir") or "")),
+                    "OS_LD_tour_out.csv")
+                if os.path.exists(_pref):
+                    _pref = _pref.replace(chr(92), "/")
+                    self.lineEdit_prevOut.setText(_pref)
+                    settings.set("LDT_visitor_userRef_filepath", _pref)
 
     def check_userRef(self):
         settings = Config()
@@ -554,12 +579,12 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             settings.set("LDTExtCountYear", None)
             settings.set("LDT_visitor_userRef", False)
             settings.set("LDT_visitor_userRef_filepath", None)
-        settings.set("LDT_visitor_absolute", self.checkBox_absolute.isChecked())
+        settings.set("LDT_visitor_absolute", not self.checkBox_incremental.isChecked())
         # Only record a *chosen* absolute/incremental preference. For the base
         # year the box is forced on and disabled, so writing it would poison the
         # next future-year scenario that inherits this json.
-        if self.checkBox_absolute.isEnabled():
-            settings.set("LDT_visitor_absolute_future", self.checkBox_absolute.isChecked())
+        settings.set("LDT_visitor_absolute_future",
+                     not self.checkBox_incremental.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
             
@@ -710,7 +735,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # added since the reference run), which are appended back below to rebuild
         # the complete set. ABSOLUTE (testing checkbox) = pass ref == scen so
         # ldtprep keeps ALL Year <= scen, and the append step is skipped.
-        absolute = self.checkBox_absolute.isChecked()
+        absolute = not self.checkBox_incremental.isChecked()
         if absolute:
             ref_year = str(scenYear)
         else:
