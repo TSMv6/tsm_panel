@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.46
+version=2.47
 date=2026-07-09
 author=Amar Sarvepalli
 email=Amar.Sarvepalli@dot.state.fl.us
@@ -35,7 +35,14 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (87 commits, 2026-06-19 to 2026-08-21):
+    One version per commit, newest first (88 commits, 2026-06-19 to 2026-08-21):
+    .
+    2.47 (2026-08-21): About dialog lists every exe the panel launches -
+    9 model engines (PopSyn, SDT, LDT, agentPlans, HyDRA, ELToD, netPrep,
+    agentAnalysis, PathSkim) and 10 utilities - with build stamps. PopSyn,
+    ELToD and PathSkim were missing, and agentPlans reported the unused
+    Apps/agentPlans copy rather than the Apps/TripList_to_TripTable one the
+    panel actually runs.
     .
     2.46 (2026-08-21): About dialog drops the QGIS-range and Qt6 rows
     (QGIS' own About already reports those); contact email corrected to

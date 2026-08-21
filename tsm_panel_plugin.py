@@ -126,28 +126,51 @@ class TsmPanelPlugin():
                 ("Contact", meta.get("email", "?")),
                 ("Plugin folder", plugin_dir.replace(chr(92), "/"))]
 
-        engines = []
-        for label, rel in (("afdta (HyDRA)", "Apps/Hydra/afdta.exe"),
-                           ("sdt-run", "Apps/sdt/sdt-run.exe"),
-                           ("ldt-run", "Apps/ldt/ldt-run.exe"),
-                           ("netPrep", "Apps/netPrep/netPrep.exe"),
-                           ("agentPlans", "Apps/agentPlans/agentPlans.exe"),
-                           ("agentAnalysis", "Apps/agentAnalysis/agentAnalysis.exe"),
-                           ("summarize", "Apps/utilities/summarize.exe")):
+        # Every exe the panel actually launches, in pipeline order, then the
+        # shared utilities. Paths are the ones the code really calls: agentPlans
+        # is invoked from Apps/TripList_to_TripTable (there is a second, unused
+        # copy under Apps/agentPlans), and netPrep is launched by direct path
+        # from the link consolidator rather than through app_exe().
+        ENGINES = [("PopSyn (popsim-run)",   "Apps/popsim/popsim-run.exe"),
+                   ("SDT (sdt-run)",         "Apps/sdt/sdt-run.exe"),
+                   ("LDT (ldt-run)",         "Apps/ldt/ldt-run.exe"),
+                   ("agentPlans",            "Apps/TripList_to_TripTable/agentPlans.exe"),
+                   ("HyDRA (afdta)",         "Apps/Hydra/afdta.exe"),
+                   ("ELToD",                 "Apps/ELToD/ELToD.exe"),
+                   ("netPrep",               "Apps/netPrep/netPrep.exe"),
+                   ("agentAnalysis",         "Apps/agentAnalysis/agentAnalysis.exe"),
+                   ("PathSkim (skimmy)",     "Apps/skimmy/PathSkim.exe")]
+        UTILS = [("summarize",      "Apps/utilities/summarize.exe"),
+                 ("ldtprep",        "Apps/utilities/ldtprep.exe"),
+                 ("popsimprep",     "Apps/utilities/popsimprep.exe"),
+                 ("se_aggregate",   "Apps/utilities/se_aggregate.exe"),
+                 ("landuse_delta",  "Apps/utilities/landuse_delta.exe"),
+                 ("gpkgcsv",        "Apps/utilities/gpkgcsv.exe"),
+                 ("subarea",        "Apps/utilities/subarea.exe"),
+                 ("odme",           "Apps/utilities/odme.exe"),
+                 ("msr",            "Apps/utilities/msr.exe"),
+                 ("SkimConverter",  "Apps/skimConvert/SkimConverter.exe")]
+
+        def _stamp(rel):
             fp = os.path.join(plugin_dir, rel.replace("/", os.sep))
-            if os.path.exists(fp):
-                ts = datetime.datetime.fromtimestamp(os.path.getmtime(fp))
-                engines.append((label, ts.strftime("%Y-%m-%d %H:%M")))
-            else:
-                engines.append((label, "not installed"))
+            if not os.path.exists(fp):
+                return "not installed"
+            ts = datetime.datetime.fromtimestamp(os.path.getmtime(fp))
+            return ts.strftime("%Y-%m-%d %H:%M")
+
+        engines = [(lbl, _stamp(rel)) for lbl, rel in ENGINES]
+        utils = [(lbl, _stamp(rel)) for lbl, rel in UTILS]
 
         html = ["<h3>%s</h3>" % meta.get("name", "TSM Model Plugin"),
                 "<p>%s</p>" % meta.get("description", ""),
                 "<table cellpadding='3'>"]
         for k, v in rows:
             html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
-        html.append("</table><h4>Engine builds (deployed)</h4><table cellpadding='3'>")
+        html.append("</table><h4>Model engines (deployed)</h4><table cellpadding='3'>")
         for k, v in engines:
+            html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
+        html.append("</table><h4>Utilities</h4><table cellpadding='3'>")
+        for k, v in utils:
             html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
         html.append("</table>")
 
