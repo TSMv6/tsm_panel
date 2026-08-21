@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.47
+version=2.48
 date=2026-07-09
 author=Amar Sarvepalli
 email=Amar.Sarvepalli@dot.state.fl.us
@@ -35,7 +35,12 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (88 commits, 2026-06-19 to 2026-08-21):
+    One version per commit, newest first (89 commits, 2026-06-19 to 2026-08-21):
+    .
+    2.48 (2026-08-21): Fix Subarea Assignment run button crashing with
+    "run_subarea_assignment() takes 1 positional argument but 2 were
+    given" - it was the only run button connected directly instead of
+    through a lambda, so Qt's clicked bool reached the slot.
     .
     2.47 (2026-08-21): About dialog lists every exe the panel launches -
     9 model engines (PopSyn, SDT, LDT, agentPlans, HyDRA, ELToD, netPrep,

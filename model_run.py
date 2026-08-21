@@ -268,7 +268,14 @@ def run_console_closed():
 def closes_run_console(fn):
     """Decorator for a dialog's run method: after it returns (success, failure, or
     exception), close the live-tail run-log window opened via begin_run_console so it
-    does not linger. Robust to the method's many early-return paths."""
+    does not linger. Robust to the method's many early-return paths.
+
+    NOTE when connecting a decorated method to a Qt signal: _wrap takes
+    (*args, **kwargs), so PyQt sees a slot that accepts anything and does NOT
+    truncate the signal's own arguments. Connecting clicked directly therefore
+    forwards its bool and raises "takes 1 positional argument but 2 were given".
+    Connect through a lambda -- .clicked.connect(lambda: self.run_x()) -- as the
+    dialogs all do."""
     @functools.wraps(fn)
     def _wrap(*args, **kwargs):
         try:

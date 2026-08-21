@@ -157,7 +157,12 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
         self.saveAssign_settings.accepted.connect(self.update_settings)
         self.saveAssign_settings.rejected.connect(self.cancel_action)
         
-        self.runAssignment.clicked.connect(self.run_subarea_assignment)
+        # lambda, not a direct connect: run_subarea_assignment is wrapped by
+        # @closes_run_console, whose _wrap(*args, **kwargs) accepts anything, so
+        # PyQt does not truncate clicked's bool and forwards it -- giving
+        # "takes 1 positional argument but 2 were given". Every other dialog
+        # already connects its run button through a lambda for this reason.
+        self.runAssignment.clicked.connect(lambda: self.run_subarea_assignment())
 
         # Connect the checkbox state change to the function
         self.groupBox_SL.clicked.connect(self.update_SelectLink_state)
