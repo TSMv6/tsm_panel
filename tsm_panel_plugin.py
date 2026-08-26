@@ -131,42 +131,46 @@ class TsmPanelPlugin():
         # is invoked from Apps/TripList_to_TripTable (there is a second, unused
         # copy under Apps/agentPlans), and netPrep is launched by direct path
         # from the link consolidator rather than through app_exe().
-        ENGINES = [("PopSyn (popsim-run)",   "Apps/popsim/popsim-run.exe"),
-                   ("SDT (sdt-run)",         "Apps/sdt/sdt-run.exe"),
-                   ("LDT (ldt-run)",         "Apps/ldt/ldt-run.exe"),
-                   ("agentPlans",            "Apps/TripList_to_TripTable/agentPlans.exe"),
-                   ("HyDRA (afdta)",         "Apps/Hydra/afdta.exe"),
-                   ("ELToD",                 "Apps/ELToD/ELToD.exe"),
-                   ("netPrep",               "Apps/netPrep/netPrep.exe"),
-                   ("agentAnalysis",         "Apps/agentAnalysis/agentAnalysis.exe"),
-                   ("PathSkim (skimmy)",     "Apps/skimmy/PathSkim.exe")]
-        UTILS = [("summarize",      "Apps/utilities/summarize.exe"),
-                 ("ldtprep",        "Apps/utilities/ldtprep.exe"),
-                 ("popsimprep",     "Apps/utilities/popsimprep.exe"),
-                 ("se_aggregate",   "Apps/utilities/se_aggregate.exe"),
-                 ("landuse_delta",  "Apps/utilities/landuse_delta.exe"),
-                 ("gpkgcsv",        "Apps/utilities/gpkgcsv.exe"),
-                 ("subarea",        "Apps/utilities/subarea.exe"),
-                 ("odme",           "Apps/utilities/odme.exe"),
-                 ("msr",            "Apps/utilities/msr.exe"),
-                 ("SkimConverter",  "Apps/skimConvert/SkimConverter.exe")]
+        #
+        # The SOURCE revision comes from metadata.txt (engine_* keys), not from
+        # the exe's file timestamp: that timestamp is only when the plugin was
+        # copied into the QGIS profile, so every engine appeared to have been
+        # "built" on install day. "installed" below just reports whether the
+        # binary is present.
+        ENGINES = [("PopSyn (popsim-run)", "Apps/popsim/popsim-run.exe", "popsim"),
+                   ("SDT (sdt-run)",       "Apps/sdt/sdt-run.exe", "sdt"),
+                   ("LDT (ldt-run)",       "Apps/ldt/ldt-run.exe", "ldt"),
+                   ("agentPlans",          "Apps/TripList_to_TripTable/agentPlans.exe", "agentplans"),
+                   ("HyDRA (afdta)",       "Apps/Hydra/afdta.exe", "afdta"),
+                   ("ELToD",               "Apps/ELToD/ELToD.exe", "eltod"),
+                   ("netPrep",             "Apps/netPrep/netPrep.exe", "netprep"),
+                   ("agentAnalysis",       "Apps/agentAnalysis/agentAnalysis.exe", "agentanalysis"),
+                   ("PathSkim (skimmy)",   "Apps/skimmy/PathSkim.exe", "pathskim")]
+        UTILS = [("summarize",     "Apps/utilities/summarize.exe", "utilities"),
+                 ("ldtprep",       "Apps/utilities/ldtprep.exe", "utilities"),
+                 ("popsimprep",    "Apps/utilities/popsimprep.exe", "utilities"),
+                 ("se_aggregate",  "Apps/utilities/se_aggregate.exe", "utilities"),
+                 ("landuse_delta", "Apps/utilities/landuse_delta.exe", "utilities"),
+                 ("gpkgcsv",       "Apps/utilities/gpkgcsv.exe", "utilities"),
+                 ("subarea",       "Apps/utilities/subarea.exe", "utilities"),
+                 ("odme",          "Apps/utilities/odme.exe", "utilities"),
+                 ("msr",           "Apps/utilities/msr.exe", "utilities"),
+                 ("SkimConverter", "Apps/skimConvert/SkimConverter.exe", "skimconverter")]
 
-        def _stamp(rel):
-            fp = os.path.join(plugin_dir, rel.replace("/", os.sep))
-            if not os.path.exists(fp):
-                return "not installed"
-            ts = datetime.datetime.fromtimestamp(os.path.getmtime(fp))
-            return ts.strftime("%Y-%m-%d %H:%M")
+        def _row(rel, key):
+            present = os.path.exists(os.path.join(plugin_dir, rel.replace("/", os.sep)))
+            rev = meta.get("engine_" + key, "revision not recorded")
+            return rev if present else "NOT INSTALLED (%s)" % rev
 
-        engines = [(lbl, _stamp(rel)) for lbl, rel in ENGINES]
-        utils = [(lbl, _stamp(rel)) for lbl, rel in UTILS]
+        engines = [(lbl, _row(rel, key)) for lbl, rel, key in ENGINES]
+        utils = [(lbl, _row(rel, key)) for lbl, rel, key in UTILS]
 
         html = ["<h3>%s</h3>" % meta.get("name", "TSM Model Plugin"),
                 "<p>%s</p>" % meta.get("description", ""),
                 "<table cellpadding='3'>"]
         for k, v in rows:
             html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
-        html.append("</table><h4>Model engines (deployed)</h4><table cellpadding='3'>")
+        html.append("</table><h4>Model engines &mdash; source revision</h4><table cellpadding='3'>")
         for k, v in engines:
             html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
         html.append("</table><h4>Utilities</h4><table cellpadding='3'>")

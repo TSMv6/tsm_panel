@@ -18,6 +18,7 @@ the .ui file remains Qt-Designer-clean):
 """
 import os
 import re
+import tempfile
 
 from qgis.PyQt import QtCore, QtWidgets
 from qgis.PyQt.QtWidgets import (QFileDialog, QMessageBox, QWidget, QLabel,
@@ -75,6 +76,39 @@ def _exe():
     if not os.path.exists(exe):
         raise FileNotFoundError("agentAnalysis.exe not found at: %s" % exe)
     return exe
+
+
+def _links_as_csv(layer, tag):
+    """Path to a CSV link table for agentAnalysis, converting a GeoPackage layer.
+
+    agentAnalysis' --links expects a delimited table. The panel's link layer is
+    a GeoPackage, and handing the .gpkg straight over makes it try to sniff the
+    binary as CSV and fail with "Error when sniffing file ... not possible to
+    automatically detect the CSV Parsing dialect/types". Convert with
+    gpkgcsv.exe first -- the same tool and --drop-geom flag the HyDRA dialog
+    uses to feed afdta. A layer that is already a CSV is passed through.
+    """
+    src = _layer_path(layer)
+    if not src:
+        return None
+    if os.path.splitext(src)[1].lower() in (".csv", ".txt"):
+        return src
+    settings = Config()
+    gpkgcsv = settings.app_exe("utilities/gpkgcsv.exe")
+    if not os.path.exists(gpkgcsv):
+        _log("agentAnalysis: gpkgcsv.exe not found at %s" % gpkgcsv)
+        return None
+    out_csv = os.path.join(tempfile.gettempdir(),
+                           "%s_links_%s.csv" % (tag, os.path.splitext(os.path.basename(src))[0]))
+    _log("agentAnalysis: converting link layer to CSV -> %s" % out_csv)
+    r = settings.run_app([gpkgcsv, "to-csv", src, out_csv, "--drop-geom"],
+                         log_path=os.path.join(tempfile.gettempdir(),
+                                               "gpkgcsv_%s.log" % tag),
+                         console=True)
+    if r.returncode != 0 or not os.path.exists(out_csv):
+        _log("agentAnalysis: gpkgcsv conversion failed for %s" % src)
+        return None
+    return out_csv
 
 
 def _run(args, log_name):
@@ -324,9 +358,15 @@ def _tab_subarea(dlg):
             return
         if not _ensure_index(dlg, _db(dlg), "Subarea"):
             return
+        links_csv = _links_as_csv(links_lyr, "subarea")
+        if not links_csv:
+            QMessageBox.critical(dlg, "Subarea",
+                                 "Could not build a CSV link table from the selected "
+                                 "link layer (gpkgcsv conversion failed) - see History log.")
+            return
         args = ["subarea", "--db", _db(dlg), "--mem", "32GB", "--nodes", nodes_csv,
                 "--trips", w.trips.text(),
-                "--links", _layer_path(links_lyr),
+                "--links", links_csv,
                 "--out", w.out_trips.text()]
         r = _run(args, "agentAnalysis_subarea.log")
         if r.returncode == 0:

@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.48
+version=2.49
 date=2026-07-09
 author=Amar Sarvepalli
 email=Amar.Sarvepalli@dot.state.fl.us
@@ -24,6 +24,22 @@ about=TSMv6 is Florida's Turnpike Enterprise (FTE's) State Model (TSM): a
     (HyDRA agent-based DTA with nodeDNL loaders).
     - Analyst: summarize.exe loaded-network summaries + validation workbook.
     - Single code base for QGIS 3 (Qt5) and QGIS 4 (Qt6).
+# Source revision each deployed engine exe was built from (repo, short
+# commit, commit date). Recorded here because the exe's file timestamp on
+# disk is only when the plugin was copied/installed, not when the binary
+# was built -- About TSM Plugin reads these instead.
+engine_popsim=tsm_PopSim f6c2610 2026-06-21
+engine_sdt=SDTModel d3e8fea 2026-08-11
+engine_ldt=LDTModel 1ad62fb 2026-07-15
+engine_agentplans=agentPlans 7252ebe 2026-07-08
+engine_afdta=agentflow-dta bceb4a8 2026-08-19
+engine_eltod=(separate repo, not in TSMv6_Codebase)
+engine_netprep=netprep ef22285 2026-07-12
+engine_agentanalysis=agentAnalysis 5608dba 2026-07-23
+engine_pathskim=PathSkim 07202a8 2026-07-15
+engine_utilities=utilities 88fa388 2026-07-15
+engine_skimconverter=SkimConverter 57c5f64 2026-05-25
+
 changelog=
     From TSMv5 to TSMv6: TSMv5 is a disaggregate TOUR-BASED demand model
     (activity-based model family, ABM) with static assignment. TSMv6 is an
@@ -35,7 +51,14 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (89 commits, 2026-06-19 to 2026-08-21):
+    One version per commit, newest first (90 commits, 2026-06-19 to 2026-08-21):
+    .
+    2.49 (2026-08-21): Subarea extraction converts the GeoPackage link
+    layer to CSV via gpkgcsv.exe before calling agentAnalysis (it was
+    handed the .gpkg and failed sniffing it as CSV). About TSM Plugin now
+    reports each engine's SOURCE revision from metadata (repo, short
+    commit, date) instead of the exe file timestamp, which only recorded
+    when the plugin was installed.
     .
     2.48 (2026-08-21): Fix Subarea Assignment run button crashing with
     "run_subarea_assignment() takes 1 positional argument but 2 were
