@@ -75,15 +75,24 @@ class Ui_QDailog_LoadedNetwork(object):
         self.pushButton_Run = QtWidgets.QPushButton(QDailog_LoadedNetwork)
         self.pushButton_Run.setObjectName("pushButton_Run")
         self.horizontalLayout.addWidget(self.pushButton_Run)
+        # Settings export/import, same idea as the Configuration Table dialog.
+        self.pushButton_Save = QtWidgets.QPushButton(QDailog_LoadedNetwork)
+        self.pushButton_Save.setObjectName("pushButton_Save")
+        self.horizontalLayout.addWidget(self.pushButton_Save)
+        self.pushButton_Load = QtWidgets.QPushButton(QDailog_LoadedNetwork)
+        self.pushButton_Load.setObjectName("pushButton_Load")
+        self.horizontalLayout.addWidget(self.pushButton_Load)
         self.buttonBox_OkCancel = QtWidgets.QDialogButtonBox(QDailog_LoadedNetwork)
         self.buttonBox_OkCancel.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.buttonBox_OkCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        # Save (not Ok): persists and leaves the dialog open. Cancel closes.
+        self.buttonBox_OkCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.buttonBox_OkCancel.setObjectName("buttonBox_OkCancel")
         self.horizontalLayout.addWidget(self.buttonBox_OkCancel)
         self.gridLayout.addLayout(self.horizontalLayout, 5, 0, 1, 1)
 
         self.retranslateUi(QDailog_LoadedNetwork)
-        self.buttonBox_OkCancel.accepted.connect(QDailog_LoadedNetwork.accept) # type: ignore
+        # accepted is wired in the dialog logic (to update_settings, which keeps
+        # the dialog open) -- deliberately NOT to accept() here.
         self.buttonBox_OkCancel.rejected.connect(QDailog_LoadedNetwork.reject) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(QDailog_LoadedNetwork)
 
@@ -104,3 +113,7 @@ class Ui_QDailog_LoadedNetwork(object):
         self.browse_ValidationStats.setToolTip(_translate("QDailog_LoadedNetwork", "save to csv file"))
         self.browse_ValidationStats.setText(_translate("QDailog_LoadedNetwork", "..."))
         self.pushButton_Run.setText(_translate("QDailog_LoadedNetwork", "Run"))
+        self.pushButton_Save.setText(_translate("QDailog_LoadedNetwork", "Save settings..."))
+        self.pushButton_Save.setToolTip(_translate("QDailog_LoadedNetwork", "Write the current settings to a JSON file."))
+        self.pushButton_Load.setText(_translate("QDailog_LoadedNetwork", "Load settings..."))
+        self.pushButton_Load.setToolTip(_translate("QDailog_LoadedNetwork", "Read settings from a JSON file and refresh this dialog."))

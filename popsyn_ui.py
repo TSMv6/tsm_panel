@@ -143,7 +143,7 @@ class Ui_Dialog_PopSyn(object):
         spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
         self.horizontalLayout_2.addItem(spacerItem3)
         self.okcancel_PopSIM = QtWidgets.QDialogButtonBox(self.frame_2)
-        self.okcancel_PopSIM.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.okcancel_PopSIM.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.okcancel_PopSIM.setObjectName("okcancel_PopSIM")
         self.horizontalLayout_2.addWidget(self.okcancel_PopSIM)
         self.verticalLayout_3.addLayout(self.horizontalLayout_2)

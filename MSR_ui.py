@@ -130,7 +130,7 @@ class Ui_Dialog_MSR(object):
         self.buttonRow.addItem(spacerItem1)
         self.button_OkCancel = QtWidgets.QDialogButtonBox(self.frame)
         self.button_OkCancel.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.button_OkCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.button_OkCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.button_OkCancel.setObjectName("button_OkCancel")
         self.buttonRow.addWidget(self.button_OkCancel)
         self.leftColumn.addLayout(self.buttonRow)

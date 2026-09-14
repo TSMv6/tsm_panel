@@ -143,7 +143,7 @@ class Ui_Dialog_ProjectSettings(object):
         self.splitter_13.setObjectName("splitter_13")
         self.buttonBox_Run = QtWidgets.QDialogButtonBox(self.splitter_13)
         self.buttonBox_Run.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.buttonBox_Run.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.buttonBox_Run.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.buttonBox_Run.setCenterButtons(True)
         self.buttonBox_Run.setObjectName("buttonBox_Run")
         self.gridLayout_4.addWidget(self.splitter_13, 13, 0, 1, 2)

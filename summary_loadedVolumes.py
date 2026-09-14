@@ -41,13 +41,43 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         # Populate the dropdowns with available land-use layers (polygons)
         self.populate_layer_combobox(self.comboBox_linkLayer, "LineString")
 
-        # Update Settings ("Main Panel -> Load Settings -> Config()")
-        settings = Config()
+        # Restore from Config. Factored into load_settings() so the Load button
+        # can re-apply a settings file to the open dialog, not just __init__.
+        self.load_settings()
 
-        # Load Standard TSM Assigment settings
+        self.browse_volume.clicked.connect(lambda: self.select_file(self.lineEdit_volume, "open"))
+        self.browse_loadedOut.clicked.connect(lambda: self.select_file(self.lineEdit_loadedOut, "save"))
+        self.checkBox_isSubarea.stateChanged.connect(self.toggle_TSM_or_subarea)
+
+        self.browse_ValidationStats.clicked.connect(lambda: self.select_file_xlsx(self.lineEdit_validationStats, "save"))
+        self.browse_ValidationStats.setEnabled(False)
+        self.checkBox_ValidationStats.stateChanged.connect(self.toggle_validation_stats)
+
+        # The .ui no longer wires accepted -> accept(), so there may be nothing
+        # to disconnect; PyQt raises if you disconnect an unconnected signal.
+        try:
+            self.buttonBox_OkCancel.accepted.disconnect()
+        except TypeError:
+            pass
+        # Save persists and keeps the dialog open; Cancel is the only close.
+        self.buttonBox_OkCancel.accepted.connect(self.update_settings)
+        self.buttonBox_OkCancel.rejected.connect(self.cancel_action)
+
+        self.pushButton_Save.clicked.connect(self.save_settings_to_file)
+        self.pushButton_Load.clicked.connect(self.load_settings_from_file)
+        self.pushButton_Run.clicked.connect(self.run_summary)
+       
+        self.toggle_validation_stats()
+        self.toggle_TSM_or_subarea()
+
+    def load_settings(self):
+        """Apply the current Config() to the widgets. Called from __init__ and
+        again after Load, so a loaded file is reflected in the open dialog."""
+        settings = Config()
         if settings.get("link_layer_name") != "":
             link_layer_name = settings.get("link_layer_name")
-            if link_layer_name in [self.comboBox_linkLayer.itemText(i) for i in range(self.comboBox_linkLayer.count())]:
+            if link_layer_name in [self.comboBox_linkLayer.itemText(i)
+                                   for i in range(self.comboBox_linkLayer.count())]:
                 self.comboBox_linkLayer.setCurrentText(link_layer_name)
         if settings.get("volume_file"):
             self.lineEdit_volume.setText(settings.get("volume_file"))
@@ -68,23 +98,43 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             self.lineEdit_validationStats.setText(settings.get("validationStats_file"))
         if settings.get("validationStats"):
             self.checkBox_ValidationStats.setChecked(settings.get("validationStats"))
-        
-        self.browse_volume.clicked.connect(lambda: self.select_file(self.lineEdit_volume, "open"))
-        self.browse_loadedOut.clicked.connect(lambda: self.select_file(self.lineEdit_loadedOut, "save"))
-        self.checkBox_isSubarea.stateChanged.connect(self.toggle_TSM_or_subarea)
 
-        self.browse_ValidationStats.clicked.connect(lambda: self.select_file_xlsx(self.lineEdit_validationStats, "save"))
-        self.browse_ValidationStats.setEnabled(False)
-        self.checkBox_ValidationStats.stateChanged.connect(self.toggle_validation_stats)
+    def save_settings_to_file(self):
+        """Export the current settings to a JSON file.
 
-        self.buttonBox_OkCancel.accepted.disconnect()  # Disconnect the default behavior
-        self.buttonBox_OkCancel.accepted.connect(self.update_settings)  # Connect to custom method
-        self.buttonBox_OkCancel.rejected.connect(self.cancel_action)
-        
-        self.pushButton_Run.clicked.connect(self.run_summary)
-       
-        self.toggle_validation_stats()
-        self.toggle_TSM_or_subarea()
+        update_settings() runs first on purpose: Config holds what was last
+        persisted, so saving without it would write stale values and silently
+        drop whatever the user just typed.
+        """
+        self.update_settings(notify=False)
+        settings = Config()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Settings", "",
+                                                   "JSON Files (*.json);;All Files (*)")
+        if not file_path:
+            return
+        try:
+            settings.save_to_file(file_path)
+            QMessageBox.information(self, "Information", f"Saved settings to: {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
+
+    def load_settings_from_file(self):
+        """Read settings from a JSON file and refresh this dialog."""
+        settings = Config()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Settings", "",
+                                                   "JSON Files (*.json);;All Files (*)")
+        if not file_path:
+            return
+        try:
+            settings.load_from_file(file_path)
+            plugin_dir = os.path.dirname(__file__).replace("\\", "/")
+            settings.set("plugin_dir", plugin_dir)
+            self.load_settings()
+            self.toggle_validation_stats()
+            self.toggle_TSM_or_subarea()
+            QMessageBox.information(self, "Information", f"Read settings from: {file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load settings: {e}")
 
     def toggle_TSM_or_subarea(self):
         """Enable or disable the TSM or subarea button based on the checkbox state."""
@@ -162,8 +212,12 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             return provider.dataSourceUri().split("|")[0]  # Remove extra filter params
         return None
     
-    def update_settings(self):
-        """Update settings without closing the dialog."""
+    def update_settings(self, notify=True):
+        """Persist the dialog to the scenario settings; the dialog stays open.
+
+        notify=False is used by Save-to-file, which needs Config to be current
+        but should not stack a second message box on top of its own.
+        """
         settings = Config()
         if self.comboBox_linkLayer.currentData():
             link_layer = self.comboBox_linkLayer.currentData()
@@ -189,7 +243,10 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         save_agent_settings(self)
 
         settings.check_and_save_to_file("scenario_settings_file")
-        QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
+        if notify:
+            QMessageBox.information(self, "Settings Saved",
+                                    "Summarization settings saved. The dialog stays open -- "
+                                    "use Cancel to close.")
            # Keep the dialog open
         # self.show()
     def _remove_layers_by_path(self, file_path):
@@ -278,6 +335,8 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
                                 "Validation stats could not be written:\n%s" % ve)
 
     def run_summary(self):
+        # Save first, silently: a run must use exactly what is on screen.
+        self.update_settings(notify=False)
         settings = Config()
         plugin_dir = settings.get("plugin_dir")
         link_layer = self.comboBox_linkLayer.currentData()

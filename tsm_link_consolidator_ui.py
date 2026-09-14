@@ -209,7 +209,7 @@ class Ui_Dialog(object):
         self.horizontalLayout_3.addWidget(self.buttonBox_Run)
         self.buttonBox_okCancel = QtWidgets.QDialogButtonBox(self.frame_2)
         self.buttonBox_okCancel.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.buttonBox_okCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.buttonBox_okCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.buttonBox_okCancel.setObjectName("buttonBox_okCancel")
         self.horizontalLayout_3.addWidget(self.buttonBox_okCancel)
         self.verticalLayout_2.addLayout(self.horizontalLayout_3)

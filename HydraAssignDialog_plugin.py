@@ -13,17 +13,37 @@ from .hydra_ui import Ui_DialogHydra
 # conserves across it.
 MESO_LIMITED_ACCESS = "11,12,71,72,75,76,79,91,92,93,94,96,97,98"
 
-# Run-mode preset -> (MACRO_MODEL, default Meso FTYPEs, signals on).
-#   PointQueue + BPR = point queue with BPR/VDF running time below capacity (hybrid)
+# DTA run-mode preset -> (MACRO_MODEL, default Meso FTYPEs, signals on).
 #   Node-conserving loaders (NodeDnl): N_out == N_in at every interior node.
 #   NodePQ = inflow-capacity receiving, NodeLTM = spatial storage/spillback.
-#   Default = Node + Spatial/LTM with meso on the limited-access system.
+#
+# "PointQueue + BPR" is gone. It described a per-link hybrid -- BPR running time
+# below capacity, point queue above -- that the engine removed: MACRO_MODEL is
+# one global choice and a static VDF is not mixed into the queue. The underlying
+# DTA_PointQueue loader is still valid and is now offered on its own.
 MACRO_PRESETS = {
-    "PointQueue + BPR":              ("DTA_PointQueue", "", False),
+    "PointQueue (legacy per-link)":  ("DTA_PointQueue", "", False),
     "Node + PointQueue (nodeDNL)":   ("DTA_NodePQ", MESO_LIMITED_ACCESS, False),
     "Node + Spatial/LTM (nodeDNL)":  ("DTA_NodeLTM", MESO_LIMITED_ACCESS, False),
 }
 _DEFAULT_PRESET = ("DTA_NodeLTM", MESO_LIMITED_ACCESS, False)
+
+# STA solver label -> STA_METHOD value. The static assignment is solved in flow
+# space (all-or-nothing + a step on the Beckmann objective); "legacy" is the DTA
+# path-swap loop, kept only to reproduce older runs -- its reroute floor cannot
+# converge a static assignment.
+STA_METHODS = {
+    "Bi-conjugate Frank-Wolfe (fastest)":   "bfw",
+    "Conjugate Frank-Wolfe":                "cfw",
+    "Frank-Wolfe":                          "fw",
+    "MSA (step 1/k)":                       "msa",
+    "Legacy path-swap (does not converge)": "legacy",
+}
+# VDF aggregation window label -> BPR_PERIOD_MIN.
+BPR_PERIODS = {"15 min": "15", "30 min": "30", "60 min (hourly)": "60"}
+
+# Per-link loader refresh label -> LOAD_REFRESH.
+LOAD_REFRESH = {"Exact (rebuild all)": "exact", "Incremental (delta)": "incremental"}
 
 # Per-iteration node-DNL refresh stride (NODE_SCHEDULE). Maps the GUI label to the
 # control-file value; "hybrid" is expanded to an iteration ramp at write time
@@ -78,8 +98,16 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
         self.run_Hydra.clicked.connect(lambda: self.run_hydra(show_message=True))
-        self.buttonBox.accepted.connect(self.update_settings)
+        # Save persists and LEAVES THE DIALOG OPEN (accepted -> update_settings,
+        # never accept()), so settings can be saved and then run without
+        # reopening. Cancel is the only thing that closes.
+        self.buttonBox.accepted.connect(lambda: self.update_settings(notify=True))
         self.buttonBox.rejected.connect(self.reject)
+        # No preselected engine: Run stays disabled until the active tab has its
+        # flow model / solver chosen, so the run mode is always deliberate.
+        self.tabWidget_Engine.currentChanged.connect(self._refresh_run_enabled)
+        self.comboBox_Macro.currentIndexChanged.connect(self._refresh_run_enabled)
+        self.comboBox_StaMethod.currentIndexChanged.connect(self._refresh_run_enabled)
 
         # Restore everything the Save button persists, so the dialog reopens with
         # the user's last HyDRA settings (not just the defaults).
@@ -133,12 +161,61 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.checkBox_AgentPaths.setChecked(_b_on("hydra_agent_paths"))
         self.checkBox_Checkpoint.setChecked(_b_on("hydra_checkpoint"))
 
+        # ---- STA tab ----
+        if settings.get("hydra_sta_method"):
+            self._select_combo(self.comboBox_StaMethod, settings.get("hydra_sta_method"))
+        if settings.get("hydra_bpr_period"):
+            self._select_combo(self.comboBox_BprPeriod, settings.get("hydra_bpr_period"))
+        for key, edit in (("hydra_sta_iters", self.lineEdit_StaIters),
+                          ("hydra_sta_gap", self.lineEdit_StaGap),
+                          ("hydra_sta_threads", self.lineEdit_StaThreads),
+                          ("hydra_sta_max_trips", self.lineEdit_StaMaxTrips),
+                          ("hydra_sta_sample_every", self.lineEdit_StaSampleEvery),
+                          ("hydra_sta_sample_schedule", self.lineEdit_StaSampleSchedule),
+                          ("hydra_sta_checkpoint_every", self.lineEdit_StaCheckpointEvery)):
+            if settings.get(key) not in (None, ""):
+                edit.setText(str(settings.get(key)))
+        if settings.get("hydra_sta_sample_mode"):
+            self._select_combo(self.comboBox_StaSampleSchedule, settings.get("hydra_sta_sample_mode"))
+        self.checkBox_StaCheckpoint.setChecked(_b_on("hydra_sta_checkpoint"))
+        self.checkBox_StaAgentPlans.setChecked(_b_on("hydra_sta_agent_plans"))
+        self.checkBox_StaAgentPaths.setChecked(_b("hydra_sta_agent_paths"))
+        self.checkBox_StaPathScale.setChecked(_b_on("hydra_sta_path_scale"))
+        if settings.get("hydra_load_refresh"):
+            self._select_combo(self.comboBox_LoadRefresh, settings.get("hydra_load_refresh"))
+        if settings.get("hydra_load_schedule"):
+            self.lineEdit_LoadSchedule.setText(settings.get("hydra_load_schedule"))
+
         # apply_macro_preset() overwrites Meso FTYPEs from the preset, so restore the
         # saved override AFTER it; toggle_micro() applies the enable state.
         self.apply_macro_preset(self.comboBox_Macro.currentText())
         if settings.get("hydra_meso_ftypes"):
             self.lineEdit_MesoFtypes.setText(settings.get("hydra_meso_ftypes"))
         self.toggle_micro(self.checkBox_Micro.isChecked())
+
+        # Reopen on whichever engine tab was saved; Run re-enables only once the
+        # tab's mode is set (a saved scenario carries that, a fresh one does not).
+        saved_tab = (settings.get("hydra_engine") or "").upper()
+        if saved_tab == "STA":
+            self.tabWidget_Engine.setCurrentWidget(self.page_STA)
+        elif saved_tab == "DTA":
+            self.tabWidget_Engine.setCurrentWidget(self.page_DTA)
+        self._refresh_run_enabled()
+
+    # ------------------------------------------------------------------
+    def _is_sta(self):
+        """True when the STA tab is the active engine."""
+        return self.tabWidget_Engine.currentWidget() is self.page_STA
+
+    def _refresh_run_enabled(self, *_):
+        """Run is available only once the active tab's engine is chosen."""
+        chosen = (self.comboBox_StaMethod.currentIndex() >= 0 if self._is_sta()
+                  else self.comboBox_Macro.currentIndex() >= 0)
+        self.run_Hydra.setEnabled(chosen)
+        self.run_Hydra.setToolTip(
+            "" if chosen else
+            ("Pick a solver on the STA tab first." if self._is_sta()
+             else "Pick a Run Mode (flow model) on the DTA tab first."))
 
     # ------------------------------------------------------------------
     def _load_help_doc(self, md_path):
@@ -179,21 +256,28 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         split = max(1, iters - max(3, round(iters * 0.15)))
         return "per_chunk" if split >= iters else f"1-{split}:iter, {split+1}-{iters}:chunk"
 
-    def _sample_schedule_value(self):
+    def _sample_schedule_value(self, mode_combo=None, custom_edit=None, iters_edit=None):
         """SAMPLE_SCHEDULE control value, or "" to omit the key (full sample).
 
         Progressive coarse-to-fine runs the early iterations on a cheap sample
         and only the later ones at 100%, for ~30% less wall time at the same
         converged result. The split mirrors the runs of record: for 15
         iterations it reproduces "1-4:25, 5-8:50, 9-15:100" exactly.
+
+        Defaults to the DTA widgets; the STA tab passes its own so both tabs
+        share this logic rather than duplicating the staging arithmetic.
         """
-        mode = self.comboBox_SampleSchedule.currentText()
+        mode_combo = mode_combo or self.comboBox_SampleSchedule
+        custom_edit = custom_edit or self.lineEdit_SampleSchedule
+        iters_edit = iters_edit or (self.lineEdit_StaIters if self._is_sta()
+                                   else self.lineEdit_Iters)
+        mode = mode_combo.currentText()
         if mode.startswith("Custom"):
-            return self.lineEdit_SampleSchedule.text().strip()
+            return custom_edit.text().strip()
         if not mode.startswith("Progressive"):
             return ""                      # full sample -> omit the key
         try:
-            iters = int(float(self.lineEdit_Iters.text().strip() or "10"))
+            iters = int(float(iters_edit.text().strip() or "10"))
         except ValueError:
             iters = 10
         if iters < 3:
@@ -249,8 +333,16 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if text and text in [combo.itemText(i) for i in range(combo.count())]:
             combo.setCurrentText(text)
 
-    def update_settings(self):
+    def update_settings(self, notify=True):
+        """Persist the dialog to the scenario settings.
+
+        notify=False is used by run_hydra, which saves before launching: a run
+        must never use values that differ from what is on screen, but it should
+        not pop a "settings updated" box on the way to starting.
+        """
         settings = Config()
+        # Which engine tab is authoritative for this scenario.
+        settings.set("hydra_engine", "STA" if self._is_sta() else "DTA")
         # Equilibrium / run mode
         settings.set("hydra_macro", self.comboBox_Macro.currentText())
         settings.set("hydra_iters", self.lineEdit_Iters.text())
@@ -286,12 +378,35 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Output toggles
         settings.set("hydra_agent_plans", self.checkBox_AgentPlans.isChecked())
         settings.set("hydra_agent_paths", self.checkBox_AgentPaths.isChecked())
+        settings.set("hydra_load_refresh", self.comboBox_LoadRefresh.currentText())
+        settings.set("hydra_load_schedule", self.lineEdit_LoadSchedule.text().strip())
+        # ---- STA tab ----
+        settings.set("hydra_sta_method", self.comboBox_StaMethod.currentText())
+        settings.set("hydra_bpr_period", self.comboBox_BprPeriod.currentText())
+        settings.set("hydra_sta_iters", self.lineEdit_StaIters.text())
+        settings.set("hydra_sta_gap", self.lineEdit_StaGap.text())
+        settings.set("hydra_sta_threads", self.lineEdit_StaThreads.text())
+        settings.set("hydra_sta_max_trips", self.lineEdit_StaMaxTrips.text())
+        settings.set("hydra_sta_sample_every", self.lineEdit_StaSampleEvery.text())
+        settings.set("hydra_sta_sample_mode", self.comboBox_StaSampleSchedule.currentText())
+        settings.set("hydra_sta_sample_schedule", self.lineEdit_StaSampleSchedule.text())
+        settings.set("hydra_sta_checkpoint", self.checkBox_StaCheckpoint.isChecked())
+        settings.set("hydra_sta_checkpoint_every", self.lineEdit_StaCheckpointEvery.text())
+        settings.set("hydra_sta_agent_plans", self.checkBox_StaAgentPlans.isChecked())
+        settings.set("hydra_sta_agent_paths", self.checkBox_StaAgentPaths.isChecked())
+        settings.set("hydra_sta_path_scale", self.checkBox_StaPathScale.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
-        QMessageBox.information(self, "Settings Updated", "HyDRA settings have been updated.")
+        if notify:
+            QMessageBox.information(self, "Settings Saved",
+                                    "HyDRA settings saved. The dialog stays open -- "
+                                    "use Cancel to close.")
 
     # ------------------------------------------------------------------
     @closes_run_console
     def run_hydra(self, show_message=False):
+        # Save first, always: a run must use exactly what is on screen. Silent,
+        # so starting a run does not require dismissing a dialog.
+        self.update_settings(notify=False)
         settings = Config()
         tsm_location = settings.get("tsm_location")
 
@@ -310,9 +425,15 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # One live-tail window for the whole Hydra run (no per-step black windows).
         begin_run_console(os.path.join(out_dir, "Hydra.log"), "AgentFlow / Hydra - run log")
 
-        macro = self.comboBox_Macro.currentText()
-        macro_model, _, signals = MACRO_PRESETS.get(macro, _DEFAULT_PRESET)
-        meso = self.lineEdit_MesoFtypes.text().strip()
+        sta = self._is_sta()
+        if sta:
+            # Static assignment: one flow model, and none of the DTA physics
+            # controls apply (see _write_sta_ctl).
+            macro_model, meso, signals = "STA_BPR", "", False
+        else:
+            macro = self.comboBox_Macro.currentText()
+            macro_model, _, signals = MACRO_PRESETS.get(macro, _DEFAULT_PRESET)
+            meso = self.lineEdit_MesoFtypes.text().strip()
         toll_policy = self.lineEdit_TollPolicy.text().strip()
 
         afdta = settings.app_exe("Hydra/afdta.exe")
@@ -340,6 +461,11 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             return False
 
         ctl = os.path.join(out_dir, "hydra_run.ctl")
+        if sta:
+            if not self._write_sta_ctl(ctl, node_csv, link_csv, trip_file, out_dir,
+                                       toll_policy):
+                return False
+            return self._launch_afdta(afdta, ctl, out_dir, link_path, show_message)
         try:
             with open(ctl, "w") as f:
                 f.write("# AgentFlow DTA control - generated by the HyDRA dialog\n")
@@ -496,6 +622,88 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if show_message:
             QMessageBox.information(self, "Success",
                                     f"HyDRA (AgentFlow-DTA) completed.\n\nOutputs in: {out_dir}{loaded_note}")
+        return True
+
+    # ------------------------------------------------------------------
+    def _write_sta_ctl(self, ctl, node_csv, link_csv, trip_file, out_dir, toll_policy):
+        """Control file for a STATIC BPR assignment.
+
+        Deliberately short. Everything the DTA writer emits for the loading
+        physics is absent because a static assignment ignores it, and writing
+        keys the engine ignores would imply they had an effect:
+
+          ROUTE_CHUNKS        all-or-nothing routes the whole demand against one
+                              frozen cost field; there is nothing to load
+                              incrementally (afdta warns if it is present)
+          DISCHARGE_FACTOR_*  BPR divides by the STATED CAPACITY x NLANES, so
+                              the calibrated discharge rate is never read
+          MESO_*, MICRO_*     unsupported under a static assignment
+          NODE_*, LTM_*, JAM  no node model and no spatial queue exist
+          REROUTE_*           the flow-space solver averages flows, not paths
+        """
+        settings = Config()
+        try:
+            with open(ctl, "w") as f:
+                f.write("# AgentFlow STA (static BPR) control - generated by the HyDRA dialog\n")
+                f.write(f"NODE_FILE              {node_csv}\n")
+                f.write(f"LINK_FILE              {link_csv}\n")
+                f.write(f"TRIP_FILE              {trip_file}\n")
+                f.write(f"OUTPUT_DIRECTORY       {out_dir}\n")
+                f.write("MACRO_MODEL            STA_BPR\n")
+                method = STA_METHODS.get(self.comboBox_StaMethod.currentText(), "bfw")
+                f.write(f"STA_METHOD             {method}\n")
+                period = BPR_PERIODS.get(self.comboBox_BprPeriod.currentText(), "60")
+                f.write(f"BPR_PERIOD_MIN         {period}\n")
+                f.write(f"MAX_ITERATIONS         {self.lineEdit_StaIters.text().strip() or '15'}\n")
+                f.write(f"RELATIVE_GAP           {self.lineEdit_StaGap.text().strip() or '0.01'}\n")
+                f.write(f"THREADS                {self.lineEdit_StaThreads.text().strip() or '0'}\n")
+                f.write("LINK_VOLUME_BREAKDOWN  Purpose\n")
+                # Impedance is shared with the DTA tab (same scenario inputs).
+                if toll_policy:
+                    f.write(f"TOLL_POLICY_FILE       {toll_policy}\n")
+                seg_params = self.lineEdit_SegParams.text().strip()
+                if seg_params:
+                    f.write(f"SEGMENT_PARAM_FILE     {seg_params}\n")
+                f.write(f"MAX_TRIPS              {self.lineEdit_StaMaxTrips.text().strip() or '0'}\n")
+                f.write(f"SAMPLE_EVERY           {self.lineEdit_StaSampleEvery.text().strip() or '1'}\n")
+                sched = self._sample_schedule_value(
+                    self.comboBox_StaSampleSchedule, self.lineEdit_StaSampleSchedule)
+                if sched:
+                    f.write(f"SAMPLE_SCHEDULE        {sched}\n")
+                if self.checkBox_StaCheckpoint.isChecked():
+                    ckpt = os.path.join(out_dir, "checkpoint.bin").replace("\\", "/")
+                    f.write(f"CHECKPOINT_FILE        {ckpt}\n")
+                    f.write(f"CHECKPOINT_EVERY       {self.lineEdit_StaCheckpointEvery.text().strip() or '3'}\n")
+                f.write(f"WRITE_AGENT_PLANS      {'YES' if self.checkBox_StaAgentPlans.isChecked() else 'NO'}\n")
+                f.write(f"WRITE_AGENT_PATHS      {'YES' if self.checkBox_StaAgentPaths.isChecked() else 'NO'}\n")
+                if not self.checkBox_StaPathScale.isChecked():
+                    f.write("STA_PATH_SCALE         NO\n")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error writing the STA control file: {e}")
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    def _launch_afdta(self, afdta, ctl, out_dir, link_path, show_message):
+        """Run afdta on a written control file and summarise the loaded network.
+        Shared by the DTA and STA paths so both behave identically from here."""
+        hydra_log = os.path.join(out_dir, "Hydra.log")
+        print(f"afdta   : {afdta}")
+        print(f"control : {ctl}")
+        print(f"log     : {hydra_log}")
+        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA (AgentFlow-DTA)",
+                               log_path=hydra_log, console=True):
+            return False
+        loaded_note = ""
+        try:
+            gp = self._auto_summarize(out_dir, link_path)
+            loaded_note = f"\nLoaded network: {gp}" if gp else \
+                          "\n(loaded-network summary failed - see summarize_hydra_run.log)"
+        except Exception as e:
+            loaded_note = f"\n(loaded-network summary failed: {e})"
+        if show_message:
+            QMessageBox.information(self, "Success",
+                                    f"HyDRA completed.\n\nOutputs in: {out_dir}{loaded_note}")
         return True
 
     def _auto_summarize(self, out_dir, link_path):

@@ -94,7 +94,7 @@ class Ui_Dialog_GenPrjSetting(object):
         self.gridLayout.addLayout(self.horizontalLayout_claude, 5, 0, 1, 1)
         self.buttonBox_GenConfig = QtWidgets.QDialogButtonBox(self.frame)
         self.buttonBox_GenConfig.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.buttonBox_GenConfig.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.buttonBox_GenConfig.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.buttonBox_GenConfig.setObjectName("buttonBox_GenConfig")
         self.gridLayout.addWidget(self.buttonBox_GenConfig, 6, 0, 1, 1)
         self.verticalLayout.addWidget(self.frame)

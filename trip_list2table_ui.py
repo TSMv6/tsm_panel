@@ -128,7 +128,7 @@ class Ui_Dialog_Triptable(object):
         self.buttonRow.addItem(spacerItem)
         self.button_SaveCancel = QtWidgets.QDialogButtonBox(Dialog_Triptable)
         self.button_SaveCancel.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.button_SaveCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.button_SaveCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.button_SaveCancel.setObjectName("button_SaveCancel")
         self.buttonRow.addWidget(self.button_SaveCancel)
         self.leftColumn.addLayout(self.buttonRow)

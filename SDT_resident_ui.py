@@ -145,7 +145,7 @@ class Ui_Dialog_SDTRes(object):
         self.horizontalLayout_4.addWidget(self.Run_SDTRes)
         self.button_OkCancel = QtWidgets.QDialogButtonBox(self.widget)
         self.button_OkCancel.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.button_OkCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        self.button_OkCancel.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Cancel|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.button_OkCancel.setObjectName("button_OkCancel")
         self.horizontalLayout_4.addWidget(self.button_OkCancel)
         self.verticalLayout.addLayout(self.horizontalLayout_4)
