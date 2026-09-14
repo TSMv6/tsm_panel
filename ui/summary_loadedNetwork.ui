@@ -134,12 +134,32 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButton_Save">
+       <property name="text">
+        <string>Save settings...</string>
+       </property>
+       <property name="toolTip">
+        <string>Write the current settings to a JSON file.</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_Load">
+       <property name="text">
+        <string>Load settings...</string>
+       </property>
+       <property name="toolTip">
+        <string>Read settings from a JSON file and refresh this dialog.</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QDialogButtonBox" name="buttonBox_OkCancel">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
        </property>
       </widget>
      </item>
