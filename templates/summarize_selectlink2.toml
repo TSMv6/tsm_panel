@@ -2,12 +2,12 @@
 # no pivots/metrics. Plugin fills @...@ at run time.
 name = "selectlink"
 group_by = ["A", "B"]
-sum_cols = [
-  "LDT_Air_AccEgr25M", "LDT_Res_Air", "LDT_Res_Hig", "LDT_Res_Med",
-  "LDT_Vis_Air", "LDT_Vis_Hig", "LDT_Vis_Med", "SDT_Res_Hig",
-  "SDT_Res_Low", "SDT_Res_Med", "SDT_Vis_Hig", "SDT_Vis_Low",
-  "SDT_Vis_Med", "heavy", "light", "medium", "LDT_Res_Low", "LDT_Vis_Low"
-]
+# Both select-link producers emit a single weighted total, not wide per-class
+# columns: afdta --select-link writes a_node,b_node,resolved,used_weight,...
+# and agentAnalysis "agents --volumes" writes a_node,b_node,agents,veh_weight.
+# Missing sum_cols are ignored by summarize, so listing market segments here
+# silently produced a zero total.
+sum_cols = ["veh_weight", "used_weight"]
 total_col = "SL_VOL1"
 total_col2 = "SL_VOL2"
 emit_class_sums = false
@@ -15,10 +15,12 @@ emit_class_sums = false
 [input]
 format = "csv"
 path = "@VOL@"
+rename = ["a_node=A", "b_node=B"]
 
 [input2]
 format = "csv"
 path = "@VOL2@"
+rename = ["a_node=A", "b_node=B"]
 
 [join]
 format = "gpkg"
