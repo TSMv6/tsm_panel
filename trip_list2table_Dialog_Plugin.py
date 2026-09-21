@@ -1,5 +1,8 @@
 import os, shutil, subprocess, time
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication
+from qgis.PyQt.QtWidgets import (QDialog, QFileDialog, QDockWidget, QMessageBox,
+                                 QApplication, QTableWidgetItem, QHeaderView,
+                                 QButtonGroup)
+from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -8,6 +11,34 @@ from . import msr_run
 # from .helper_functions import HelperFun
 
 from .trip_list2table_ui import Ui_Dialog_Triptable
+
+# External-station calibration lives HERE, not in the LDT Visitor dialog, because
+# agentPlans is what reads ldt_external_targets.csv (stage_eltod.cpp). Writing it
+# from the LDT step meant a scenario that reused an existing LDT tour file never
+# got the targets file, and the engine logged
+#   [eltod] external target scaling skipped (not found: <scen>/ldt_external_targets.csv)
+# while apply_external_targets was still true -- the calibration silently did not
+# run. The file is now written by the step that consumes it, immediately before
+# the run.
+
+# Ext Zone ID is NOT user data: it must equal the external-station zone the engine
+# keys on (agentPlans settings.h ext_station_i10/i75/i95). A blank id is mapped to
+# zone 0 by load_ext_targets(), which collapses every row onto one key and disables
+# external scaling, so the column is populated from the canonical ids and read-only.
+EXT_ZONE_ID = {"I-10": "11504", "I-75": "11548", "I-95": "11560"}
+
+# Calibrated external targets behind the 74.83M-trip revised trip list (externals
+# matched exactly), not the older round placeholders (30,000 / 55,000 / 75,000).
+EXT_DEFAULTS = {"I-75": ("48054", "1.0%"),
+                "I-10": ("36000", "1.0%"),
+                "I-95": ("75636", "1.0%")}
+
+# Catalog copy of the curated all-station targets file, used to seed a scenario
+# that has none. The production file covers ~60 crossings; without a seed only the
+# three interstate rows would be written and the other ~57 stations would silently
+# lose their calibration.
+EXT_MASTER_REL = "Inputs/external_counts/ldt_external_targets.csv"
+
 
 class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
     def __init__(self):
@@ -86,6 +117,244 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
             self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
         if settings.get("run_msr"):
             self.groupBox_MSR.setChecked(settings.get("run_msr") is True)
+
+        # External-station calibration (moved here from the LDT Visitor dialog).
+        self._build_ext_calibration()
+
+    # ------------------------------------------------------------------
+    # External-station target calibration
+    # ------------------------------------------------------------------
+    def _build_ext_calibration(self):
+        """Populate and wire the external-station calibration group."""
+        settings = Config()
+        self.table = self.table_ExtStn_Counts
+
+        for row in range(self.table.rowCount()):
+            name = self.table.verticalHeaderItem(row).text()
+            dc, df = EXT_DEFAULTS.get(name, ("", "1.0%"))
+            count = settings.get(f"{name}_Count")
+            future = settings.get(f"{name}_Future")
+            zone_item = QTableWidgetItem(EXT_ZONE_ID.get(name, ""))
+            zone_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            zone_item.setToolTip("Fixed external-station zone id; must match "
+                                 "ext_station_* in the agentPlans control file.")
+            self.table.setItem(row, 0, zone_item)
+            self.table.setItem(row, 1, QTableWidgetItem(count if count else dc))
+            self.table.setItem(row, 2, QTableWidgetItem(future if future else df))
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        self._ext_mode_group = QButtonGroup(self)
+        self._ext_mode_group.addButton(self.radio_extBase)
+        self._ext_mode_group.addButton(self.radio_extGrow)
+
+        self.browse_ExtMaster.clicked.connect(
+            lambda: self.select_file(self.lineEdit_ExtMaster, "open"))
+        self.lineEdit_ExtMaster.textChanged.connect(lambda _: self._sync_ext_enabled())
+        self.checkBox_extCalib.toggled.connect(lambda _: self._sync_ext_enabled())
+        self.radio_extBase.toggled.connect(lambda _: self._sync_ext_enabled())
+        self.lineEdit_SCENLoc.textChanged.connect(lambda _: self._sync_ext_enabled())
+
+        # Restore saved state. Absent setting => OFF (opt-in), so an existing
+        # scenario does not silently start scaling externals on the next run.
+        self.checkBox_extCalib.setChecked(
+            str(settings.get("ldt_ext_calibrate")).lower() in ("true", "1", "yes"))
+        if str(settings.get("ldt_ext_mode") or "base").lower() == "grow":
+            self.radio_extGrow.setChecked(True)
+        else:
+            self.radio_extBase.setChecked(True)
+        self.lineEdit_ExtMaster.setText(
+            (settings.get("ldt_ext_master") or self._default_ext_master()).replace("\\", "/"))
+        self._sync_ext_enabled()
+
+    @staticmethod
+    def _default_ext_master():
+        """Catalog master targets file, or "" when it is not installed."""
+        loc = (Config().get("tsm_location") or "").replace("\\", "/")
+        p = (loc.rstrip("/") + "/" + EXT_MASTER_REL) if loc else ""
+        return p if p and os.path.exists(p) else ""
+
+    def _ext_target_path(self, scen=None):
+        """Where this run's targets file goes.
+
+        The run passes the SAME scenarioDir that goes into the control file's
+        ldt_external_targets key, so the file is always written where the engine
+        is told to look for it. The UI preview (scen=None) falls back to the
+        dialog's own field, which is what Save will store.
+        """
+        scen = (scen if scen is not None
+                else self.lineEdit_SCENLoc.text()).strip().replace("\\", "/")
+        return (scen.rstrip("/") + "/ldt_external_targets.csv") if scen else ""
+
+    def _sync_ext_enabled(self):
+        on = self.checkBox_extCalib.isChecked()
+        for w in (self.radio_extBase, self.radio_extGrow, self.table,
+                  self.lineEdit_ExtMaster, self.browse_ExtMaster,
+                  self.label_ExtMaster):
+            w.setEnabled(on)
+        # The growth column only means anything in growth mode.
+        for r in range(self.table.rowCount()):
+            it = self.table.item(r, 2)
+            if it is None:
+                continue
+            f = it.flags()
+            if on and self.radio_extGrow.isChecked():
+                it.setFlags(f | Qt.ItemFlag.ItemIsEditable)
+            else:
+                it.setFlags(f & ~Qt.ItemFlag.ItemIsEditable)
+        # Say plainly which file the run will write, and whether it exists yet.
+        out = self._ext_target_path()
+        if not on:
+            self.label_ExtTargetPath.setText(
+                "Off - apply_external_targets=false; no targets file is written.")
+            self.label_ExtTargetPath.setStyleSheet("color:#666;")
+        elif not out:
+            self.label_ExtTargetPath.setText("Set the scenario directory first.")
+            self.label_ExtTargetPath.setStyleSheet("color:#c0392b;")
+        else:
+            state = "will be updated" if os.path.exists(out) else "will be created"
+            msg = "Writes %s (%s) at run time." % (out, state)
+            master = self.lineEdit_ExtMaster.text().strip()
+            if not os.path.exists(out) and not (master and os.path.exists(master)):
+                # Without a master to seed from, only the three rows in the table
+                # are written and the other ~57 crossings lose their calibration.
+                msg += ("  No master targets file - ONLY the three interstates "
+                        "below will be calibrated.")
+                self.label_ExtTargetPath.setStyleSheet("color:#b9770e;")
+            else:
+                self.label_ExtTargetPath.setStyleSheet("color:#157f1f;")
+            self.label_ExtTargetPath.setText(msg)
+
+    def _persist_external_targets(self, scen=None):
+        """Write <scenarioDir>/ldt_external_targets.csv for this run.
+
+        MERGES rather than overwrites. The production targets file covers ~60
+        crossings with filled zone ids and absolute counts; this table only knows
+        the big three interstates, so a blind rewrite silently discarded ~57
+        stations. When a targets file already exists in the scenario (or a master
+        is configured to seed one) its header, row order and every other station
+        are preserved, and only rows matching this table's ext_zone_id are updated.
+
+        Returns True when the file is on disk and agentPlans can use it.
+        """
+        import csv
+        out = self._ext_target_path(scen)
+
+        if not self.checkBox_extCalib.isChecked():
+            print("External targets: calibration is OFF - file left untouched "
+                  "(apply_external_targets=false)")
+            return True
+        if not out:
+            print("External targets: no scenario directory - nothing written")
+            return False
+
+        mine = {}
+        for row in range(self.table.rowCount()):
+            name = self.table.verticalHeaderItem(row).text()
+            it0, it1, it2 = (self.table.item(row, c) for c in (0, 1, 2))
+            zone = it0.text().strip() if it0 else ""
+            count = it1.text().strip() if it1 else ""
+            future = it2.text().strip() if it2 else ""
+            if not zone:
+                print("External targets: row %s has no zone id - skipped" % name)
+                continue
+            # Spec is written explicitly from the selected mode, never inferred.
+            # Base-year mode emits the absolute count (agentPlans returns it
+            # verbatim); growth mode emits "<rate>%" (linear, applied over
+            # scenario year - external_base_year).
+            if self.radio_extGrow.isChecked():
+                spec = future if future.endswith("%") else (future + "%" if future else "0%")
+            else:
+                spec = count
+            mine[zone] = (name, count, spec)
+        if not mine:
+            print("External targets: nothing written (no row carries a zone id)")
+            return False
+
+        # Seed a scenario that has no targets file from the curated master, so the
+        # ~57 non-interstate stations keep their counts instead of vanishing.
+        seeded_from = ""
+        if not os.path.exists(out):
+            master = self.lineEdit_ExtMaster.text().strip().replace("\\", "/")
+            if master and os.path.exists(master) and \
+                    os.path.abspath(master) != os.path.abspath(out):
+                try:
+                    os.makedirs(os.path.dirname(out), exist_ok=True)
+                    shutil.copyfile(master, out)
+                    seeded_from = master
+                except OSError as e:
+                    print("External targets: could not seed from %s: %s" % (master, e))
+
+        try:
+            header = None
+            existing = []
+            if os.path.exists(out):
+                with open(out, newline="") as f:
+                    rd = csv.reader(f)
+                    header = next(rd, None)
+                    for r in rd:
+                        if r:
+                            existing.append(r)
+
+            if header and "ext_zone_id" in header:
+                iz = header.index("ext_zone_id")
+                ic = None
+                for i, h in enumerate(header):
+                    if h.strip().lower().startswith("base_count"):
+                        ic = i
+                        break
+                isp = header.index("future_target_or_growth") if "future_target_or_growth" in header else None
+                touched = 0
+                for r in existing:
+                    if iz >= len(r):
+                        continue
+                    hit = mine.get(r[iz].strip())
+                    if not hit:
+                        continue
+                    count = hit[1]
+                    future = hit[2]
+                    if ic is not None and ic < len(r) and count:
+                        r[ic] = count
+                    if isp is not None and isp < len(r) and future:
+                        r[isp] = future
+                    touched += 1
+                have = set()
+                for r in existing:
+                    if iz < len(r):
+                        have.add(r[iz].strip())
+                for zone in mine:
+                    if zone in have:
+                        continue
+                    name, count, future = mine[zone]
+                    new = [""] * len(header)
+                    new[0] = name
+                    new[iz] = zone
+                    if ic is not None:
+                        new[ic] = count
+                    if isp is not None:
+                        new[isp] = future
+                    existing.append(new)
+                    touched += 1
+                with open(out, "w", newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(header)
+                    w.writerows(existing)
+                print("External targets: merged %d row(s), %d stations total -> %s%s"
+                      % (touched, len(existing), out,
+                         (" (seeded from %s)" % seeded_from) if seeded_from else ""))
+            else:
+                with open(out, "w", newline="") as f:
+                    w = csv.writer(f)
+                    w.writerow(["interstate", "ext_zone_id", "base_count_2024",
+                                "future_target_or_growth"])
+                    for zone in mine:
+                        name, count, future = mine[zone]
+                        w.writerow([name, zone, count, future])
+                print("External targets: wrote %d row(s) -> %s  (NO master seed: only "
+                      "these stations are calibrated)" % (len(mine), out))
+        except Exception as e:
+            print("Could not write external targets: %s" % e)
+            return False
+        return os.path.exists(out)
 
     # ------------------------------------------------------------------
     # Editable input-file list (one browseable row per agentPlans input)
@@ -306,6 +575,16 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
         settings.set("msr_subarea", self.lineEdit_MSRSubarea.text())
         settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
         settings.set("run_msr", self.groupBox_MSR.isChecked())
+        # External-station calibration: the flag, the basis and the station table,
+        # so a reopened scenario shows what it will actually run.
+        settings.set("ldt_ext_calibrate", self.checkBox_extCalib.isChecked())
+        settings.set("ldt_ext_mode", "grow" if self.radio_extGrow.isChecked() else "base")
+        settings.set("ldt_ext_master", self.lineEdit_ExtMaster.text().strip())
+        for row in range(self.table.rowCount()):
+            name = self.table.verticalHeaderItem(row).text()
+            for col, key in ((0, "Zone"), (1, "Count"), (2, "Future")):
+                it = self.table.item(row, col)
+                settings.set(f"{name}_{key}", it.text() if it else "")
         # Persist per-file input overrides (key 'tt_input_<control_key>').
         for key, path in self._resolved_inputs().items():
             settings.set(f"tt_input_{key}", path)
@@ -415,6 +694,21 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
             QMessageBox.critical(self, "Error", f"agentPlans template not found: {template}")
             return False
 
+        # External-station targets: written HERE, into the same scenarioDir that
+        # goes into the control file below, so the engine can never be pointed at
+        # a targets file nothing produced. Previously the LDT Visitor dialog wrote
+        # it, so any scenario that did not re-run LDT Visitor got
+        #   [eltod] external target scaling skipped (not found: .../ldt_external_targets.csv)
+        # with apply_external_targets still true -- calibration silently off.
+        ext_on = self.checkBox_extCalib.isChecked()
+        if not self._persist_external_targets(scenarioDir):
+            QMessageBox.critical(
+                self, "External targets",
+                "External station calibration is ON but the targets file\n"
+                f"{self._ext_target_path(scenarioDir)}\ncould not be written.\n\n"
+                "Fix the scenario directory, or turn the calibration off, and run again.")
+            return False
+
         # Output is the trip list at the selected resolution (no ELToD branding).
         trip_out = os.path.join(scenarioDir, f"tripList_{output_resolution}min.csv.gz").replace("\\", "/")
 
@@ -426,12 +720,11 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
             "output_resolution": output_resolution,
             "trip_table_out": trip_out,
             # External-station target calibration. ext_station_* must match the
-            # ext_zone_id values in ldt_external_targets.csv (written by the GUI).
-            # External calibration is opt-in from the LDT Visitor dialog; absent
-            # setting => false, so it never runs silently.
-            "apply_external_targets":
-                "true" if str(settings.get("ldt_ext_calibrate")).lower() in ("true", "1", "yes")
-                else "false",
+            # ext_zone_id values in ldt_external_targets.csv, which the block above
+            # just wrote. Read from the checkbox on THIS dialog rather than a
+            # stored setting, so the flag and the file are always decided together
+            # -- opt-in, so it never runs silently.
+            "apply_external_targets": "true" if ext_on else "false",
             "ldt_external_targets": os.path.join(scenarioDir, "ldt_external_targets.csv").replace("\\", "/"),
             "external_base_year": settings.get("external_base_year") or "2024",
             "ext_station_i10": settings.get("ext_station_i10") or "11504",

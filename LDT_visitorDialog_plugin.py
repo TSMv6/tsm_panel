@@ -1,5 +1,7 @@
 import os, shutil, subprocess, time
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QDockWidget, QMessageBox, QApplication, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QVBoxLayout, QHBoxLayout, QLabel, QWidget
+from qgis.PyQt.QtWidgets import (QDialog, QFileDialog, QDockWidget, QMessageBox,
+                                 QApplication, QCheckBox, QGridLayout, QGroupBox,
+                                 QVBoxLayout, QHBoxLayout, QLabel, QWidget)
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
@@ -57,46 +59,12 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         self.lineEdit_NumHH.setText("enter number of households")
         # self.lineEdit_LDTRefYear.setText("2023")
         
-        self.table = self.findChild(QTableWidget, "table_ExtStn_Counts")
-        # External-station overwrite table: col0 = Ext Zone ID, col1 = Base Count
-        # (2024), col2 = Future Target or Growth %. Persisted per interstate in
-        # Config as <name>_Zone / <name>_Count / <name>_Future.
-        # Ext Zone ID is NOT user data: it must equal the external-station zone the
-        # engine keys on (agentPlans settings.h ext_station_i10/i75/i95). It used
-        # to default to "" and be typed by hand; when left blank, agentPlans'
-        # load_ext_targets() converted "" -> 0, so all three rows collapsed onto
-        # zone 0 and no external scaling was ever applied
-        # ("[eltod] external 0: target=75000 modeled=0 scale=1.0000"). The column
-        # is now populated from the canonical ids and made read-only, and a stale
-        # blank in a saved scenario is ignored rather than restored.
-        EXT_ZONE_ID = {"I-10": "11504", "I-75": "11548", "I-95": "11560"}
-        # Base counts are the CALIBRATED external targets behind the 74.83M-trip
-        # revised trip list (externals matched exactly: I-10 36,000 /
-        # I-75 48,054 / I-95 75,636), not the older round placeholders
-        # (30,000 / 55,000 / 75,000). They must agree with the curated
-        # ldt_external_targets.csv, otherwise saving this dialog would merge the
-        # placeholders over the calibrated numbers and silently de-calibrate the
-        # externals. Zone ids verified three ways: agentPlans settings.h
-        # ext_station_*, the curated file's description column, and the network
-        # itself (11504 -> Escambia/I-10, 11548 -> Hamilton/I-75,
-        # 11560 -> Nassau/I-95).
-        ext_defaults = {"I-75": ("48054", "1.0%"),
-                        "I-10": ("36000", "1.0%"),
-                        "I-95": ("75636", "1.0%")}
-        for row in range(self.table.rowCount()):
-            name = self.table.verticalHeaderItem(row).text()
-            dc, df = ext_defaults.get(name, ("", "1.0%"))
-            count = settings.get(f"{name}_Count")
-            future = settings.get(f"{name}_Future")
-            zone_item = QTableWidgetItem(EXT_ZONE_ID.get(name, ""))
-            zone_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-            zone_item.setToolTip("Fixed external-station zone id; must match "
-                                 "ext_station_* in the agentPlans settings.")
-            self.table.setItem(row, 0, zone_item)
-            self.table.setItem(row, 1, QTableWidgetItem(count if count else dc))
-            self.table.setItem(row, 2, QTableWidgetItem(future if future else df))
-        # Stretch the three columns to fill the table width.
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # The external-station calibration block (table, on/off, base-vs-growth)
+        # used to live here. It moved to the agentPlans / Trip List dialog, which is
+        # the step that actually reads ldt_external_targets.csv: writing it from
+        # here meant a scenario that did not re-run LDT Visitor never got the file
+        # and agentPlans logged "external target scaling skipped (not found: ...)"
+        # while apply_external_targets was still true.
 
         # LDT-visitor incremental/absolute toggle. OFF = incremental: run only the
         # households added between the reference year and the scenario year
@@ -114,60 +82,6 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # its whole run-time block is commented out because ldt_synhh_prep.py
         # sorts and filters in a single pandas pass, so no separate one-time sort
         # is needed. Removed rather than left on screen doing nothing.)
-        # External-station calibration: OPT-IN, and the target basis is stated
-        # explicitly rather than inferred. agentPlans decided base-year vs growth
-        # purely from whether the spec string ended in "%", so a comma-formatted
-        # "36,000" silently became a target of 36 and a blank cell became 0. The
-        # dialog now writes an unambiguous spec, and the whole step can be turned
-        # off (apply_external_targets=false) instead of always running.
-        self.checkBox_extCalib = QCheckBox(
-            "Calibrate external stations to counts (I-10 / I-75 / I-95)")
-        self.checkBox_extCalib.setChecked(False)   # opt-in, not a silent default
-        self.checkBox_extCalib.setToolTip(
-            "ON: scale LDT out-of-state trips through each external station so the "
-            "station total matches its target (apply_external_targets=true).  "
-            "OFF: no external scaling at all -- the LDT model's own volumes stand.")
-        self.radio_extBase = QRadioButton("Base-year target (use the count as-is)")
-        self.radio_extGrow = QRadioButton("Grow to scenario year (linear %/yr)")
-        self.radio_extBase.setChecked(True)
-        self.radio_extBase.setToolTip(
-            "Target = Base Count exactly. Written as an absolute number, so no "
-            "growth is applied whatever the scenario year.")
-        self.radio_extGrow.setToolTip(
-            "Target = Base Count x (1 + rate/100 x (scenario year - base year)). "
-            "LINEAR, not compound: 1.0%/yr over 31 years is x1.31, not x1.36.")
-        self._ext_mode_group = QButtonGroup(self)
-        self._ext_mode_group.addButton(self.radio_extBase)
-        self._ext_mode_group.addButton(self.radio_extGrow)
-
-        def _sync_ext_enabled():
-            on = self.checkBox_extCalib.isChecked()
-            self.radio_extBase.setEnabled(on)
-            self.radio_extGrow.setEnabled(on)
-            if self.table is not None:
-                self.table.setEnabled(on)
-                # the growth column only means anything in growth mode
-                for r in range(self.table.rowCount()):
-                    it = self.table.item(r, 2)
-                    if it is None:
-                        continue
-                    f = it.flags()
-                    if on and self.radio_extGrow.isChecked():
-                        it.setFlags(f | Qt.ItemFlag.ItemIsEditable)
-                    else:
-                        it.setFlags(f & ~Qt.ItemFlag.ItemIsEditable)
-        self._sync_ext_enabled = _sync_ext_enabled
-        self.checkBox_extCalib.toggled.connect(lambda _: _sync_ext_enabled())
-        self.radio_extBase.toggled.connect(lambda _: _sync_ext_enabled())
-        # Restore saved state. Absent setting => OFF (opt-in), so an existing
-        # scenario does not silently start scaling externals on the next run.
-        _sv = settings.get("ldt_ext_calibrate")
-        self.checkBox_extCalib.setChecked(str(_sv).lower() in ("true", "1", "yes"))
-        if str(settings.get("ldt_ext_mode") or "base").lower() == "grow":
-            self.radio_extGrow.setChecked(True)
-        else:
-            self.radio_extBase.setChecked(True)
-
         # Columns 1 and 4 of the main form grid are empty spacers that pushed the
         # fields far to the right, leaving a wide dead band beside the labels.
         # Set in code rather than the .ui: uic maps a "columnstretch" property to
@@ -178,21 +92,18 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 _g2.setColumnStretch(_c, _st)
                 _g2.setColumnMinimumWidth(_c, 0)
 
-        # ---- Regroup the bottom half by FEATURE, two columns -------------------
-        # LEFT  "Run mode and reference run": absolute/incremental plus the
-        #       reference year + reference tour file an incremental run needs.
-        # RIGHT "External station calibration": on/off, the base-year vs growth
-        #       basis, and the station table it applies to.
-        # gridLayout and the table start out as the two items of horizontalLayout,
-        # so they must be DETACHED first -- re-adding them without removing left
-        # the originals in place and produced a third column.
+        # ---- Group the bottom half: "Run mode and reference run" ---------------
+        # absolute/incremental plus the reference year + reference tour file an
+        # incremental run needs. gridLayout starts out as an item of
+        # horizontalLayout, so it must be DETACHED first -- re-adding it without
+        # removing left the original in place and produced a second column.
+        # (The external-station calibration group that used to sit beside it now
+        # lives in the agentPlans / Trip List dialog.)
         hbox = self.findChild(QHBoxLayout, "horizontalLayout")
         ref_grid = self.findChild(QGridLayout, "gridLayout")
         label_11 = self.findChild(QLabel, "label_11")
         if hbox is not None and ref_grid is not None:
             hbox.removeItem(ref_grid)
-            if self.table is not None:
-                hbox.removeWidget(self.table)
 
             self.grp_runmode = QGroupBox("Run mode and reference run")
             _lv = QVBoxLayout(self.grp_runmode)
@@ -200,19 +111,7 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             _lv.addLayout(ref_grid)
             _lv.addStretch(1)
 
-            self.grp_extcal = QGroupBox("External station calibration (I-10 / I-75 / I-95)")
-            _rv = QVBoxLayout(self.grp_extcal)
-            _rv.addWidget(self.checkBox_extCalib)
-            _mode = QHBoxLayout()
-            _mode.addWidget(self.radio_extBase)
-            _mode.addWidget(self.radio_extGrow)
-            _mode.addStretch(1)
-            _rv.addLayout(_mode)
-            if self.table is not None:
-                _rv.addWidget(self.table)
-
             hbox.addWidget(self.grp_runmode, 1)
-            hbox.addWidget(self.grp_extcal, 2)
             if label_11 is not None:
                 label_11.setVisible(False)
 
@@ -270,24 +169,6 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 "year and the scenario year, then append back to the previous output.\n"
                 "On: run every US household with Year ≤ scenario year; no reference, no append.")
         
-        # Save these values to config file
-        # row_names = []
-        # row_keys = []
-        # row_values = []
-        # # Get existing values from the table
-        # for row in range(self.table.rowCount()):
-        #     item = self.table .verticalHeaderItem(row)
-        #     row_name = item.text() if item else ""
-        #     row_key = self.table .item(row, 1).text() if self.table .item(row, 1) else ""
-        #     row_value = self.table .item(row, 2).text() if self.table .item(row, 2) else ""
-        #     print(f"Row {row}: Name: {row_name}, Count: {row_key}, CAGR: {row_value}")
-        #     row_names.append(row_name)
-        #     row_keys.append(row_key)
-        #     row_values.append(row_value)
-        # print(row_names) 
-        # print(row_keys)
-        # print(row_keys)
-
         if settings.get("LDT_resident_InputDir"):
             self.lineEdit_InputDir.setText(settings.get("LDT_resident_InputDir"))
         if settings.get("LDT_resident_RoadSkim"):
@@ -362,9 +243,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 "(ref < Year <= scenario year) and pairs with the Reference Tour "
                 "File that the increment is appended onto.")
 
-        # Both groups must show their real state on open, not only after the first
-        # click -- the table was left enabled while its checkbox was off.
-        self._sync_ext_enabled()
+        # The run-mode group must show its real state on open, not only after
+        # the first click.
         self._sync_runmode()
 
         # Suggest the reference tour file LAST. check_userRef() clears the stored
@@ -427,122 +307,6 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         else:
             self.textBrowser.setPlainText(md)
 
-    def _persist_external_targets(self):
-        """Persist this dialog's external-station rows to ldt_external_targets.csv.
-
-        MERGES into an existing file rather than overwriting it. The production
-        targets file covers ~60 crossings with filled zone ids and absolute
-        counts; this table only knows the big three interstates, so a blind
-        rewrite silently discarded ~57 stations. When a targets file already
-        exists its header, row order and every other station are preserved, and
-        only rows matching this table's ext_zone_id are updated.
-
-        Rows with no zone id are skipped: agentPlans' load_ext_targets() maps a
-        blank id to zone 0, which collapses every row onto one key and disables
-        external scaling entirely.
-        """
-        import csv
-        settings = Config()
-        out = os.path.join(settings.get("scenarioDir"), "ldt_external_targets.csv")
-
-        if not self.checkBox_extCalib.isChecked():
-            print("External targets: calibration is OFF - file left untouched "
-                  "(apply_external_targets=false)")
-            return
-
-        mine = {}
-        for row in range(self.table.rowCount()):
-            name = self.table.verticalHeaderItem(row).text()
-            it0 = self.table.item(row, 0)
-            it1 = self.table.item(row, 1)
-            it2 = self.table.item(row, 2)
-            zone = it0.text().strip() if it0 else ""
-            count = it1.text().strip() if it1 else ""
-            future = it2.text().strip() if it2 else ""
-            if not zone:
-                print("External targets: row %s has no zone id - skipped" % name)
-                continue
-            # Spec is written explicitly from the selected mode, never inferred.
-            # Base-year mode emits the absolute count (agentPlans returns it
-            # verbatim); growth mode emits "<rate>%" (linear, applied over
-            # scenario year - external_base_year).
-            if self.radio_extGrow.isChecked():
-                spec = future if future.endswith("%") else (future + "%" if future else "0%")
-            else:
-                spec = count
-            mine[zone] = (name, count, spec)
-        if not mine:
-            print("External targets: nothing written (no row carries a zone id)")
-            return
-
-        try:
-            header = None
-            existing = []
-            if os.path.exists(out):
-                with open(out, newline="") as f:
-                    rd = csv.reader(f)
-                    header = next(rd, None)
-                    for r in rd:
-                        if r:
-                            existing.append(r)
-
-            if header and "ext_zone_id" in header:
-                iz = header.index("ext_zone_id")
-                ic = None
-                for i, h in enumerate(header):
-                    if h.strip().lower().startswith("base_count"):
-                        ic = i
-                        break
-                isp = header.index("future_target_or_growth") if "future_target_or_growth" in header else None
-                touched = 0
-                for r in existing:
-                    if iz >= len(r):
-                        continue
-                    hit = mine.get(r[iz].strip())
-                    if not hit:
-                        continue
-                    count = hit[1]
-                    future = hit[2]
-                    if ic is not None and ic < len(r) and count:
-                        r[ic] = count
-                    if isp is not None and isp < len(r) and future:
-                        r[isp] = future
-                    touched += 1
-                have = set()
-                for r in existing:
-                    if iz < len(r):
-                        have.add(r[iz].strip())
-                for zone in mine:
-                    if zone in have:
-                        continue
-                    name, count, future = mine[zone]
-                    new = [""] * len(header)
-                    new[0] = name
-                    new[iz] = zone
-                    if ic is not None:
-                        new[ic] = count
-                    if isp is not None:
-                        new[isp] = future
-                    existing.append(new)
-                    touched += 1
-                with open(out, "w", newline="") as f:
-                    w = csv.writer(f)
-                    w.writerow(header)
-                    w.writerows(existing)
-                print("External targets: merged %d row(s), %d stations preserved -> %s"
-                      % (touched, len(existing), out))
-            else:
-                with open(out, "w", newline="") as f:
-                    w = csv.writer(f)
-                    w.writerow(["interstate", "ext_zone_id", "base_count_2024",
-                                "future_target_or_growth"])
-                    for zone in mine:
-                        name, count, future = mine[zone]
-                        w.writerow([name, zone, count, future])
-                print("External targets: wrote %d row(s) -> %s" % (len(mine), out))
-        except Exception as e:
-            print("Could not write external targets: %s" % e)
-
     def update_settings(self):
         settings = Config()
         settings.set("LDT_resident_InputDir", self.lineEdit_InputDir.text())
@@ -555,15 +319,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         settings.set("LDT_visitor_SynHH", self.lineEdit_LDTSynHH.text())
         settings.set("scenarioDir", self.lineEdit_OutDir.text())
 
-        settings.set("ldt_ext_calibrate", self.checkBox_extCalib.isChecked())
-        settings.set("ldt_ext_mode", "grow" if self.radio_extGrow.isChecked() else "base")
-
-        # Save the external-station overwrite table (zone / base count / future)
-        for row in range(self.table.rowCount()):
-            name = self.table.verticalHeaderItem(row).text()
-            settings.set(f"{name}_Zone", self.table.item(row, 0).text() if self.table.item(row, 0) else "")
-            settings.set(f"{name}_Count", self.table.item(row, 1).text() if self.table.item(row, 1) else "")
-            settings.set(f"{name}_Future", self.table.item(row, 2).text() if self.table.item(row, 2) else "")
+        # ldt_ext_calibrate / ldt_ext_mode and the station table are written by
+        # the agentPlans / Trip List dialog, which owns the calibration now.
 
         # settings.set("LDTFutureYear", self.lineEdit_futYear.text())
         if settings.get("LDT_visitor_nHH") != self.lineEdit_NumHH.text():
@@ -824,9 +581,6 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             "COEFF_TOML_DIR" : LDT_Parameters
         }
         self.template_keys_update(ldt_vis_template, replacements, properties_file)
-
-        # Persist the external-station overwrite targets for the downstream step.
-        self._persist_external_targets()
 
         ldt_exe = settings.app_exe("ldt/ldt-run.exe")
         if not os.path.exists(ldt_exe):
