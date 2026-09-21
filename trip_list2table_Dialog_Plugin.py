@@ -121,6 +121,14 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         # External-station calibration (moved here from the LDT Visitor dialog).
         self._build_ext_calibration()
 
+        # ELToD hourly OD table. The template used to hardcode
+        # write_hourly_table=true, so EVERY run wrote ELTOD_tt_HourClock.csv
+        # whether or not anything downstream wanted it. It is opt-in now; the
+        # "Build trip table (hourly)" button still forces it for one run.
+        self.checkBox_ELToD.setChecked(
+            str(settings.get("write_hourly_table")).lower() in ("true", "1", "yes"))
+        self._force_hourly = False
+
     # ------------------------------------------------------------------
     # External-station target calibration
     # ------------------------------------------------------------------
@@ -586,6 +594,7 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
         settings.set("ldt_ext_calibrate", self.checkBox_extCalib.isChecked())
         settings.set("ldt_ext_mode", "grow" if self.radio_extGrow.isChecked() else "base")
         settings.set("ldt_ext_master", self.lineEdit_ExtMaster.text().strip())
+        settings.set("write_hourly_table", self.checkBox_ELToD.isChecked())
         for row in range(self.table.rowCount()):
             name = self.table.verticalHeaderItem(row).text()
             for col, key in ((0, "Zone"), (1, "Count"), (2, "Future")):
@@ -616,7 +625,11 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
         agentPlans tool. agentPlans always writes the hourly ELToD OD table
         (ELTOD_tt_HourClock.csv) on a run; the trip-list resolution above does
         not apply to it."""
-        ok = self.run_trip_table(show_message=False)
+        self._force_hourly = True
+        try:
+            ok = self.run_trip_table(show_message=False)
+        finally:
+            self._force_hourly = False
         if ok:
             scen = (Config().get("scenarioDir") or "").replace("\\", "/")
             QMessageBox.information(
@@ -725,6 +738,11 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
             "feedback_loop": feedback_loop,
             "output_resolution": output_resolution,
             "trip_table_out": trip_out,
+            # Hourly ELToD OD table: opt-in on the ELToD tab, or forced for a
+            # single run by the "Build trip table (hourly)" button.
+            "write_hourly_table":
+                "true" if (self.checkBox_ELToD.isChecked()
+                           or getattr(self, "_force_hourly", False)) else "false",
             # External-station target calibration. ext_station_* must match the
             # ext_zone_id values in ldt_external_targets.csv, which the block above
             # just wrote. Read from the checkbox on THIS dialog rather than a

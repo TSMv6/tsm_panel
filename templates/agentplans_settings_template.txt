@@ -40,7 +40,10 @@ sdt_syn_hh           = {sdt_syn_hh}
 #                     HH:00) -- same as the original R 3_get_ELTOD output.
 trip_table_out   = {trip_table_out}
 hourly_table_out = {scenario_dir}/ELTOD_tt_HourClock.csv
-write_hourly_table = true
+write_hourly_table = {write_hourly_table}
+# ELTOD_SDT_Res_hourly.csv (resident purpose*VOT OD) was a calibration
+# artifact; it is derivable from the trip list, so it is off unless asked for.
+write_sdt_res_hourly = false
 
 # --- external-station target calibration ---
 # Scales OD trips serving each ext_zone_id to target / modeled. The targets file
