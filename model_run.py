@@ -209,10 +209,15 @@ _RUN_CONSOLE = None  # Popen of the live-tail window, so end_run_console() can c
 
 
 def _close_console_proc(proc):
-    """Terminate a live-tail console process, which closes its window. terminate()
-    alone can silently fail on a console-attached powershell (leaves the run-log
-    window lingering after the run), so escalate: terminate -> kill -> taskkill
-    of the whole tree by pid."""
+    """Terminate a live-tail console process AND its console window.
+
+    Killing the powershell process alone is not enough to guarantee the window
+    goes away: on Windows the console window is owned by a conhost.exe CHILD of
+    the console application, and if conhost outlives the process it was hosting
+    (it does, intermittently, when the pipeline is blocked in `Get-Content
+    -Wait`) the black window stays on screen after the run finished. So always
+    tree-kill by pid -- taskkill /T takes conhost with it -- rather than only
+    falling back to it when terminate() left the process alive."""
     if proc is None:
         return
     try:
@@ -228,10 +233,11 @@ def _close_console_proc(proc):
                 proc.wait(timeout=2)
             except Exception:
                 pass
-        if proc.poll() is None:
-            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                           capture_output=True)
+        # Unconditional tree kill: reaps conhost (the window) even when the
+        # powershell process itself already exited cleanly.
+        subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                       capture_output=True)
     except Exception:
         pass
 

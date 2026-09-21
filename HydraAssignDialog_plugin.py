@@ -4,7 +4,8 @@ from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model, begin_run_console, closes_run_console
+from .model_run import (run_gated_model, begin_run_console, end_run_console,
+                        closes_run_console)
 
 from .hydra_ui import Ui_DialogHydra
 
@@ -103,8 +104,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # reopening. Cancel is the only thing that closes.
         self.buttonBox.accepted.connect(lambda: self.update_settings(notify=True))
         self.buttonBox.rejected.connect(self.reject)
-        # No preselected engine: Run stays disabled until the active tab has its
-        # flow model / solver chosen, so the run mode is always deliberate.
+        # No preselected engine: Run stays disabled until at least ONE tab has its
+        # flow model / solver chosen, so the run mode is always deliberate. With
+        # both filled in, Run asks which engine to use (see _choose_engine).
         self.tabWidget_Engine.currentChanged.connect(self._refresh_run_enabled)
         self.comboBox_Macro.currentIndexChanged.connect(self._refresh_run_enabled)
         self.comboBox_StaMethod.currentIndexChanged.connect(self._refresh_run_enabled)
@@ -207,15 +209,73 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         """True when the STA tab is the active engine."""
         return self.tabWidget_Engine.currentWidget() is self.page_STA
 
+    def _dta_ready(self):
+        """True when the DTA tab carries a run mode (flow model)."""
+        return self.comboBox_Macro.currentIndex() >= 0
+
+    def _sta_ready(self):
+        """True when the STA tab carries a solver."""
+        return self.comboBox_StaMethod.currentIndex() >= 0
+
+    def _choose_engine(self):
+        """Which engine this run uses: "DTA", "STA", or None to abort.
+
+        The two tabs are independent specifications and BOTH are saved, so the
+        visible tab is not evidence of intent -- filling in STA and then
+        flicking back to DTA to re-read a value used to silently run a DTA
+        assignment. When both tabs are filled in, ask; when only one is, that
+        one is the answer and no dialog appears.
+        """
+        dta, sta = self._dta_ready(), self._sta_ready()
+        if dta and not sta:
+            return "DTA"
+        if sta and not dta:
+            return "STA"
+        if not (dta or sta):
+            QMessageBox.critical(self, "No engine selected",
+                                 "Pick a Run Mode (flow model) on the DTA tab or a "
+                                 "solver on the STA tab before running.")
+            return None
+        # Both specified: ask, defaulting to the tab on screen.
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle("Which assignment should run?")
+        box.setText("Both engines are configured for this scenario.\n\n"
+                    "Which one should this run use?")
+        box.setInformativeText(
+            "DTA (dynamic): %s\nSTA (static): %s\n\n"
+            "Both specifications stay saved either way; only the selected one "
+            "is written to the HyDRA control file."
+            % (self.comboBox_Macro.currentText(), self.comboBox_StaMethod.currentText()))
+        b_dta = box.addButton("Run DTA (dynamic)", QMessageBox.ButtonRole.AcceptRole)
+        b_sta = box.addButton("Run STA (static)", QMessageBox.ButtonRole.AcceptRole)
+        b_cancel = box.addButton(QMessageBox.StandardButton.Cancel)
+        box.setDefaultButton(b_sta if self._is_sta() else b_dta)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is None or clicked == b_cancel:
+            return None
+        return "STA" if clicked == b_sta else "DTA"
+
+    def _default_engine(self):
+        """Engine recorded by Save when the run has not picked one: the visible
+        tab, unless it is the empty one and the other tab is filled in (saving
+        an STA specification must not leave hydra_engine reading "DTA")."""
+        sta = self._is_sta()
+        if sta and not self._sta_ready() and self._dta_ready():
+            return "DTA"
+        if not sta and not self._dta_ready() and self._sta_ready():
+            return "STA"
+        return "STA" if sta else "DTA"
+
     def _refresh_run_enabled(self, *_):
-        """Run is available only once the active tab's engine is chosen."""
-        chosen = (self.comboBox_StaMethod.currentIndex() >= 0 if self._is_sta()
-                  else self.comboBox_Macro.currentIndex() >= 0)
-        self.run_Hydra.setEnabled(chosen)
+        """Run is available once EITHER tab's engine is chosen (the run asks which
+        one when both are)."""
+        ready = self._dta_ready() or self._sta_ready()
+        self.run_Hydra.setEnabled(ready)
         self.run_Hydra.setToolTip(
-            "" if chosen else
-            ("Pick a solver on the STA tab first." if self._is_sta()
-             else "Pick a Run Mode (flow model) on the DTA tab first."))
+            "" if ready else
+            "Pick a Run Mode (flow model) on the DTA tab, or a solver on the STA tab.")
 
     # ------------------------------------------------------------------
     def _load_help_doc(self, md_path):
@@ -264,13 +324,14 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         converged result. The split mirrors the runs of record: for 15
         iterations it reproduces "1-4:25, 5-8:50, 9-15:100" exactly.
 
-        Defaults to the DTA widgets; the STA tab passes its own so both tabs
+        Defaults to the DTA widgets; the STA tab passes its own -- including
+        its own iteration count, which used to be picked by the VISIBLE tab and
+        so staged an STA run against the DTA iteration count -- and both tabs
         share this logic rather than duplicating the staging arithmetic.
         """
         mode_combo = mode_combo or self.comboBox_SampleSchedule
         custom_edit = custom_edit or self.lineEdit_SampleSchedule
-        iters_edit = iters_edit or (self.lineEdit_StaIters if self._is_sta()
-                                   else self.lineEdit_Iters)
+        iters_edit = iters_edit or self.lineEdit_Iters
         mode = mode_combo.currentText()
         if mode.startswith("Custom"):
             return custom_edit.text().strip()
@@ -287,6 +348,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if b >= iters:                             # too few iterations to stage
             return ""
         return "1-%d:25, %d-%d:50, %d-%d:100" % (a, a + 1, b, b + 1, iters)
+
+    def _agent_paths_on(self, sta):
+        """WRITE_AGENT_PATHS for the engine actually being run. Each tab carries
+        its own toggle, so the DTA checkbox must not speak for an STA run."""
+        return (self.checkBox_StaAgentPaths if sta
+                else self.checkBox_AgentPaths).isChecked()
 
     def toggle_micro(self, on):
         self.lineEdit_MicroFtypes.setEnabled(on)
@@ -333,16 +400,29 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if text and text in [combo.itemText(i) for i in range(combo.count())]:
             combo.setCurrentText(text)
 
-    def update_settings(self, notify=True):
+    def update_settings(self, notify=True, engine=None):
         """Persist the dialog to the scenario settings.
+
+        BOTH tabs are always written: the DTA and the STA specification are
+        independent and a scenario keeps whichever of them the user filled in,
+        regardless of which tab happens to be on screen. Only `hydra_engine`
+        records which of the two a run uses.
 
         notify=False is used by run_hydra, which saves before launching: a run
         must never use values that differ from what is on screen, but it should
         not pop a "settings updated" box on the way to starting.
+
+        engine ("DTA"/"STA") overrides the saved selection. run_hydra passes the
+        engine the user actually picked, so the control file and the persisted
+        hydra_engine can never disagree; Save (no override) records the tab in
+        front of the user.
         """
         settings = Config()
-        # Which engine tab is authoritative for this scenario.
-        settings.set("hydra_engine", "STA" if self._is_sta() else "DTA")
+        # Which engine this scenario runs. Both tabs stay saved either way; the
+        # two _configured flags say which specifications are actually filled in.
+        settings.set("hydra_engine", engine or self._default_engine())
+        settings.set("hydra_dta_configured", self._dta_ready())
+        settings.set("hydra_sta_configured", self._sta_ready())
         # Equilibrium / run mode
         settings.set("hydra_macro", self.comboBox_Macro.currentText())
         settings.set("hydra_iters", self.lineEdit_Iters.text())
@@ -404,10 +484,22 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
     # ------------------------------------------------------------------
     @closes_run_console
     def run_hydra(self, show_message=False):
-        # Save first, always: a run must use exactly what is on screen. Silent,
-        # so starting a run does not require dismissing a dialog.
-        self.update_settings(notify=False)
         settings = Config()
+        # Which engine runs is decided FIRST, and explicitly -- never inferred
+        # from whichever tab happens to be visible. A full run never stops to
+        # ask: it uses the engine the scenario was saved with.
+        if settings.full_run_active():
+            engine = (settings.get("hydra_engine") or "").upper()
+            if engine not in ("DTA", "STA"):
+                engine = self._default_engine()
+        else:
+            engine = self._choose_engine()
+            if engine is None:
+                return False
+        # Save next, always: a run must use exactly what is on screen, and both
+        # tab specifications are persisted along with the engine just chosen.
+        # Silent, so starting a run does not require dismissing a dialog.
+        self.update_settings(notify=False, engine=engine)
         tsm_location = settings.get("tsm_location")
 
         link_layer = self.comboBox_LinkLayer.currentData()
@@ -425,7 +517,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # One live-tail window for the whole Hydra run (no per-step black windows).
         begin_run_console(os.path.join(out_dir, "Hydra.log"), "AgentFlow / Hydra - run log")
 
-        sta = self._is_sta()
+        sta = (engine == "STA")
         if sta:
             # Static assignment: one flow model, and none of the DTA physics
             # controls apply (see _write_sta_ctl).
@@ -465,7 +557,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             if not self._write_sta_ctl(ctl, node_csv, link_csv, trip_file, out_dir,
                                        toll_policy):
                 return False
-            return self._launch_afdta(afdta, ctl, out_dir, link_path, show_message)
+            return self._launch_afdta(afdta, ctl, out_dir, link_path, show_message,
+                                      label="HyDRA (AgentFlow-STA)")
         try:
             with open(ctl, "w") as f:
                 f.write("# AgentFlow DTA control - generated by the HyDRA dialog\n")
@@ -589,7 +682,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # it here -- the authoritative place to know the pairing is broken (a
         # timestamp check can't: the index may legitimately be built later).
         # Agent Analysis offers to rebuild it on demand, so nothing is lost.
-        if self.checkBox_AgentPaths.isChecked():
+        if self._agent_paths_on(sta):
             stale_idx = os.path.join(out_dir, "agentPaths_index.duckdb")
             if os.path.exists(stale_idx):
                 try:
@@ -601,28 +694,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                                         "(in use?). Delete it before running Agent Analysis "
                                         "on the new results:\n%s" % e)
 
-        hydra_log = os.path.join(out_dir, "Hydra.log")
-        print(f"afdta   : {afdta}")
-        print(f"control : {ctl}")
-        print(f"log     : {hydra_log}")
-        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA (AgentFlow-DTA)",
-                               log_path=hydra_log, console=True):
-            return False
-
-        # Loaded network: run summarize.exe on the link-performance outputs so
-        # every HyDRA run ends with loaded_network.gpkg/_daily.csv ready to map.
-        loaded_note = ""
-        try:
-            gp = self._auto_summarize(out_dir, link_path)
-            loaded_note = f"\nLoaded network: {gp}" if gp else \
-                          "\n(loaded-network summary failed - see summarize_hydra_run.log)"
-        except Exception as e:
-            loaded_note = f"\n(loaded-network summary failed: {e})"
-
-        if show_message:
-            QMessageBox.information(self, "Success",
-                                    f"HyDRA (AgentFlow-DTA) completed.\n\nOutputs in: {out_dir}{loaded_note}")
-        return True
+        # Same launch path as STA, so both engines behave identically from here
+        # (run, summarize, close the run-log window, then report).
+        return self._launch_afdta(afdta, ctl, out_dir, link_path, show_message,
+                                  label="HyDRA (AgentFlow-DTA)")
 
     # ------------------------------------------------------------------
     def _write_sta_ctl(self, ctl, node_csv, link_csv, trip_file, out_dir, toll_policy):
@@ -667,7 +742,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write(f"MAX_TRIPS              {self.lineEdit_StaMaxTrips.text().strip() or '0'}\n")
                 f.write(f"SAMPLE_EVERY           {self.lineEdit_StaSampleEvery.text().strip() or '1'}\n")
                 sched = self._sample_schedule_value(
-                    self.comboBox_StaSampleSchedule, self.lineEdit_StaSampleSchedule)
+                    self.comboBox_StaSampleSchedule, self.lineEdit_StaSampleSchedule,
+                    self.lineEdit_StaIters)
                 if sched:
                     f.write(f"SAMPLE_SCHEDULE        {sched}\n")
                 if self.checkBox_StaCheckpoint.isChecked():
@@ -684,15 +760,25 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         return True
 
     # ------------------------------------------------------------------
-    def _launch_afdta(self, afdta, ctl, out_dir, link_path, show_message):
+    def _launch_afdta(self, afdta, ctl, out_dir, link_path, show_message,
+                      label="HyDRA (AgentFlow-DTA)"):
         """Run afdta on a written control file and summarise the loaded network.
-        Shared by the DTA and STA paths so both behave identically from here."""
+        Shared by the DTA and STA paths so both behave identically from here.
+
+        The live-tail run-log window is closed HERE, before any completion or
+        failure box, instead of being left to the @closes_run_console decorator
+        on the way out: the decorator only fires once the modal box has been
+        dismissed, so the black window sat on screen for exactly as long as the
+        "HyDRA completed" dialog did -- which reads as a window that never
+        closes. Closing it twice is harmless (end_run_console is idempotent).
+        """
         hydra_log = os.path.join(out_dir, "Hydra.log")
         print(f"afdta   : {afdta}")
         print(f"control : {ctl}")
         print(f"log     : {hydra_log}")
-        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA (AgentFlow-DTA)",
+        if not run_gated_model(self, [afdta, "--control", ctl], label,
                                log_path=hydra_log, console=True):
+            end_run_console()
             return False
         loaded_note = ""
         try:
@@ -701,9 +787,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                           "\n(loaded-network summary failed - see summarize_hydra_run.log)"
         except Exception as e:
             loaded_note = f"\n(loaded-network summary failed: {e})"
+        # Every step that streams into the run log has finished -- close the
+        # live-tail window now, not after the user dismisses the box below.
+        end_run_console()
         if show_message:
             QMessageBox.information(self, "Success",
-                                    f"HyDRA completed.\n\nOutputs in: {out_dir}{loaded_note}")
+                                    f"{label} completed.\n\nOutputs in: {out_dir}{loaded_note}")
         return True
 
     def _auto_summarize(self, out_dir, link_path):
