@@ -214,14 +214,18 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
             state = "will be updated" if os.path.exists(out) else "will be created"
             msg = "Writes %s (%s) at run time." % (out, state)
             master = self.lineEdit_ExtMaster.text().strip()
-            if not os.path.exists(out) and not (master and os.path.exists(master)):
-                # Without a master to seed from, only the three rows in the table
-                # are written and the other ~57 crossings lose their calibration.
-                msg += ("  No master targets file - ONLY the three interstates "
-                        "below will be calibrated.")
+            if master and os.path.exists(master):
+                msg += "  Every other station comes from the master file."
+                self.label_ExtTargetPath.setStyleSheet("color:#157f1f;")
+            elif os.path.exists(out):
+                msg += ("  No master file - the scenario's existing file supplies "
+                        "the other stations.")
                 self.label_ExtTargetPath.setStyleSheet("color:#b9770e;")
             else:
-                self.label_ExtTargetPath.setStyleSheet("color:#157f1f;")
+                # Nothing to supply the other ~57 crossings: they lose calibration.
+                msg += ("  No master file - ONLY the three interstates below will "
+                        "be calibrated.")
+                self.label_ExtTargetPath.setStyleSheet("color:#b9770e;")
             self.label_ExtTargetPath.setText(msg)
 
     def _persist_external_targets(self, scen=None):
@@ -270,25 +274,25 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
             print("External targets: nothing written (no row carries a zone id)")
             return False
 
-        # Seed a scenario that has no targets file from the curated master, so the
-        # ~57 non-interstate stations keep their counts instead of vanishing.
-        seeded_from = ""
-        if not os.path.exists(out):
-            master = self.lineEdit_ExtMaster.text().strip().replace("\\", "/")
-            if master and os.path.exists(master) and \
-                    os.path.abspath(master) != os.path.abspath(out):
-                try:
-                    os.makedirs(os.path.dirname(out), exist_ok=True)
-                    shutil.copyfile(master, out)
-                    seeded_from = master
-                except OSError as e:
-                    print("External targets: could not seed from %s: %s" % (master, e))
+        # The master is the BASE FOR EVERY RUN, not a one-off seed: it carries all
+        # ~60 crossings and the GUI rows below are the only overrides on top of it
+        # ("use the master for all externals except the ones specified here"). A
+        # stale scenario copy -- e.g. a three-row file left by an older run, or one
+        # merged against a superseded master -- therefore cannot quietly survive
+        # and starve the other stations.
+        #
+        # Falling back to the scenario's own file when no master is configured
+        # keeps a hand-curated per-scenario file working.
+        master = self.lineEdit_ExtMaster.text().strip().replace("\\", "/")
+        use_master = bool(master) and os.path.exists(master) and \
+            os.path.abspath(master) != os.path.abspath(out)
+        base = master if use_master else out
 
         try:
             header = None
             existing = []
-            if os.path.exists(out):
-                with open(out, newline="") as f:
+            if os.path.exists(base):
+                with open(base, newline="") as f:
                     rd = csv.reader(f)
                     header = next(rd, None)
                     for r in rd:
@@ -334,13 +338,15 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
                         new[isp] = future
                     existing.append(new)
                     touched += 1
+                os.makedirs(os.path.dirname(out), exist_ok=True)
                 with open(out, "w", newline="") as f:
                     w = csv.writer(f)
                     w.writerow(header)
                     w.writerows(existing)
-                print("External targets: merged %d row(s), %d stations total -> %s%s"
-                      % (touched, len(existing), out,
-                         (" (seeded from %s)" % seeded_from) if seeded_from else ""))
+                print("External targets: %d GUI row(s) merged over %s, "
+                      "%d stations total -> %s"
+                      % (touched, ("master " + master) if use_master
+                         else "the scenario's own file", len(existing), out))
             else:
                 with open(out, "w", newline="") as f:
                     w = csv.writer(f)
