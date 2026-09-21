@@ -62,7 +62,6 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
  
         # Connect the buttons to the functions
         self.pushButton_ModelDir.clicked.connect(lambda: self.select_directory(self.lineEdit_TSMLoc))
-        self.pushButton_ScenDir.clicked.connect(lambda: self.select_directory(self.lineEdit_SCENLoc))
         self.browse_TripTable.clicked.connect(lambda: self.select_file(self.lineEdit_triptable, "save"))
 
         self.pushButton_RunTT.clicked.connect(lambda: self.run_trip_table(show_message=True))
@@ -70,8 +69,10 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         self.button_SaveCancel.accepted.connect(self.update_settings)
         self.button_SaveCancel.rejected.connect(self.cancel_action)
 
-        self.comboBox_Year.addItems(["2023", "2024", "2025", "2030", "2035", "2040", "2045", "2050", "2055", "2060"])
-        self.comboBox_Year.setCurrentIndex(0)
+        # Scenario directory and scenario year are NOT edited here: Project /
+        # Scenario Settings owns both, and the run already reads them from
+        # Config. Having a second copy on this dialog meant the value the run
+        # used could differ from the value on screen.
         self.comboBox_Feedback.addItems(["1", "2", "3"])
         self.comboBox_Feedback.setCurrentIndex(0)
         # Output (temporal) resolution of the trip list, per agentPlans (15 or 30 min).
@@ -85,10 +86,6 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         settings = Config()
         if settings.get("tsm_location"):
             self.lineEdit_TSMLoc.setText(settings.get("tsm_location"))
-        if settings.get("scenarioDir"):
-            self.lineEdit_SCENLoc.setText(settings.get("scenarioDir"))
-        if settings.get("scenarioYear"):
-            self.comboBox_Year.setCurrentText(settings.get("scenarioYear"))
         if settings.get("feedback"):
             self.comboBox_Feedback.setCurrentText(settings.get("feedback"))
         if settings.get("output_resolution"):
@@ -121,6 +118,13 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         # External-station calibration (moved here from the LDT Visitor dialog).
         self._build_ext_calibration()
 
+        # A QTabWidget reserves the height of its TALLEST page, so the short
+        # tabs (MSR, ELToD) sat in a frame sized for External stations with a
+        # band of dead space underneath. Give every hidden page an Ignored
+        # vertical policy so the frame follows the page actually on screen.
+        self.tabWidget_Options.currentChanged.connect(self._fit_tab_height)
+        self._fit_tab_height(self.tabWidget_Options.currentIndex())
+
         # ELToD hourly OD table. The template used to hardcode
         # write_hourly_table=true, so EVERY run wrote ELTOD_tt_HourClock.csv
         # whether or not anything downstream wanted it. It is opt-in now; the
@@ -128,6 +132,23 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         self.checkBox_ELToD.setChecked(
             str(settings.get("write_hourly_table")).lower() in ("true", "1", "yes"))
         self._force_hourly = False
+
+    def _fit_tab_height(self, index):
+        """Size the tab frame to the visible page, not to the tallest one.
+
+        A QTabWidget reserves the height of its TALLEST page, so MSR (120px) and
+        ELToD (147px) sat in a frame sized for External stations (293px) with a
+        band of dead space underneath. The usual fix -- giving hidden pages an
+        Ignored size policy -- does nothing here: QStackedLayout::sizeHint takes
+        the max over every page without consulting their policies. Capping the
+        frame's maximum height to the page on screen is what actually shrinks it.
+        """
+        tabs = self.tabWidget_Options
+        page = tabs.widget(index)
+        if page is None:
+            return
+        tabs.setMaximumHeight(page.sizeHint().height()
+                              + tabs.tabBar().sizeHint().height() + 12)
 
     # ------------------------------------------------------------------
     # External-station target calibration
@@ -160,7 +181,6 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         self.lineEdit_ExtMaster.textChanged.connect(lambda _: self._sync_ext_enabled())
         self.checkBox_extCalib.toggled.connect(lambda _: self._sync_ext_enabled())
         self.radio_extBase.toggled.connect(lambda _: self._sync_ext_enabled())
-        self.lineEdit_SCENLoc.textChanged.connect(lambda _: self._sync_ext_enabled())
 
         # Restore saved state. Absent setting => OFF (opt-in), so an existing
         # scenario does not silently start scaling externals on the next run.
@@ -173,6 +193,16 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         self.lineEdit_ExtMaster.setText(
             (settings.get("ldt_ext_master") or self._default_ext_master()).replace("\\", "/"))
         self._sync_ext_enabled()
+
+    @staticmethod
+    def _scen_dir():
+        """Scenario directory for this run, from Project / Scenario Settings.
+
+        The dialog used to carry its own Scenario Dir field; the run read
+        Config either way, so an edit here that was not saved produced a control
+        file pointing somewhere else. One source now.
+        """
+        return (Config().get("scenarioDir") or "").replace("\\", "/")
 
     @staticmethod
     def _default_ext_master():
@@ -189,8 +219,7 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         is told to look for it. The UI preview (scen=None) falls back to the
         dialog's own field, which is what Save will store.
         """
-        scen = (scen if scen is not None
-                else self.lineEdit_SCENLoc.text()).strip().replace("\\", "/")
+        scen = (scen if scen is not None else self._scen_dir()).strip().replace("\\", "/")
         return (scen.rstrip("/") + "/ldt_external_targets.csv") if scen else ""
 
     def _sync_ext_enabled(self):
@@ -235,6 +264,9 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
                         "be calibrated.")
                 self.label_ExtTargetPath.setStyleSheet("color:#b9770e;")
             self.label_ExtTargetPath.setText(msg)
+        # That label wraps, so its height can change; re-fit the tab frame.
+        if hasattr(self, "_fit_tab_height"):
+            self._fit_tab_height(self.tabWidget_Options.currentIndex())
 
     def _persist_external_targets(self, scen=None):
         """Write <scenarioDir>/ldt_external_targets.csv for this run.
@@ -378,7 +410,7 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         INPUTS only: SDT/LDT demand and the synthetic households.
         Distribution/lookup files are configs, not inputs -- see
         _config_distributions(). The key matches the agentPlans control key."""
-        scen = self.lineEdit_SCENLoc.text().replace("\\", "/")
+        scen = self._scen_dir()
         loop = self.comboBox_Feedback.currentText() or "1"
         syn_hh = (Config().get("synHH_file") or "").replace("\\", "/")
 
@@ -579,8 +611,7 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
     def update_settings(self):
         settings = Config()
         settings.set("tsm_location", self.lineEdit_TSMLoc.text())
-        settings.set("scenarioDir", self.lineEdit_SCENLoc.text())
-        settings.set("scenarioYear", self.comboBox_Year.currentText())
+        # scenarioDir / scenarioYear belong to Project / Scenario Settings.
         settings.set("feedback", self.comboBox_Feedback.currentText())
         settings.set("output_resolution", self.comboBox_Resolution.currentText())
         # settings.set("ldtIncremental", self.checkBox_LDTIcrement.isChecked())
