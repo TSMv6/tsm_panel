@@ -127,6 +127,67 @@ def _browse_row(parent, label, mode="open", filt="All Files (*)", key=None):
     return lay, edit
 
 
+# FTYPE 51 is the centroid connector (agentflow-dta tsm_network_reader.cpp
+# FTYPE_CONNECTOR). A connector is an abstraction, not a road: half of one
+# carries no meaning, so a connector whose far end sits outside the subarea is
+# dropped rather than clipped. A real link is kept whole even when it only
+# clips the boundary, because dropping it would break the path through it.
+FTYPE_CONNECTOR = 51
+
+
+def _drop_layers_for(path):
+    """Remove any loaded layer reading `path`, and return how many went.
+
+    GDAL cannot rewrite a GeoPackage that QGIS still holds open, so a second
+    run silently failed to overwrite the first run's output. Matching on the
+    resolved filename (not the layer name) catches the copy the user renamed.
+    """
+    if not path:
+        return 0
+    try:
+        from qgis.core import QgsProject
+    except Exception:
+        return 0
+    target = os.path.normcase(os.path.abspath(path.replace("/", os.sep)))
+    proj = QgsProject.instance()
+    gone = 0
+    for lyr in list(proj.mapLayers().values()):
+        try:
+            src = lyr.source().split("|")[0]
+            if os.path.normcase(os.path.abspath(src)) == target:
+                proj.removeMapLayer(lyr.id())
+                gone += 1
+        except Exception:
+            continue
+    if gone:
+        # Release the file handles before the writer opens the same path.
+        try:
+            import gc
+            from qgis.PyQt.QtWidgets import QApplication
+            gc.collect(); QApplication.processEvents(); gc.collect()
+        except Exception:
+            pass
+        _log("dropped %d loaded layer(s) reading %s" % (gone, path))
+    return gone
+
+
+def _add_layer(path, name):
+    """Load a written GPKG into the project. Returns True when it loaded."""
+    if not path or not os.path.exists(path):
+        return False
+    try:
+        from qgis.core import QgsProject, QgsVectorLayer
+        lyr = QgsVectorLayer(path, name, "ogr")
+        if lyr.isValid():
+            QgsProject.instance().addMapLayer(lyr)
+            _log("loaded layer %s <- %s" % (name, path))
+            return True
+        _log("layer %s did not load from %s" % (name, path))
+    except Exception as e:
+        _log("could not load %s: %s" % (path, e))
+    return False
+
+
 def _log(msg):
     tsm_history.log_action(msg, "agentAnalysis")
 
@@ -332,6 +393,40 @@ def _tab_trace(dlg):
     return w
 
 
+def _subarea_external_nodes(trips_path, inside_ids):
+    """Node ids the subarea trip list references from OUTSIDE the boundary.
+
+    agentAnalysis rewrites an IE/EI/EE trip's O or D to the first node beyond
+    the boundary on the crossing link, so those ids are real and load-bearing
+    but are not among the nodes inside. Read them back off the emitted trip
+    list rather than recomputing the geometry -- the engine already decided
+    which crossing node each trip uses, and guessing again could disagree.
+    """
+    import csv as _csv
+    import gzip
+    ext = set()
+    if not trips_path or not os.path.exists(trips_path):
+        return ext
+    try:
+        op = gzip.open if trips_path.lower().endswith(".gz") else open
+        with op(trips_path, "rt", newline="") as f:
+            rd = _csv.DictReader(f)
+            for row in rd:
+                for k in ("O", "D"):
+                    v = row.get(k)
+                    if v in (None, ""):
+                        continue
+                    try:
+                        n = int(float(v))
+                    except ValueError:
+                        continue
+                    if n not in inside_ids:
+                        ext.add(n)
+    except (OSError, ValueError) as e:
+        _log("Subarea: could not read %s for external nodes: %s" % (trips_path, e))
+    return ext
+
+
 def _tab_subarea(dlg):
     """Boundary and land use come from LOADED GPKG LAYERS (dropdowns); the
     interior-node CSV the CLI needs (network nodes + zone centroids inside the
@@ -404,15 +499,48 @@ def _tab_subarea(dlg):
                     cw.writerow([int(feat[zi])])
             _log("Subarea: %d nodes + %d zone centroids inside boundary -> %s"
                  % (sel_nodes.featureCount(), sel_zones.featureCount(), nodes_csv))
-            # 3) clipped link / node gpkg outputs
+            # 3) subarea links. Two different rules, because a centroid
+            #    connector is an abstraction rather than a road:
+            #      real links  -- keep the WHOLE link if it touches the boundary
+            #                     (predicate 0 = intersects). Clipping one would
+            #                     leave a path through it with a missing piece.
+            #      connectors  -- keep only if WHOLLY within (predicate 6). Half
+            #                     a connector loads a centroid that is not in
+            #                     the subarea, which is why they were appearing
+            #                     as stray stubs across the boundary.
             if w.out_links.text():
-                processing.run("native:extractbylocation",
+                touching = processing.run("native:extractbylocation",
                     {"INPUT": links_lyr, "PREDICATE": [0], "INTERSECT": boundary,
-                     "OUTPUT": w.out_links.text()})
-            if w.out_nodes.text():
-                processing.run("native:extractbylocation",
-                    {"INPUT": nodes_lyr, "PREDICATE": [0], "INTERSECT": boundary,
-                     "OUTPUT": w.out_nodes.text()})
+                     "OUTPUT": "memory:sub_links_touch"})["OUTPUT"]
+                inside = processing.run("native:extractbylocation",
+                    {"INPUT": links_lyr, "PREDICATE": [6], "INTERSECT": boundary,
+                     "OUTPUT": "memory:sub_links_in"})["OUTPUT"]
+                lf_names = [f.name().upper() for f in touching.fields()]
+                fi = lf_names.index("FTYPE") if "FTYPE" in lf_names else -1
+                keep_ids = set()
+                if fi >= 0:
+                    whole = set()
+                    for feat in inside.getFeatures():
+                        whole.add(feat.id())
+                    for feat in touching.getFeatures():
+                        try:
+                            is_conn = int(feat[fi]) == FTYPE_CONNECTOR
+                        except (TypeError, ValueError):
+                            is_conn = False
+                        if not is_conn or feat.id() in whole:
+                            keep_ids.add(feat.id())
+                    dropped = touching.featureCount() - len(keep_ids)
+                else:
+                    keep_ids = {f.id() for f in touching.getFeatures()}
+                    dropped = 0
+                    _log("Subarea: link layer has no FTYPE column - centroid "
+                         "connectors could not be filtered")
+                touching.selectByIds(sorted(keep_ids))
+                _drop_layers_for(w.out_links.text())
+                processing.run("native:saveselectedfeatures",
+                    {"INPUT": touching, "OUTPUT": w.out_links.text()})
+                _log("Subarea: %d links kept, %d part-outside centroid "
+                     "connectors dropped" % (len(keep_ids), dropped))
         except Exception as e:
             QMessageBox.critical(dlg, "Subarea", "Boundary processing failed:\n%s" % e)
             return
@@ -429,14 +557,53 @@ def _tab_subarea(dlg):
                 "--links", links_csv,
                 "--out", w.out_trips.text()]
         r = _run(args, "agentAnalysis_subarea.log")
-        if r.returncode == 0:
-            QMessageBox.information(dlg, "Subarea",
-                "Subarea outputs written:\n%s\n%s\n%s" % (
-                    w.out_links.text() or "(links skipped)",
-                    w.out_nodes.text() or "(nodes skipped)",
-                    w.out_trips.text()))
-        else:
+        if r.returncode != 0:
             QMessageBox.critical(dlg, "Subarea", "agentAnalysis subarea failed - see History log.")
+            return
+
+        # 4) subarea nodes = the nodes inside the boundary PLUS the external
+        #    nodes the extraction just introduced. IE/EI/EE trips have their O
+        #    or D rewritten to the first node OUTSIDE the boundary, so those
+        #    ids are referenced by the trip list but sit outside it -- they were
+        #    missing from the node layer, leaving the trip list pointing at
+        #    nodes the subarea network did not contain.
+        n_ext = 0
+        if w.out_nodes.text():
+            try:
+                inside_ids = set()
+                for feat in sel_nodes.getFeatures():
+                    inside_ids.add(int(feat[ni]))
+                ext_ids = _subarea_external_nodes(w.out_trips.text(), inside_ids)
+                want = inside_ids | ext_ids
+                n_ext = len(ext_ids)
+                keep = []
+                for feat in nodes_lyr.getFeatures():
+                    try:
+                        if int(feat[ni]) in want:
+                            keep.append(feat.id())
+                    except (TypeError, ValueError):
+                        continue
+                nodes_lyr.selectByIds(keep)
+                _drop_layers_for(w.out_nodes.text())
+                processing.run("native:saveselectedfeatures",
+                    {"INPUT": nodes_lyr, "OUTPUT": w.out_nodes.text()})
+                nodes_lyr.removeSelection()
+                _log("Subarea: %d nodes written (%d inside + %d external "
+                     "boundary nodes)" % (len(keep), len(keep) - n_ext, n_ext))
+            except Exception as e:
+                _log("Subarea: node layer failed: %s" % e)
+
+        # 5) show the extracted network
+        _add_layer(w.out_links.text(), "Subarea links")
+        _add_layer(w.out_nodes.text(), "Subarea nodes")
+
+        QMessageBox.information(dlg, "Subarea",
+            "Subarea outputs written:\n%s\n%s  (+%d external boundary nodes)"
+            "\n%s\n\nThe trip list keeps the statewide origin/destination as "
+            "TSM_O / TSM_D beside the boundary-crossing O / D." % (
+                w.out_links.text() or "(links skipped)",
+                w.out_nodes.text() or "(nodes skipped)", n_ext,
+                w.out_trips.text()))
     run.clicked.connect(go)
     return w
 
@@ -719,6 +886,11 @@ def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
     # Strip the .gpkg before appending: out_gpkg + ".toml" produced the sidecar
     # pair select_link_volumes.gpkg.toml / .gpkg.log, which read as GeoPackage
     # files in the scenario folder. Base them on the stem instead.
+    # GDAL cannot rewrite a GeoPackage QGIS still has open, so a re-run used to
+    # leave the previous run's file in place while reporting success. Release
+    # both targets first.
+    _drop_layers_for(out_gpkg)
+    _drop_layers_for(out_csv)
     ctl = os.path.splitext(out_gpkg)[0] + ".toml"
     try:
         with open(ctl, "w") as f:
@@ -727,13 +899,7 @@ def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
         return None
     r = settings.run_app([sumexe, ctl], log_path=os.path.splitext(ctl)[0] + ".log", console=True)
     if r.returncode == 0 and os.path.exists(out_gpkg):
-        try:
-            from qgis.core import QgsVectorLayer, QgsProject
-            lyr = QgsVectorLayer(out_gpkg, "SelectLink loaded (%s)" % logic, "ogr")
-            if lyr.isValid():
-                QgsProject.instance().addMapLayer(lyr)
-        except Exception:
-            pass
+        _add_layer(out_gpkg, "SelectLink loaded (%s)" % logic)
         return out_gpkg
     return None
 
