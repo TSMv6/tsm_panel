@@ -129,8 +129,14 @@ class TsmPanelPlugin():
         commit_date = meta.get("commit_date", "")
         rev = ("%s (%s)" % (commit, commit_date)) if commit and commit_date \
             else (commit or "revision not recorded")
+        # Link the revision straight at the commit: reading a hash off a dialog
+        # and pasting it into a search is the step people skip.
+        repo = (meta.get("repository", "") or "").rstrip("/")
+        if repo and commit:
+            rev = '<a href="%s/commit/%s">%s</a>' % (repo, commit, rev)
         rows = [("Version", meta.get("version", "?")),
                 ("Source revision", "tsm_panel %s" % rev),
+                ("Repository", '<a href="%s">%s</a>' % (repo, repo) if repo else "?"),
                 ("Released", meta.get("date", "?")),
                 ("Author", meta.get("author", "?")),
                 ("Contact", meta.get("email", "?")),
@@ -173,7 +179,29 @@ class TsmPanelPlugin():
             return rev if present else "NOT INSTALLED (%s)" % rev
 
         engines = [(lbl, _row(rel, key)) for lbl, rel, key in ENGINES]
-        utils = [(lbl, _row(rel, key)) for lbl, rel, key in UTILS]
+
+        # The utilities used to be ten rows that nearly all said the same thing
+        # (one repo, one revision), which pushed the engines -- the part that
+        # actually differs between installs -- off the top of the dialog. Fold
+        # them into a single row: one entry per DISTINCT revision with a count,
+        # and any missing binary named, since "which exe is absent" is the only
+        # thing in that block worth reading.
+        seen, order, missing = {}, [], []
+        for lbl, rel, key in UTILS:
+            if not os.path.exists(os.path.join(plugin_dir, rel.replace("/", os.sep))):
+                missing.append(lbl)
+                continue
+            rv = meta.get("engine_" + key, "revision not recorded")
+            if rv not in seen:
+                seen[rv] = 0
+                order.append(rv)
+            seen[rv] += 1
+        parts = ["%s (%d)" % (rv, seen[rv]) if seen[rv] > 1 else rv for rv in order]
+        util_line = " &middot; ".join(parts) if parts else "none installed"
+        if missing:
+            util_line += ("<br><b style='color:#c0392b;'>NOT INSTALLED:</b> %s"
+                          % ", ".join(missing))
+        engines.append(("Utilities (%d)" % len(UTILS), util_line))
 
         html = ["<h3>%s</h3>" % meta.get("name", "TSM Model Plugin"),
                 "<p>%s</p>" % meta.get("description", ""),
@@ -183,14 +211,17 @@ class TsmPanelPlugin():
         html.append("</table><h4>Model engines &mdash; source revision</h4><table cellpadding='3'>")
         for k, v in engines:
             html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
-        html.append("</table><h4>Utilities</h4><table cellpadding='3'>")
-        for k, v in utils:
-            html.append("<tr><td><b>%s</b></td><td>%s</td></tr>" % (k, v))
         html.append("</table>")
 
         box = QMessageBox(self.iface.mainWindow())
         box.setWindowTitle("About TSM Plugin")
         box.setTextFormat(Qt.TextFormat.RichText)
+        # Without this the <a href> renders as styled text that does nothing.
+        box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        try:
+            box.setOpenExternalLinks(True)
+        except AttributeError:
+            pass        # older Qt: the flag above still allows copying the URL
         box.setText("".join(html))
         box.setStandardButtons(QMessageBox.StandardButton.Ok)
         box.exec()
