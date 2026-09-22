@@ -24,7 +24,8 @@ from qgis.PyQt import QtCore, QtWidgets
 from qgis.PyQt.QtWidgets import (QFileDialog, QMessageBox, QWidget, QLabel,
                                  QLineEdit, QPushButton, QCheckBox, QRadioButton,
                                  QGridLayout, QHBoxLayout, QVBoxLayout,
-                                 QTabWidget, QGroupBox, QPlainTextEdit)
+                                 QTabWidget, QGroupBox, QPlainTextEdit,
+                                 QComboBox)
 
 from .tsm_settings import Config
 from . import tsm_history
@@ -32,6 +33,64 @@ from . import tsm_history
 
 # ----------------------------------------------------------------- helpers --
 BROWSE_W = 34   # one width for every '...' button so the rows line up
+
+
+# Volume breakdown offered on Select Link and Turning Movements. agentAnalysis
+# splits the per-key agent weight by category BEFORE the route-key rollup, so the
+# wide columns always sum back to the total volume.
+#   purpose    -- native to the agents table, no trip list needed
+#   market     -- market / marketVot live only in the trip list, which is joined
+#                 by ROW NUMBER, so it must be the list this duckdb was built from
+_BY_CHOICES = [("(none) - total volume only", ""),
+               ("Purpose", "purpose"),
+               ("Market", "market"),
+               ("Market x VOT", "marketVot")]
+
+
+def _by_row(parent, key, what):
+    """Breakdown combo + hint; returns (layout, combo)."""
+    lay = QHBoxLayout()
+    lab = QLabel("break %s down by" % what, parent)
+    lab.setMinimumWidth(150)
+    combo = QComboBox(parent)
+    for text, _ in _BY_CHOICES:
+        combo.addItem(text)
+    combo.setToolTip(
+        "Adds one wide volume column per category beside the total.\n"
+        "Purpose comes from the agentPaths duckdb. Market / Market x VOT come "
+        "from the trip list, so the Trip list field above must point at the "
+        "tripList that produced this duckdb.")
+    saved = Config().get(key)
+    if saved:
+        vals = [v for _, v in _BY_CHOICES]
+        if saved in vals:
+            combo.setCurrentIndex(vals.index(saved))
+    combo.currentIndexChanged.connect(
+        lambda i: Config().set(key, _BY_CHOICES[i][1]))
+    lay.addWidget(lab)
+    lay.addWidget(combo, 1)
+    return lay, combo
+
+
+def _by_value(combo):
+    """Control-file value for the picked breakdown ("" = none)."""
+    i = combo.currentIndex()
+    return _BY_CHOICES[i][1] if 0 <= i < len(_BY_CHOICES) else ""
+
+
+def _by_args(dlg, combo, trips, what):
+    """--by flags for the picked breakdown, or None if the user must fix input."""
+    by = _by_value(combo)
+    if not by:
+        return []
+    if by in ("market", "marketVot") and not trips:
+        QMessageBox.warning(
+            dlg, what,
+            "Breaking volumes down by %s needs the trip list: the market segment "
+            "is not stored in the duckdb.\n\nSet 'trip list' above to the "
+            "tripList that produced this agentPaths.duckdb." % by)
+        return None
+    return ["--by", by]
 
 
 def _browse_row(parent, label, mode="open", filt="All Files (*)", key=None):
@@ -463,8 +522,10 @@ def _tab_selectlink(dlg):
                                  filt="CSV (*.csv)", key="aa_sl_out")
     vol_lay, w.vols = _browse_row(w, "output loaded volumes (csv)", mode="save",
                                   filt="CSV (*.csv)", key="aa_sl_vols")
+    by_lay, w.by = _by_row(w, "aa_sl_by", "volumes")
     v.addLayout(out_lay)
     v.addLayout(vol_lay)
+    v.addLayout(by_lay)
     run = QPushButton("Run Select Link", w)
     v.addWidget(run)
     v.addStretch(1)
@@ -517,6 +578,17 @@ def _tab_selectlink(dlg):
         vols = w.vols.text()
         if vols:
             args += ["--volumes", vols]
+            # --by only shapes the volumes file, so it is pointless without one.
+            by = _by_args(dlg, w.by, w.trips.text(), "Select Link")
+            if by is None:
+                return
+            args += by
+        elif _by_value(w.by):
+            QMessageBox.warning(dlg, "Select Link",
+                                "A volume breakdown needs an 'output loaded volumes "
+                                "(csv)' file - that is the file the wide SL_VOL_* "
+                                "columns are written to.")
+            return
         r = _run(args, "agentAnalysis_selectlink.log")
         if r.returncode != 0:
             QMessageBox.critical(dlg, "Select Link", "agentAnalysis agents failed — see History log.")
@@ -569,7 +641,10 @@ def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
         '[input]\nformat = "csv"\npath = "%s"\nrename = ["a_node=A", "b_node=B"]\n\n' % fwd(vols_csv) +
         '[join]\nformat = "gpkg"\npath = "%s"\n\n' % fwd(link_path) +
         '[output]\ncsv = "%s"\ngpkg = "%s"\n' % (fwd(out_csv), fwd(out_gpkg)))
-    ctl = out_gpkg + ".toml"
+    # Strip the .gpkg before appending: out_gpkg + ".toml" produced the sidecar
+    # pair select_link_volumes.gpkg.toml / .gpkg.log, which read as GeoPackage
+    # files in the scenario folder. Base them on the stem instead.
+    ctl = os.path.splitext(out_gpkg)[0] + ".toml"
     try:
         with open(ctl, "w") as f:
             f.write(toml)
@@ -616,6 +691,12 @@ def _tab_turns(dlg):
     hint.setStyleSheet("color: gray;")
     v.addWidget(hint)
 
+    by_lay, w.by = _by_row(w, "aa_turns_by", "volumes")
+    v.addLayout(by_lay)
+    trips_lay, w.trips = _browse_row(w, "trip list (for market)", mode="open",
+                                     filt="Trip list (*.csv.gz *.csv)",
+                                     key="aa_turns_trips")
+    v.addLayout(trips_lay)
     out_lay, w.out = _browse_row(w, "output turns (csv)", mode="save",
                                  filt="CSV (*.csv)", key="aa_turns_out")
     v.addLayout(out_lay)
@@ -636,6 +717,12 @@ def _tab_turns(dlg):
             args += ["--five"]
         if w.cb_hour.isChecked():
             args += ["--by-hour"]
+        by = _by_args(dlg, w.by, w.trips.text(), "Turning Movements")
+        if by is None:
+            return
+        args += by
+        if by and w.trips.text():
+            args += ["--trips", w.trips.text()]
         r = _run(args, "agentAnalysis_turns.log")
         if r.returncode == 0:
             QMessageBox.information(dlg, "Turning Movements",
