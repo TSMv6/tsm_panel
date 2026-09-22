@@ -16,6 +16,7 @@ the .ui file remains Qt-Designer-clean):
      - Select Link      : agents --link A B [...] --logic AND|OR [--volumes]
      - Turning Movements: turns  --nodes csv | --node list [--five] [--by-hour]
 """
+import csv
 import os
 import re
 import tempfile
@@ -608,13 +609,79 @@ def _tab_selectlink(dlg):
     return w
 
 
+def _sl_volume_cols(vols_csv, pairs, logic):
+    """Volume columns to summarize, read from the CSV agentAnalysis wrote.
+
+    Three shapes come out of `agents --volumes`, and the control file has to
+    match whichever one is on disk -- listing columns that are not there means
+    they silently never reach the loaded CSV or the GPKG, which is how the
+    purpose breakdown went missing:
+
+      EACH            a_node,b_node,SL_<A>_<B>...        (no veh_weight)
+      OR/AND          a_node,b_node,agents,veh_weight
+      OR/AND --by     ...,veh_weight,SL_VOL_<cat>...     (categories sum to it)
+
+    Reading the header rather than rebuilding the list from the UI keeps this
+    correct when the categories are data-derived: agentAnalysis discovers which
+    purposes/markets are actually in the selection, so the dialog cannot know
+    the column names in advance.
+
+    Returns (sum_cols, label). NOTE the categories are returned WITHOUT
+    veh_weight: summarize sets total_col to the sum of every sum_col
+    (summarize.cpp, `rowtot`), so carrying both would double the total.
+    """
+    header = []
+    try:
+        with open(vols_csv, newline="") as f:
+            header = next(csv.reader(f), []) or []
+    except (OSError, StopIteration):
+        pass
+    present = set(header)
+
+    by_cols = [h for h in header if h.startswith("SL_VOL_")]
+    if by_cols:
+        return by_cols, "%d purpose/market classes" % len(by_cols)
+    if logic == "EACH":
+        each = [c for c in ("SL_%s_%s" % (a, b) for a, b in pairs) if c in present]
+        if each:
+            return each, "%d per-link columns" % len(each)
+    return ["veh_weight"], "total volume"
+
+
+def _sl_breakdown_is_exhaustive(vols_csv, by_cols, tol=0.01):
+    """True when the class columns still add up to veh_weight.
+
+    total_col is DERIVED by summing the class columns, so if they ever stopped
+    being an exhaustive split of veh_weight the map's SL_VOL would quietly stop
+    being the select-link volume. Checked on the file, not assumed.
+    """
+    try:
+        with open(vols_csv, newline="") as f:
+            rd = csv.DictReader(f)
+            if "veh_weight" not in (rd.fieldnames or []):
+                return True            # EACH has no total to check against
+            for i, row in enumerate(rd):
+                if i >= 500:           # a sample is enough to catch a schema drift
+                    break
+                tot = float(row.get("veh_weight") or 0.0)
+                s = sum(float(row.get(c) or 0.0) for c in by_cols)
+                if abs(s - tot) > max(tol, abs(tot) * tol):
+                    return False
+    except (OSError, ValueError):
+        pass
+    return True
+
+
 def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
     """Join the select-link loaded-volumes CSV onto the dialog's link layer and
-    write a GPKG, adding one loaded-volume column per select-link (via the
-    bundled summarize.exe legacy mode). EACH -> one SL_<A>_<B> column per link;
-    OR/AND -> a single SL_VOL column. All columns are actual vehicles, matching
-    the loaded network's vehicle-unit link_performance volumes.
-    Returns the GPKG path, or None."""
+    write a GPKG (via the bundled summarize.exe legacy mode).
+
+    The columns carried across follow whatever agentAnalysis actually wrote --
+    see _sl_volume_cols: one SL_<A>_<B> per link under EACH, the SL_VOL_<cat>
+    classes when a purpose/market breakdown was requested, otherwise the plain
+    veh_weight total. SL_VOL is always their sum. All columns are actual
+    vehicles, matching the loaded network's vehicle-unit link_performance
+    volumes. Returns the GPKG path, or None."""
     settings = Config()
     link_combo = getattr(dlg, "comboBox_linkLayer", None)
     getpath = getattr(dlg, "get_layer_path", None)
@@ -626,8 +693,16 @@ def _selectlink_to_gpkg(dlg, vols_csv, pairs, logic):
     sumexe = settings.app_exe("utilities/summarize.exe")
     if not os.path.exists(sumexe):
         return None
-    value_cols = (["SL_%s_%s" % (a, b) for a, b in pairs] if logic == "EACH"
-                  else ["veh_weight"])
+    value_cols, what = _sl_volume_cols(vols_csv, pairs, logic)
+    if value_cols and value_cols[0].startswith("SL_VOL_") and \
+            not _sl_breakdown_is_exhaustive(vols_csv, value_cols):
+        # Fall back to the plain total rather than map an SL_VOL that is not
+        # the select-link volume.
+        _log("select-link: %s do not sum to veh_weight; mapping the total only"
+             % what)
+        value_cols, what = ["veh_weight"], "total volume"
+    _log("select-link GPKG: summarizing %s (%s)" % (what, ", ".join(value_cols[:6]) +
+                                                    (" ..." if len(value_cols) > 6 else "")))
     out_gpkg = os.path.splitext(vols_csv)[0] + ".gpkg"
     out_csv = os.path.splitext(vols_csv)[0] + "_loaded.csv"
     sum_cols = ",\n  ".join('"%s"' % c for c in value_cols)
