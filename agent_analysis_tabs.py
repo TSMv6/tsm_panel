@@ -134,6 +134,11 @@ def _browse_row(parent, label, mode="open", filt="All Files (*)", key=None):
 # clips the boundary, because dropping it would break the path through it.
 FTYPE_CONNECTOR = 51
 
+# NODE.csv DTA_Type: 99 = zone centroid (agentflow-dta core/network.h:37 --
+# "90=express entry/DMN, 91/94=join, 99=zone"). In the parent network every 99
+# sits in the zone-number range; everything else is 0.
+DTA_TYPE_ZONE = 99
+
 
 def _drop_layers_for(path):
     """Remove any loaded layer reading `path`, and return how many went.
@@ -169,6 +174,55 @@ def _drop_layers_for(path):
             pass
         _log("dropped %d loaded layer(s) reading %s" % (gone, path))
     return gone
+
+
+def _mark_zone_nodes(path, ext_ids, node_field="N"):
+    """Set DTA_Type = 99 on the external boundary nodes of a subarea node layer.
+
+    Those nodes are ordinary network nodes in the parent model (DTA_Type 0), but
+    in the SUBAREA they are where demand enters and leaves -- the trip list gives
+    them as O/D -- so the subarea assignment has to read them as zones. Interior
+    centroids already carry 99 from the parent file and are left alone.
+
+    Returns the number of nodes marked, or -1 if the layer could not be edited.
+    """
+    if not path or not os.path.exists(path) or not ext_ids:
+        return 0
+    try:
+        from qgis.core import QgsVectorLayer, QgsField
+        from qgis.PyQt.QtCore import QVariant
+    except Exception:
+        return -1
+    lyr = QgsVectorLayer(path, "subarea nodes (edit)", "ogr")
+    if not lyr.isValid():
+        _log("Subarea: cannot open %s to set DTA_Type" % path)
+        return -1
+    ni = lyr.fields().lookupField(node_field)          # case-insensitive
+    if ni < 0:
+        _log("Subarea: node layer has no '%s' column; DTA_Type not set" % node_field)
+        return -1
+    di = lyr.fields().lookupField("DTA_Type")
+    if di < 0:
+        # A node layer without the column still has to carry it downstream.
+        lyr.dataProvider().addAttributes([QgsField("DTA_Type", QVariant.Int)])
+        lyr.updateFields()
+        di = lyr.fields().lookupField("DTA_Type")
+        if di < 0:
+            _log("Subarea: could not add a DTA_Type column to %s" % path)
+            return -1
+    changes, n = {}, 0
+    for feat in lyr.getFeatures():
+        try:
+            if int(feat[ni]) in ext_ids:
+                changes[feat.id()] = {di: DTA_TYPE_ZONE}
+                n += 1
+        except (TypeError, ValueError):
+            continue
+    if changes and not lyr.dataProvider().changeAttributeValues(changes):
+        _log("Subarea: DTA_Type update rejected by the provider")
+        return -1
+    del lyr
+    return n
 
 
 def _add_layer(path, name):
@@ -588,8 +642,13 @@ def _tab_subarea(dlg):
                 processing.run("native:saveselectedfeatures",
                     {"INPUT": nodes_lyr, "OUTPUT": w.out_nodes.text()})
                 nodes_lyr.removeSelection()
+                marked = _mark_zone_nodes(w.out_nodes.text(), ext_ids,
+                                          nfields[ni] if ni < len(nfields) else "N")
                 _log("Subarea: %d nodes written (%d inside + %d external "
-                     "boundary nodes)" % (len(keep), len(keep) - n_ext, n_ext))
+                     "boundary nodes); DTA_Type=%d set on %s"
+                     % (len(keep), len(keep) - n_ext, n_ext, DTA_TYPE_ZONE,
+                        ("%d of them" % marked) if marked >= 0
+                        else "NONE - see above"))
             except Exception as e:
                 _log("Subarea: node layer failed: %s" % e)
 
@@ -598,7 +657,8 @@ def _tab_subarea(dlg):
         _add_layer(w.out_nodes.text(), "Subarea nodes")
 
         QMessageBox.information(dlg, "Subarea",
-            "Subarea outputs written:\n%s\n%s  (+%d external boundary nodes)"
+            "Subarea outputs written:\n%s\n%s  (+%d external boundary nodes, "
+            "DTA_Type=99 so they load as subarea zones)"
             "\n%s\n\nThe trip list keeps the statewide origin/destination as "
             "TSM_O / TSM_D beside the boundary-crossing O / D." % (
                 w.out_links.text() or "(links skipped)",
