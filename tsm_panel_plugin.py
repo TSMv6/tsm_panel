@@ -121,7 +121,17 @@ class TsmPanelPlugin():
         except OSError as e:
             meta = {"name": "TSM Model Plugin", "version": "unknown (%s)" % e}
 
+        # The plugin's OWN revision, not just the engines'. Without it a bug
+        # report says "2.63" and there is no way to tell which 2.63 -- the
+        # version only moves when someone remembers to bump it, the commit
+        # always identifies the source exactly.
+        commit = meta.get("commit", "")
+        commit_date = meta.get("commit_date", "")
+        rev = ("%s (%s)" % (commit, commit_date)) if commit and commit_date \
+            else (commit or "revision not recorded")
         rows = [("Version", meta.get("version", "?")),
+                ("Source revision", "tsm_panel %s" % rev),
+                ("Released", meta.get("date", "?")),
                 ("Author", meta.get("author", "?")),
                 ("Contact", meta.get("email", "?")),
                 ("Plugin folder", plugin_dir.replace(chr(92), "/"))]

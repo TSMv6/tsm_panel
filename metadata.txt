@@ -1,7 +1,11 @@
 [general]
 name=TSM Model Plugin
-version=2.49
-date=2026-07-09
+version=2.63
+date=2026-09-22
+# This plugin's own source revision, shown in Help > About TSM Plugin
+# alongside the engine revisions below. Update with the version.
+commit=REPLACED_BELOW
+commit_date=2026-09-22
 author=Amar Sarvepalli
 email=Amar.Sarvepalli@dot.state.fl.us
 qgisMinimumVersion=3.0
@@ -31,11 +35,11 @@ about=TSMv6 is Florida's Turnpike Enterprise (FTE's) State Model (TSM): a
 engine_popsim=tsm_PopSim f6c2610 2026-06-21
 engine_sdt=SDTModel d3e8fea 2026-08-11
 engine_ldt=LDTModel 1ad62fb 2026-07-15
-engine_agentplans=agentPlans 7252ebe 2026-07-08
-engine_afdta=agentflow-dta bceb4a8 2026-08-19
+engine_agentplans=agentPlans 16eab94 2026-09-21
+engine_afdta=agentflow-dta 6fb22e8 2026-09-22
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep ef22285 2026-07-12
-engine_agentanalysis=agentAnalysis 5608dba 2026-07-23
+engine_agentanalysis=agentAnalysis d252b7c 2026-09-21
 engine_pathskim=PathSkim 07202a8 2026-07-15
 engine_utilities=utilities 88fa388 2026-07-15
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
@@ -51,7 +55,69 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (90 commits, 2026-06-19 to 2026-08-21):
+    One version per commit, newest first (104 commits, 2026-06-19 to 2026-09-22):
+    .
+    2.63 (2026-09-22): About TSM Plugin reports this plugin's own commit and
+    date, not just the engines'. Engine revisions refreshed for afdta,
+    agentPlans and agentAnalysis, which had all drifted behind their source -
+    the shipped agentPlans.exe predated the market-split external-station
+    calibration and the shipped agentAnalysis.exe predated the TOML control.
+    .
+    2.62 (2026-09-22): HyDRA STA tab offers the volume-delay curve: BPR
+    (legacy TSM), Conical (Spiess) or Akcelik (time-dependent), plus an
+    optional steeper BPR beta above capacity (v/c > 1). Only the chosen
+    curve's parameter reaches the control file. Needs the matching afdta.
+    .
+    2.61 (2026-09-22): HyDRA DTA and STA options are nested in sub-tabs
+    (Engine and equilibrium / Meso-Micro / Advanced; Solver and VDF /
+    Equilibrium / Demand and checkpoint) with Outputs left below them. The
+    dialog no longer runs past the bottom of the screen: 668px at its
+    tallest against 926px before.
+    .
+    2.60 (2026-09-21): Summarization Select Link and Turning Movements can
+    break volumes down by purpose or market (SL_VOL_<cat> / TURN_VOL_<cat>).
+    Market needs the trip list, which must be the one that built the duckdb.
+    Select-link GPKG sidecars no longer named select_link_volumes.gpkg.toml.
+    .
+    2.59 (2026-09-21): agentPlans dialog fits all five input rows without a
+    scrollbar; the tab section sizes to the visible tab. Scenario Dir and
+    Scenario Year removed (Project Settings owns them, and the run already
+    read them from there); Trip Table moved to the ELToD tab.
+    .
+    2.58 (2026-09-21): MSR, External stations and ELToD trip table become
+    tabs on the agentPlans dialog. The hourly ELToD OD table is now opt-in -
+    the template hardcoded write_hourly_table=true, so every run wrote it.
+    .
+    2.57 (2026-09-21): External-station calibration moves from the LDT
+    Visitor dialog to agentPlans, which is the step that reads
+    ldt_external_targets.csv. Writing it from LDT meant a scenario that
+    reused existing tour files never got the file and the engine logged
+    "external target scaling skipped (not found: ...)" while
+    apply_external_targets was still true - calibration silently off.
+    .
+    2.56 (2026-09-21): The external targets master file is re-read on every
+    run and the GUI rows merged over it, so a stale scenario copy cannot
+    starve the other ~57 crossings.
+    .
+    2.55 (2026-09-21): HyDRA runs the engine the user picked, not the tab
+    that happens to be visible; with both tabs configured the run asks. The
+    run-log window closes when the run finishes rather than when the
+    completion dialog is dismissed.
+    .
+    2.54 (2026-09-14): Apps: agentAnalysis with --by purpose|market and TOML
+    control.
+    .
+    2.53 (2026-09-14): templates: fix the select-link summarize controls
+    (they could not run).
+    .
+    2.52 (2026-09-14): Fix: update ui/*.ui, the files actually loaded at run
+    time.
+    .
+    2.51 (2026-09-14): HyDRA dialog: split STA and DTA into tabs; Save no
+    longer closes the dialog.
+    .
+    2.50 (2026-08-26): Subarea: convert GPKG links to CSV before calling
+    agentAnalysis.
     .
     2.49 (2026-08-21): Subarea extraction converts the GeoPackage link
     layer to CSV via gpkgcsv.exe before calling agentAnalysis (it was
