@@ -40,6 +40,20 @@ STA_METHODS = {
     "MSA (step 1/k)":                       "msa",
     "Legacy path-swap (does not converge)": "legacy",
 }
+# STA volume-delay curve label -> STA_VDF value. BPR is the legacy TSM curve;
+# the other two exist because BPR's power term misbehaves around v/c = 1 -- flat
+# where the real curve is already steepening, then explosive past it.
+#   Conical (Spiess) keeps a bounded derivative, which is what makes the
+#   Frank-Wolfe line search well behaved (measured: rel_gap 0.0025 vs BPR's
+#   0.0055 at the same iteration on the 636k-link test network).
+#   Akcelik is time-dependent: over-saturated delay grows with how long the
+#   link stays loaded rather than with v/c alone, so its tail is far milder.
+STA_VDFS = {
+    "BPR (legacy TSM)":          "bpr",
+    "Conical (Spiess)":          "conical",
+    "Akcelik (time-dependent)":  "akcelik",
+}
+
 # VDF aggregation window label -> BPR_PERIOD_MIN.
 BPR_PERIODS = {"15 min": "15", "30 min": "30", "60 min (hourly)": "60"}
 
@@ -175,6 +189,18 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self._select_combo(self.comboBox_StaMethod, settings.get("hydra_sta_method"))
         if settings.get("hydra_bpr_period"):
             self._select_combo(self.comboBox_BprPeriod, settings.get("hydra_bpr_period"))
+        # VDF curve + the parameters that belong to each one.
+        if settings.get("hydra_sta_vdf"):
+            self._select_combo(self.comboBox_StaVdf, settings.get("hydra_sta_vdf"))
+        for key, edit in (("hydra_conical_alpha", self.lineEdit_ConicalAlpha),
+                          ("hydra_akcelik_ja", self.lineEdit_AkcelikJa),
+                          ("hydra_bpr_beta_mult", self.lineEdit_BprBetaMult)):
+            if settings.get(key) not in (None, ""):
+                edit.setText(str(settings.get(key)))
+        self.checkBox_BprOverCap.setChecked(_b("hydra_bpr_overcap"))
+        self.comboBox_StaVdf.currentTextChanged.connect(lambda _: self._sync_vdf())
+        self.checkBox_BprOverCap.toggled.connect(lambda _: self._sync_vdf())
+        self._sync_vdf()
         for key, edit in (("hydra_sta_iters", self.lineEdit_StaIters),
                           ("hydra_sta_gap", self.lineEdit_StaGap),
                           ("hydra_sta_threads", self.lineEdit_StaThreads),
@@ -210,6 +236,25 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         elif saved_tab == "DTA":
             self.tabWidget_Engine.setCurrentWidget(self.page_DTA)
         self._refresh_run_enabled()
+
+    def _sync_vdf(self):
+        """Grey out the parameters that do not belong to the chosen curve.
+
+        Each curve reads exactly one of these, so leaving all three live invites
+        someone to set a conical alpha on a BPR run and expect it to matter.
+        """
+        vdf = STA_VDFS.get(self.comboBox_StaVdf.currentText(), "bpr")
+        is_bpr = vdf == "bpr"
+        self.checkBox_BprOverCap.setEnabled(is_bpr)
+        self.label_bprBetaMult.setEnabled(is_bpr)
+        self.lineEdit_BprBetaMult.setEnabled(is_bpr and
+                                             self.checkBox_BprOverCap.isChecked())
+        self.label_conicalAlpha.setEnabled(vdf == "conical")
+        self.lineEdit_ConicalAlpha.setEnabled(vdf == "conical")
+        self.label_akcelikJa.setEnabled(vdf == "akcelik")
+        self.lineEdit_AkcelikJa.setEnabled(vdf == "akcelik")
+        # alpha/beta are per-link, so this note only applies to BPR.
+        self.label_bprCoef.setEnabled(is_bpr)
 
     @staticmethod
     def _fit_one_tab(tabs):
@@ -486,6 +531,11 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # ---- STA tab ----
         settings.set("hydra_sta_method", self.comboBox_StaMethod.currentText())
         settings.set("hydra_bpr_period", self.comboBox_BprPeriod.currentText())
+        settings.set("hydra_sta_vdf", self.comboBox_StaVdf.currentText())
+        settings.set("hydra_conical_alpha", self.lineEdit_ConicalAlpha.text())
+        settings.set("hydra_akcelik_ja", self.lineEdit_AkcelikJa.text())
+        settings.set("hydra_bpr_overcap", self.checkBox_BprOverCap.isChecked())
+        settings.set("hydra_bpr_beta_mult", self.lineEdit_BprBetaMult.text())
         settings.set("hydra_sta_iters", self.lineEdit_StaIters.text())
         settings.set("hydra_sta_gap", self.lineEdit_StaGap.text())
         settings.set("hydra_sta_threads", self.lineEdit_StaThreads.text())
@@ -752,6 +802,20 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write(f"STA_METHOD             {method}\n")
                 period = BPR_PERIODS.get(self.comboBox_BprPeriod.currentText(), "60")
                 f.write(f"BPR_PERIOD_MIN         {period}\n")
+                # Volume-delay curve. Only the chosen curve's parameter is
+                # written -- afdta would accept the others, but a control file
+                # carrying a conical alpha on a BPR run reads as if it mattered.
+                vdf = STA_VDFS.get(self.comboBox_StaVdf.currentText(), "bpr")
+                f.write(f"STA_VDF                {vdf}\n")
+                if vdf == "conical":
+                    f.write("CONICAL_ALPHA          %s\n"
+                            % (self.lineEdit_ConicalAlpha.text().strip() or "4.0"))
+                elif vdf == "akcelik":
+                    f.write("AKCELIK_JA             %s\n"
+                            % (self.lineEdit_AkcelikJa.text().strip() or "0.1"))
+                elif self.checkBox_BprOverCap.isChecked():
+                    f.write("BPR_OVERCAP_BETA_MULT  %s\n"
+                            % (self.lineEdit_BprBetaMult.text().strip() or "1.5"))
                 f.write(f"MAX_ITERATIONS         {self.lineEdit_StaIters.text().strip() or '15'}\n")
                 f.write(f"RELATIVE_GAP           {self.lineEdit_StaGap.text().strip() or '0.01'}\n")
                 f.write(f"THREADS                {self.lineEdit_StaThreads.text().strip() or '0'}\n")

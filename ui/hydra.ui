@@ -769,14 +769,14 @@
                    </item>
                   </widget>
                  </item>
-                 <item row="1" column="0" rowspan="1" colspan="1">
+                 <item row="2" column="0" rowspan="1" colspan="1">
                   <widget class="QLabel" name="label_bprPeriod">
                    <property name="text">
                     <string>VDF period</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1" rowspan="1" colspan="1">
+                 <item row="2" column="1" rowspan="1" colspan="1">
                   <widget class="QComboBox" name="comboBox_BprPeriod">
                    <property name="toolTip">
                     <string>Minutes the BPR curve aggregates over before pricing v/c. Volumes are still reported per 15 minutes; only travel time is held constant across the window.</string>
@@ -801,10 +801,103 @@
                    </item>
                   </widget>
                  </item>
-                 <item row="1" column="2" rowspan="1" colspan="2">
+                 <item row="2" column="2" rowspan="1" colspan="2">
                   <widget class="QLabel" name="label_bprCoef">
                    <property name="text">
                     <string>alpha / beta come per-link from the ALPHA / BETA columns</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staVdf">
+                   <property name="text">
+                    <string>VDF curve</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1" rowspan="1" colspan="3">
+                  <widget class="QComboBox" name="comboBox_StaVdf">
+                   <property name="toolTip">
+                    <string>Volume-delay curve for the static assignment.
+BPR - the legacy TSM curve; alpha/beta come per-link from the ALPHA/BETA columns.
+Conical (Spiess) - smooth and strictly increasing, with a bounded derivative, so the Frank-Wolfe line search behaves better near v/c = 1.
+Akcelik - time-dependent queueing form: over-saturated delay grows with how long the link stays over capacity, not with v/c alone.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>BPR (legacy TSM)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Conical (Spiess)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Akcelik (time-dependent)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" rowspan="1" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_BprOverCap">
+                   <property name="text">
+                    <string>Steeper beta above capacity (v/c &gt; 1)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>BPR fitted to under-capacity data understates over-saturated delay. Ticking this multiplies beta -- only where v/c &gt; 1 -- by the factor on the right; below capacity the curve is unchanged. BPR only.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_bprBetaMult">
+                   <property name="text">
+                    <string>beta multiplier</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_BprBetaMult">
+                   <property name="text">
+                    <string>1.5</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Factor applied to beta above capacity (&gt;= 1). 1.0 is the legacy single exponent. Note the BPR tail is already steep: large values drive over-saturated links toward the 1440-minute delay clamp.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_conicalAlpha">
+                   <property name="text">
+                    <string>Conical alpha</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_ConicalAlpha">
+                   <property name="text">
+                    <string>4.0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Spiess conical parameter a, must be &gt; 1. Larger a hugs the capacity asymptote more tightly; 4 is close to BPR alpha=0.15 beta=4.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_akcelikJa">
+                   <property name="text">
+                    <string>Akcelik J_A</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_AkcelikJa">
+                   <property name="text">
+                    <string>0.1</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Akcelik delay parameter. About 0.1 for freeways, 0.4 for arterials.</string>
                    </property>
                   </widget>
                  </item>
