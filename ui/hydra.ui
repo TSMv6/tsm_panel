@@ -143,463 +143,530 @@
          </attribute>
          <layout class="QVBoxLayout" name="dtaLayout">
           <item>
-           <layout class="QHBoxLayout" name="macroLayout">
-            <item>
-             <widget class="QLabel" name="label_macro">
-              <property name="text">
-               <string>Run Mode (flow model)</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="comboBox_Macro">
-              <property name="toolTip">
-               <string>Preset configures the DNL flow model plus meso/micro defaults.</string>
-              </property>
+           <widget class="QTabWidget" name="tabWidget_DTA">
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="page_DTA_Engine">
+             <attribute name="title">
+              <string>Engine and equilibrium</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_EngineLayout">
               <item>
-               <property name="text">
-                <string>PointQueue (legacy per-link)</string>
-               </property>
+               <layout class="QHBoxLayout" name="macroLayout">
+                <item>
+                 <widget class="QLabel" name="label_macro">
+                  <property name="text">
+                   <string>Run Mode (flow model)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBox_Macro">
+                  <property name="toolTip">
+                   <string>Preset configures the DNL flow model plus meso/micro defaults.</string>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>PointQueue (legacy per-link)</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Node + PointQueue (nodeDNL)</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Node + Spatial/LTM (nodeDNL)</string>
+                   </property>
+                  </item>
+                  <property name="currentIndex">
+                   <number>-1</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item>
-               <property name="text">
-                <string>Node + PointQueue (nodeDNL)</string>
-               </property>
+               <widget class="QGroupBox" name="groupBox_Equil">
+                <property name="title">
+                 <string>Equilibrium</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_eq">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_iters">
+                   <property name="text">
+                    <string>Max Iterations</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="lineEdit_Iters">
+                   <property name="text">
+                    <string>10</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_gap">
+                   <property name="text">
+                    <string>Relative Gap</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="lineEdit_Gap">
+                   <property name="text">
+                    <string>0.01</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_chunks">
+                   <property name="text">
+                    <string>Route Chunks</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_Chunks">
+                   <property name="text">
+                    <string>10</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_threads">
+                   <property name="text">
+                    <string>Threads (0=all)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_Threads">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_nodesched">
+                   <property name="text">
+                    <string>Node refresh</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1" colspan="3">
+                  <widget class="QComboBox" name="comboBox_NodeSchedule">
+                   <property name="toolTip">
+                    <string>Node-DNL refresh stride for the DTA_Node* loaders: per_iter (fast, statewide), per_chunk (tight, county), or a hybrid ramp.</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Per iteration (fast - statewide)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Per chunk (tight - county)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Hybrid (per-iter -&gt; per-chunk)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
               </item>
               <item>
-               <property name="text">
-                <string>Node + Spatial/LTM (nodeDNL)</string>
-               </property>
+               <spacer name="page_DTA_EngineSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
-              <property name="currentIndex">
-               <number>-1</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_Equil">
-            <property name="title">
-             <string>Equilibrium</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_eq">
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_iters">
-               <property name="text">
-                <string>Max Iterations</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLineEdit" name="lineEdit_Iters">
-               <property name="text">
-                <string>10</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2">
-              <widget class="QLabel" name="label_gap">
-               <property name="text">
-                <string>Relative Gap</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3">
-              <widget class="QLineEdit" name="lineEdit_Gap">
-               <property name="text">
-                <string>0.01</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_chunks">
-               <property name="text">
-                <string>Route Chunks</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLineEdit" name="lineEdit_Chunks">
-               <property name="text">
-                <string>10</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_threads">
-               <property name="text">
-                <string>Threads (0=all)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QLineEdit" name="lineEdit_Threads">
-               <property name="text">
-                <string>0</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_nodesched">
-               <property name="text">
-                <string>Node refresh</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1" colspan="3">
-              <widget class="QComboBox" name="comboBox_NodeSchedule">
-               <property name="toolTip">
-                <string>Node-DNL refresh stride for the DTA_Node* loaders: per_iter (fast, statewide), per_chunk (tight, county), or a hybrid ramp.</string>
-               </property>
-               <property name="currentIndex">
-                <number>2</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Per iteration (fast - statewide)</string>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_DTA_MesoMicro">
+             <attribute name="title">
+              <string>Meso / Micro</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_MesoMicroLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_MesoMicro">
+                <property name="title">
+                 <string>Meso / Micro</string>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Per chunk (tight - county)</string>
+                <layout class="QGridLayout" name="gridLayout_mm">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_meso">
+                   <property name="text">
+                    <string>Meso FTYPEs</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" colspan="3">
+                  <widget class="QLineEdit" name="lineEdit_MesoFtypes">
+                   <property name="toolTip">
+                    <string>Comma-separated FTYPEs run as meso. Default: the limited-access system - freeways 11/12, ramps 71-79, toll roads 91-94, express lanes 96-98.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QCheckBox" name="checkBox_Micro">
+                   <property name="text">
+                    <string>Micro corridor</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_MicroFtypes">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>FTYPEs tagged for the lane-level micro sim.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_coupling">
+                   <property name="text">
+                    <string>Coupling</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QComboBox" name="comboBox_Coupling">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>oneway</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>twoway_frozen</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>twoway_full</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_microchoice">
+                   <property name="text">
+                    <string>EL/GP choice</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1" colspan="3">
+                  <widget class="QComboBox" name="comboBox_MicroChoice">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>How EL vs GP is chosen inside a micro corridor: meso logit, or micro time-differential converted by each agent's VOT.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Meso logit</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Micro time-differential (VOT)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_DTA_MesoMicroSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Hybrid (per-iter -&gt; per-chunk)</string>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
                 </property>
-               </item>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_MesoMicro">
-            <property name="title">
-             <string>Meso / Micro</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_mm">
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_meso">
-               <property name="text">
-                <string>Meso FTYPEs</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1" colspan="3">
-              <widget class="QLineEdit" name="lineEdit_MesoFtypes">
-               <property name="toolTip">
-                <string>Comma-separated FTYPEs run as meso. Default: the limited-access system - freeways 11/12, ramps 71-79, toll roads 91-94, express lanes 96-98.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QCheckBox" name="checkBox_Micro">
-               <property name="text">
-                <string>Micro corridor</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLineEdit" name="lineEdit_MicroFtypes">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="toolTip">
-                <string>FTYPEs tagged for the lane-level micro sim.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_coupling">
-               <property name="text">
-                <string>Coupling</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QComboBox" name="comboBox_Coupling">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <item>
-                <property name="text">
-                 <string>oneway</string>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_DTA_Advanced">
+             <attribute name="title">
+              <string>Advanced (afdta)</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_AdvancedLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_Advanced">
+                <property name="title">
+                 <string>Advanced (afdta) — rerouting, LTM, sampling</string>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>twoway_frozen</string>
+                <layout class="QGridLayout" name="gridLayout_adv">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_rerouteFrac">
+                   <property name="text">
+                    <string>Reroute fraction (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="lineEdit_RerouteFraction">
+                   <property name="text">
+                    <string>0.05</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_FRACTION_MIN — minimum share of agents rerouted per iteration.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_rerouteThr">
+                   <property name="text">
+                    <string>Reroute threshold (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
+                   <property name="text">
+                    <string>0.01</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_THRESHOLD_MIN — minimum travel-time improvement (min) to switch an agent's route.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_spillback">
+                   <property name="text">
+                    <string>LTM max spillback (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_LtmSpillback">
+                   <property name="text">
+                    <string>20</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>LTM_MAX_SPILLBACK_MIN — cap on queue spillback propagation (minutes). LTM macro only.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_jam">
+                   <property name="text">
+                    <string>Jam density</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_JamDensity">
+                   <property name="text">
+                    <string>240</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>JAM_DENSITY — veh/mi/lane at jam (LTM).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_maxtrips">
+                   <property name="text">
+                    <string>Max trips (0=all)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="lineEdit_MaxTrips">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MAX_TRIPS — cap trips loaded (0 = all). Use for quick test runs.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="label_sample">
+                   <property name="text">
+                    <string>Sample every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SampleEvery">
+                   <property name="text">
+                    <string>1</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SAMPLE_EVERY — load every Nth trip (1 = all).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_sampleSched">
+                   <property name="text">
+                    <string>Sampling schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="comboBox_SampleSchedule">
+                   <property name="toolTip">
+                    <string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Full sample every iteration</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Custom</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_sampleCustom">
+                   <property name="text">
+                    <string>Custom schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SampleSchedule">
+                   <property name="placeholderText">
+                    <string>1-4:25, 5-8:50, 9-15:100</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_Checkpoint">
+                   <property name="text">
+                    <string>Write checkpoint (enables warm restart)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>CHECKPOINT_FILE — writes checkpoint.bin in the output directory. Lets a later run resume with RESUME_FROM (2-3 iterations instead of a full cold run) and lets outputs be re-scored by loading the checkpoint without re-assigning.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="label_ckptEvery">
+                   <property name="text">
+                    <string>Checkpoint every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="lineEdit_CheckpointEvery">
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>CHECKPOINT_EVERY — write the checkpoint every N iterations.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_loadRefresh">
+                   <property name="text">
+                    <string>Load refresh</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1" rowspan="1" colspan="1">
+                  <widget class="QComboBox" name="comboBox_LoadRefresh">
+                   <property name="toolTip">
+                    <string>How the per-link loader refreshes between chunks. Exact rebuilds every agent's arrivals; incremental updates only the keys that re-routed (faster, an approximation). Ignored by the node loaders.</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Exact (rebuild all)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Incremental (delta)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="5" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_loadSchedule">
+                   <property name="text">
+                    <string>Load schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_LoadSchedule">
+                   <property name="placeholderText">
+                    <string>(blank = every chunk)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Per-link loader refresh stride, e.g. 1-9:iter, 10-15:chunk. Blank keeps the default (refresh after every chunk).</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_DTA_AdvancedSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>twoway_full</string>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
                 </property>
-               </item>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_microchoice">
-               <property name="text">
-                <string>EL/GP choice</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1" colspan="3">
-              <widget class="QComboBox" name="comboBox_MicroChoice">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
-               <property name="toolTip">
-                <string>How EL vs GP is chosen inside a micro corridor: meso logit, or micro time-differential converted by each agent's VOT.</string>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Meso logit</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Micro time-differential (VOT)</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_Advanced">
-            <property name="title">
-             <string>Advanced (afdta) — rerouting, LTM, sampling</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_adv">
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_rerouteFrac">
-               <property name="text">
-                <string>Reroute fraction (min)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLineEdit" name="lineEdit_RerouteFraction">
-               <property name="text">
-                <string>0.05</string>
-               </property>
-               <property name="toolTip">
-                <string>REROUTE_FRACTION_MIN — minimum share of agents rerouted per iteration.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2">
-              <widget class="QLabel" name="label_rerouteThr">
-               <property name="text">
-                <string>Reroute threshold (min)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3">
-              <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
-               <property name="text">
-                <string>0.01</string>
-               </property>
-               <property name="toolTip">
-                <string>REROUTE_THRESHOLD_MIN — minimum travel-time improvement (min) to switch an agent's route.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_spillback">
-               <property name="text">
-                <string>LTM max spillback (min)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLineEdit" name="lineEdit_LtmSpillback">
-               <property name="text">
-                <string>20</string>
-               </property>
-               <property name="toolTip">
-                <string>LTM_MAX_SPILLBACK_MIN — cap on queue spillback propagation (minutes). LTM macro only.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_jam">
-               <property name="text">
-                <string>Jam density</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QLineEdit" name="lineEdit_JamDensity">
-               <property name="text">
-                <string>240</string>
-               </property>
-               <property name="toolTip">
-                <string>JAM_DENSITY — veh/mi/lane at jam (LTM).</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_maxtrips">
-               <property name="text">
-                <string>Max trips (0=all)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QLineEdit" name="lineEdit_MaxTrips">
-               <property name="text">
-                <string>0</string>
-               </property>
-               <property name="toolTip">
-                <string>MAX_TRIPS — cap trips loaded (0 = all). Use for quick test runs.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="2">
-              <widget class="QLabel" name="label_sample">
-               <property name="text">
-                <string>Sample every</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="3">
-              <widget class="QLineEdit" name="lineEdit_SampleEvery">
-               <property name="text">
-                <string>1</string>
-               </property>
-               <property name="toolTip">
-                <string>SAMPLE_EVERY — load every Nth trip (1 = all).</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_sampleSched">
-               <property name="text">
-                <string>Sampling schedule</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QComboBox" name="comboBox_SampleSchedule">
-               <property name="toolTip">
-                <string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Full sample every iteration</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Custom</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="3" column="2">
-              <widget class="QLabel" name="label_sampleCustom">
-               <property name="text">
-                <string>Custom schedule</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="3">
-              <widget class="QLineEdit" name="lineEdit_SampleSchedule">
-               <property name="placeholderText">
-                <string>1-4:25, 5-8:50, 9-15:100</string>
-               </property>
-               <property name="toolTip">
-                <string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkBox_Checkpoint">
-               <property name="text">
-                <string>Write checkpoint (enables warm restart)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <property name="toolTip">
-                <string>CHECKPOINT_FILE — writes checkpoint.bin in the output directory. Lets a later run resume with RESUME_FROM (2-3 iterations instead of a full cold run) and lets outputs be re-scored by loading the checkpoint without re-assigning.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="2">
-              <widget class="QLabel" name="label_ckptEvery">
-               <property name="text">
-                <string>Checkpoint every</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="3">
-              <widget class="QLineEdit" name="lineEdit_CheckpointEvery">
-               <property name="text">
-                <string>3</string>
-               </property>
-               <property name="toolTip">
-                <string>CHECKPOINT_EVERY — write the checkpoint every N iterations.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_loadRefresh">
-               <property name="text">
-                <string>Load refresh</string>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="1" rowspan="1" colspan="1">
-              <widget class="QComboBox" name="comboBox_LoadRefresh">
-               <property name="toolTip">
-                <string>How the per-link loader refreshes between chunks. Exact rebuilds every agent's arrivals; incremental updates only the keys that re-routed (faster, an approximation). Ignored by the node loaders.</string>
-               </property>
-               <property name="currentIndex">
-                <number>0</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Exact (rebuild all)</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Incremental (delta)</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="5" column="2" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_loadSchedule">
-               <property name="text">
-                <string>Load schedule</string>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="3" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_LoadSchedule">
-               <property name="placeholderText">
-                <string>(blank = every chunk)</string>
-               </property>
-               <property name="toolTip">
-                <string>Per-link loader refresh stride, e.g. 1-9:iter, 10-15:chunk. Blank keeps the default (refresh after every chunk).</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
            </widget>
           </item>
           <item>
@@ -645,248 +712,315 @@
          </attribute>
          <layout class="QVBoxLayout" name="staLayout">
           <item>
-           <widget class="QGroupBox" name="groupBox_StaModel">
-            <property name="title">
-             <string>Static assignment (MACRO_MODEL = STA_BPR)</string>
+           <widget class="QTabWidget" name="tabWidget_STA">
+            <property name="currentIndex">
+             <number>0</number>
             </property>
-            <layout class="QGridLayout" name="gridLayout_stamodel">
-             <item row="0" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staSolver">
-               <property name="text">
-                <string>Solver</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1" rowspan="1" colspan="3">
-              <widget class="QComboBox" name="comboBox_StaMethod">
-               <property name="toolTip">
-                <string>All-or-nothing plus a step on the Beckmann objective. The conjugate variants remove Frank-Wolfe's zigzag near the optimum; legacy is the old DTA path-swap loop, which cannot converge a static assignment.</string>
-               </property>
-               <property name="currentIndex">
-                <number>-1</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>Bi-conjugate Frank-Wolfe (fastest)</string>
+            <widget class="QWidget" name="page_STA_Solver">
+             <attribute name="title">
+              <string>Solver and VDF</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_STA_SolverLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_StaModel">
+                <property name="title">
+                 <string>Static assignment (MACRO_MODEL = STA_BPR)</string>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Conjugate Frank-Wolfe</string>
+                <layout class="QGridLayout" name="gridLayout_stamodel">
+                 <item row="0" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staSolver">
+                   <property name="text">
+                    <string>Solver</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" rowspan="1" colspan="3">
+                  <widget class="QComboBox" name="comboBox_StaMethod">
+                   <property name="toolTip">
+                    <string>All-or-nothing plus a step on the Beckmann objective. The conjugate variants remove Frank-Wolfe's zigzag near the optimum; legacy is the old DTA path-swap loop, which cannot converge a static assignment.</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>-1</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Bi-conjugate Frank-Wolfe (fastest)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Conjugate Frank-Wolfe</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Frank-Wolfe</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>MSA (step 1/k)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Legacy path-swap (does not converge)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_bprPeriod">
+                   <property name="text">
+                    <string>VDF period</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1" rowspan="1" colspan="1">
+                  <widget class="QComboBox" name="comboBox_BprPeriod">
+                   <property name="toolTip">
+                    <string>Minutes the BPR curve aggregates over before pricing v/c. Volumes are still reported per 15 minutes; only travel time is held constant across the window.</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>15 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>30 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>60 min (hourly)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="1" column="2" rowspan="1" colspan="2">
+                  <widget class="QLabel" name="label_bprCoef">
+                   <property name="text">
+                    <string>alpha / beta come per-link from the ALPHA / BETA columns</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_STA_SolverSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Frank-Wolfe</string>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>MSA (step 1/k)</string>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_STA_Equil">
+             <attribute name="title">
+              <string>Equilibrium</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_STA_EquilLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_StaEquil">
+                <property name="title">
+                 <string>Equilibrium</string>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Legacy path-swap (does not converge)</string>
+                <layout class="QGridLayout" name="gridLayout_staeq">
+                 <item row="0" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staIters">
+                   <property name="text">
+                    <string>Max Iterations</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaIters">
+                   <property name="text">
+                    <string>15</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staGap">
+                   <property name="text">
+                    <string>Relative Gap</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaGap">
+                   <property name="text">
+                    <string>0.01</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staThreads">
+                   <property name="text">
+                    <string>Threads (0=all)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaThreads">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_STA_EquilSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
                 </property>
-               </item>
-              </widget>
-             </item>
-             <item row="1" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_bprPeriod">
-               <property name="text">
-                <string>VDF period</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1" rowspan="1" colspan="1">
-              <widget class="QComboBox" name="comboBox_BprPeriod">
-               <property name="toolTip">
-                <string>Minutes the BPR curve aggregates over before pricing v/c. Volumes are still reported per 15 minutes; only travel time is held constant across the window.</string>
-               </property>
-               <property name="currentIndex">
-                <number>2</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>15 min</string>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>30 min</string>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_STA_Demand">
+             <attribute name="title">
+              <string>Demand and checkpoint</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_STA_DemandLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_StaDemand">
+                <property name="title">
+                 <string>Demand and checkpoint</string>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>60 min (hourly)</string>
+                <layout class="QGridLayout" name="gridLayout_stadem">
+                 <item row="0" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staMaxTrips">
+                   <property name="text">
+                    <string>Max trips (0=all)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaMaxTrips">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staSample">
+                   <property name="text">
+                    <string>Sample every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaSampleEvery">
+                   <property name="text">
+                    <string>1</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staSampleSched">
+                   <property name="text">
+                    <string>Sampling schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1" rowspan="1" colspan="1">
+                  <widget class="QComboBox" name="comboBox_StaSampleSchedule">
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>None (full demand)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Custom</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="1" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staSampleCustom">
+                   <property name="text">
+                    <string>Custom schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaSampleSchedule">
+                   <property name="placeholderText">
+                    <string>1-4:25, 5-8:50...</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0" rowspan="1" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_StaCheckpoint">
+                   <property name="text">
+                    <string>Write checkpoint (enables warm restart)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_staCkptEvery">
+                   <property name="text">
+                    <string>Checkpoint every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_StaCheckpointEvery">
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_STA_DemandSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
                 </property>
-               </item>
-              </widget>
-             </item>
-             <item row="1" column="2" rowspan="1" colspan="2">
-              <widget class="QLabel" name="label_bprCoef">
-               <property name="text">
-                <string>alpha / beta come per-link from the ALPHA / BETA columns</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_StaEquil">
-            <property name="title">
-             <string>Equilibrium</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_staeq">
-             <item row="0" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staIters">
-               <property name="text">
-                <string>Max Iterations</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaIters">
-               <property name="text">
-                <string>15</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staGap">
-               <property name="text">
-                <string>Relative Gap</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaGap">
-               <property name="text">
-                <string>0.01</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staThreads">
-               <property name="text">
-                <string>Threads (0=all)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaThreads">
-               <property name="text">
-                <string>0</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_StaDemand">
-            <property name="title">
-             <string>Demand and checkpoint</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_stadem">
-             <item row="0" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staMaxTrips">
-               <property name="text">
-                <string>Max trips (0=all)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaMaxTrips">
-               <property name="text">
-                <string>0</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staSample">
-               <property name="text">
-                <string>Sample every</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaSampleEvery">
-               <property name="text">
-                <string>1</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staSampleSched">
-               <property name="text">
-                <string>Sampling schedule</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1" rowspan="1" colspan="1">
-              <widget class="QComboBox" name="comboBox_StaSampleSchedule">
-               <property name="currentIndex">
-                <number>0</number>
-               </property>
-               <item>
-                <property name="text">
-                 <string>None (full demand)</string>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
                 </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Custom</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="1" column="2" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staSampleCustom">
-               <property name="text">
-                <string>Custom schedule</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaSampleSchedule">
-               <property name="placeholderText">
-                <string>1-4:25, 5-8:50...</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0" rowspan="1" colspan="2">
-              <widget class="QCheckBox" name="checkBox_StaCheckpoint">
-               <property name="text">
-                <string>Write checkpoint (enables warm restart)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="2" rowspan="1" colspan="1">
-              <widget class="QLabel" name="label_staCkptEvery">
-               <property name="text">
-                <string>Checkpoint every</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="3" rowspan="1" colspan="1">
-              <widget class="QLineEdit" name="lineEdit_StaCheckpointEvery">
-               <property name="text">
-                <string>3</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
            </widget>
           </item>
           <item>

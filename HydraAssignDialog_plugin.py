@@ -108,6 +108,13 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # flow model / solver chosen, so the run mode is always deliberate. With
         # both filled in, Run asks which engine to use (see _choose_engine).
         self.tabWidget_Engine.currentChanged.connect(self._refresh_run_enabled)
+        # The option groups sit in sub-tabs now (Engine/equilibrium, Meso-Micro,
+        # Advanced; Solver/VDF, Equilibrium, Demand). A QTabWidget reserves the
+        # height of its TALLEST page, so without this the short tabs would show
+        # a band of dead space sized for Advanced.
+        for _t in (self.tabWidget_DTA, self.tabWidget_STA, self.tabWidget_Engine):
+            _t.currentChanged.connect(self._fit_tabs)
+        self._fit_tabs()
         self.comboBox_Macro.currentIndexChanged.connect(self._refresh_run_enabled)
         self.comboBox_StaMethod.currentIndexChanged.connect(self._refresh_run_enabled)
 
@@ -203,6 +210,22 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         elif saved_tab == "DTA":
             self.tabWidget_Engine.setCurrentWidget(self.page_DTA)
         self._refresh_run_enabled()
+
+    @staticmethod
+    def _fit_one_tab(tabs):
+        """Cap a tab frame at the page on screen instead of the tallest page."""
+        page = tabs.currentWidget()
+        if page is None:
+            return
+        tabs.setMaximumHeight(page.sizeHint().height()
+                              + tabs.tabBar().sizeHint().height() + 12)
+
+    def _fit_tabs(self, *_):
+        """Re-fit the sub-tabs first, then the engine tabs that contain them --
+        the outer frame's height depends on what the inner ones settled at."""
+        self._fit_one_tab(self.tabWidget_DTA)
+        self._fit_one_tab(self.tabWidget_STA)
+        self._fit_one_tab(self.tabWidget_Engine)
 
     # ------------------------------------------------------------------
     def _is_sta(self):
