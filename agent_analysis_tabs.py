@@ -447,6 +447,25 @@ def _tab_trace(dlg):
     return w
 
 
+def _link_performance_files(db_path):
+    """The link_performance_*.csv the assignment wrote beside its duckdb.
+
+    Boundary arrival times are walked against these congested link times, and
+    agentAnalysis requires them -- there is no free-flow fallback. They must come
+    from the SAME run as the duckdb, which is exactly why they are looked up
+    beside it rather than asked for separately.
+    """
+    out = []
+    if not db_path:
+        return out
+    run_dir = os.path.dirname(db_path)
+    for res in ("macro", "meso", "micro"):
+        p = os.path.join(run_dir, "link_performance_%sDTA.csv" % res)
+        if os.path.exists(p):
+            out.append(p.replace("\\", "/"))
+    return out
+
+
 def _subarea_external_nodes(trips_path, inside_ids):
     """Node ids the subarea trip list references from OUTSIDE the boundary.
 
@@ -505,6 +524,16 @@ def _tab_subarea(dlg):
     tl_lay, w.trips = _browse_row(w, "trip list (csv/gz)",
                                   filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
     v.addLayout(tl_lay)
+    lp_lay, w.linkperf = _browse_row(
+        w, "link performance (csv)", filt="Link performance (*.csv);;All Files (*)",
+        key="aa_sub_linkperf")
+    w.linkperf.setToolTip(
+        "Congested link travel times from the run that produced the duckdb "
+        "(link_performance_macroDTA.csv). Left blank, every "
+        "link_performance_*DTA.csv beside the duckdb is used. Boundary arrival "
+        "times are walked along each path against these; there is no free-flow "
+        "fallback.")
+    v.addLayout(lp_lay)
     v.addWidget(_hline(w))
     ol_lay, w.out_links = _browse_row(w, "output subarea links (gpkg)", "save",
                                       "GeoPackage (*.gpkg)", "aa_sub_out_links")
@@ -606,10 +635,27 @@ def _tab_subarea(dlg):
                                  "Could not build a CSV link table from the selected "
                                  "link layer (gpkgcsv conversion failed) - see History log.")
             return
+        # Congested boundary times: the explicit override if given, else every
+        # link_performance file sitting beside the duckdb.
+        lps = ([w.linkperf.text().strip()] if w.linkperf.text().strip()
+               else _link_performance_files(_db(dlg)))
+        if not lps:
+            QMessageBox.warning(
+                dlg, "Subarea",
+                "No link_performance_*DTA.csv found beside the agentPaths duckdb.\n\n"
+                "Subarea boundary arrival times are walked against the assignment's "
+                "congested link times -- there is no free-flow fallback. Point the "
+                "'link performance (csv)' field at the file from the run that "
+                "produced this duckdb.")
+            return
+        _log("Subarea: boundary times from %d link-performance file(s): %s"
+             % (len(lps), ", ".join(os.path.basename(p) for p in lps)))
         args = ["subarea", "--db", _db(dlg), "--mem", "32GB", "--nodes", nodes_csv,
                 "--trips", w.trips.text(),
                 "--links", links_csv,
                 "--out", w.out_trips.text()]
+        for p in lps:
+            args += ["--linkperf", p]
         r = _run(args, "agentAnalysis_subarea.log")
         if r.returncode != 0:
             QMessageBox.critical(dlg, "Subarea", "agentAnalysis subarea failed - see History log.")

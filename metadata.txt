@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.66
+version=2.67
 date=2026-09-22
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -43,7 +43,7 @@ engine_agentplans=agentPlans 16eab94 2026-09-21
 engine_afdta=agentflow-dta 6fb22e8 2026-09-22
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep ef22285 2026-07-12
-engine_agentanalysis=agentAnalysis b17beba 2026-09-22
+engine_agentanalysis=agentAnalysis c08cc43 2026-09-22
 engine_pathskim=PathSkim 07202a8 2026-07-15
 engine_utilities=utilities 88fa388 2026-07-15
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
