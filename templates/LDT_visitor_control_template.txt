@@ -33,7 +33,7 @@ numberOfHouseholds            {NUM_HH}
 vehicleTypeAltsFilename       vehicle_type_alts.csv
 
 HouseholdOutputFileName       LDT_OS_household_v1.csv
-TourOutputFileName            OS_LD_tour_out.csv
+TourOutputFileName            {TOUR_OUT}
 AutoVehicleTripMatrixFileName LDT_OS_auto_vtrip.csv
 AutoPersonTripMatrixFileName  LDT_OS_auto_ptrip.csv
 BusPersonTripMatrixFileName   LDT_OS_bus_ptrip.csv

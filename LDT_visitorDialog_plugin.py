@@ -578,7 +578,15 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             "LAND_USE" : os.path.basename(settings.get("LDT_resident_Landuse_updated")),
             "SYN_HH" : os.path.basename(settings.get("LDT_visitor_SynHH_updated")),
             "NUM_HH" : str(settings.get("LDT_visitor_nHH")),
-            "COEFF_TOML_DIR" : LDT_Parameters
+            "COEFF_TOML_DIR" : LDT_Parameters,
+            # An incremental run must NOT write OS_LD_tour_out.csv: that is the
+            # name the append step PRODUCES, by merging this run's delta into
+            # the reference year's tours. One name for both would have the
+            # append reading and writing the same file and losing the
+            # increment. An absolute run has nothing to append, so its output
+            # IS the final one and keeps the plain name.
+            "TOUR_OUT" : ("OS_LD_tour_out.csv" if absolute
+                          else "OS_LD_increment_tour_out.csv"),
         }
         self.template_keys_update(ldt_vis_template, replacements, properties_file)
 
@@ -618,6 +626,20 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         else:
             prev_out_file = "none"
             checkBox_userRef_str = "False"
+
+        # The model has just run; confirm it produced the increment before
+        # handing it to the append, which would otherwise fail obscurely inside
+        # ldtprep on a missing input.
+        incr_expected = os.path.join(settings.get("scenarioDir"),
+                                     "OS_LD_increment_tour_out.csv")
+        if not os.path.exists(incr_expected):
+            QMessageBox.critical(
+                self, "Error",
+                "The incremental LDT-visitor run did not produce:\n%s\n\n"
+                "Check TourOutputFileName in LDT_visitor.txt -- an incremental "
+                "run writes OS_LD_increment_tour_out.csv, which the append step "
+                "merges into OS_LD_tour_out.csv." % incr_expected)
+            return False
 
         ldtprep_exe = settings.app_exe("utilities/ldtprep.exe")
         if not os.path.exists(ldtprep_exe):
