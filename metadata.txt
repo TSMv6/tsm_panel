@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.70
-date=2026-09-22
+version=2.71
+date=2026-09-24
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -59,7 +59,57 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (104 commits, 2026-06-19 to 2026-09-22):
+    One version per commit, newest first (114 commits, 2026-06-19 to 2026-09-24):
+    .
+    2.71 (2026-09-24): LDT Visitor's reference-run block is two inputs on two
+    rows - Reference Year, and Reference Tour File with a browse button beside
+    the path instead of on top of it. The path field had no label, the button
+    sat in the field's place, and an empty disabled label/field pair
+    (lineEdit_futYear) had been dead since the scenario year moved to Project
+    Settings.
+    .
+    2.70 (2026-09-24): An incremental LDT Visitor run writes
+    OS_LD_increment_tour_out.csv, not OS_LD_tour_out.csv. Both modes wrote the
+    one name, so the append step read and wrote the same file and the
+    increment was lost. TourOutputFileName is now filled per run mode, and the
+    append checks its input exists before calling ldtprep.
+    .
+    2.69 (2026-09-24): Subarea boundary arrival time is opt-in - a checkbox
+    rather than a second link-performance field, since the common section at
+    the top already supplies all three resolutions. Adds about 30 minutes to a
+    statewide run, so it is off by default. Summarization gains the right-hand
+    help panel the other dialogs have, covering path trace, subarea, select
+    link and turning movements.
+    .
+    2.68 (2026-09-23): Ships agentAnalysis 470f000. Subarea extraction walks
+    each route key against link_performance to get the congested time at the
+    boundary, using each link's own resolution file (macro/meso/micro are a
+    strict partition, so the file a link appears in is its resolution).
+    boundary_t_min stays empty when no link performance was given rather than
+    reporting a free-flow guess as fact.
+    .
+    2.67 (2026-09-22): Subarea tab takes the congested link times the
+    extraction needs, and the extracted trip list carries TSM_depart_time
+    alongside the boundary arrival. A trip-list pairing check refuses a list
+    of a different vintage than the duckdb - the wrong one silently moved a
+    sample turn volume from 17050.4 to 12960.3.
+    .
+    2.66 (2026-09-22): Subarea external boundary nodes are marked DTA_Type =
+    99 so the extracted network loads them as zones.
+    .
+    2.65 (2026-09-22): About TSM Plugin folds the utilities into one line
+    under Model Engines, which had grown long enough to push the dialog, and
+    links the source revision straight at the commit on GitHub.
+    .
+    2.64 (2026-09-22): Subarea extraction adds the external boundary nodes,
+    which were missing from the extracted network (741 of them on a 399-node
+    test window). The trip list keeps the statewide origin and destination as
+    TSM_O / TSM_D beside the boundary node. Centroid connectors only partly
+    inside are dropped; other links crossing the boundary are kept whole.
+    Extracted links and nodes load into the layers panel, as select-link
+    output now does, dropping any layer already holding the file so the run
+    can overwrite it. Select Link carries the purpose and market classes
+    through to the loaded CSV and GPKG.
     .
     2.63 (2026-09-22): About TSM Plugin reports this plugin's own commit and
     date, not just the engines'. Engine revisions refreshed for afdta,

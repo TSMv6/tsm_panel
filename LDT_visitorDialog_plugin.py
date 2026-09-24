@@ -322,12 +322,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # ldt_ext_calibrate / ldt_ext_mode and the station table are written by
         # the agentPlans / Trip List dialog, which owns the calibration now.
 
-        # settings.set("LDTFutureYear", self.lineEdit_futYear.text())
         if settings.get("LDT_visitor_nHH") != self.lineEdit_NumHH.text():
             settings.set("LDT_visitor_nHH", self.lineEdit_NumHH.text())
-        # if settings.get("scenarioYear") != self.lineEdit_futYear.text():
-        #     settings.set("scenarioYear", self.lineEdit_futYear.text())
-        # self.close()
         if self.checkBox_userRef.isChecked():
             settings.set("LDTExtCountYear", self.lineEdit_LDTRefYear.text())
             settings.set("LDT_visitor_userRef", True)
