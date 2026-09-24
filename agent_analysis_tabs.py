@@ -447,21 +447,19 @@ def _tab_trace(dlg):
     return w
 
 
-def _link_performance_files(db_path):
-    """The link_performance_*.csv the assignment wrote beside its duckdb.
+def _link_performance_files(dlg):
+    """The macro/meso/micro link-performance files from the COMMON section.
 
-    Boundary arrival times are walked against these congested link times, and
-    agentAnalysis requires them -- there is no free-flow fallback. They must come
-    from the SAME run as the duckdb, which is exactly why they are looked up
-    beside it rather than asked for separately.
+    The dialog already asks for all three at the top for the loaded-network
+    summary; asking again per tab would be a second place to get it wrong.
+    Whatever is filled in there is what the boundary walk uses -- the three
+    resolutions partition the network, so each link is priced at its own.
     """
     out = []
-    if not db_path:
-        return out
-    run_dir = os.path.dirname(db_path)
-    for res in ("macro", "meso", "micro"):
-        p = os.path.join(run_dir, "link_performance_%sDTA.csv" % res)
-        if os.path.exists(p):
+    for name in ("lineEdit_volume", "lineEdit_volumeMeso", "lineEdit_volumeMicro"):
+        e = getattr(dlg, name, None)
+        p = e.text().strip() if e is not None else ""
+        if p and os.path.exists(p):
             out.append(p.replace("\\", "/"))
     return out
 
@@ -524,16 +522,26 @@ def _tab_subarea(dlg):
     tl_lay, w.trips = _browse_row(w, "trip list (csv/gz)",
                                   filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
     v.addLayout(tl_lay)
-    lp_lay, w.linkperf = _browse_row(
-        w, "link performance (csv)", filt="Link performance (*.csv);;All Files (*)",
-        key="aa_sub_linkperf")
-    w.linkperf.setToolTip(
-        "Congested link travel times from the run that produced the duckdb "
-        "(link_performance_macroDTA.csv). Left blank, every "
-        "link_performance_*DTA.csv beside the duckdb is used. Boundary arrival "
-        "times are walked along each path against these; there is no free-flow "
-        "fallback.")
-    v.addLayout(lp_lay)
+    # Opt-in, because it is the expensive half of the extraction: every EI/EE
+    # path is walked link by link to find when the trip actually reaches the
+    # boundary. Off, the trip keeps its statewide departure time and
+    # boundary_t_min is left empty for a time-of-day model to fill later.
+    w.cb_boundary = QCheckBox(
+        "Compute external arrival time from paths and link performance "
+        "(adds ~30 min)", w)
+    w.cb_boundary.setToolTip(
+        "ON: walk each EI/EE path against the macro/meso/micro link-performance "
+        "files from the top of this dialog, pricing every link at the interval "
+        "the trip reaches it, and set depart_time to the CONGESTED arrival at "
+        "the boundary.\n\n"
+        "OFF (default): depart_time keeps the statewide departure and "
+        "boundary_t_min is empty. Much faster, and honest about what is not "
+        "known -- it never substitutes a free-flow guess.")
+    _b = Config().get("aa_sub_boundary_time")
+    w.cb_boundary.setChecked(str(_b).lower() in ("true", "1", "yes"))
+    w.cb_boundary.toggled.connect(
+        lambda ch: Config().set("aa_sub_boundary_time", ch))
+    v.addWidget(w.cb_boundary)
     v.addWidget(_hline(w))
     ol_lay, w.out_links = _browse_row(w, "output subarea links (gpkg)", "save",
                                       "GeoPackage (*.gpkg)", "aa_sub_out_links")
@@ -635,21 +643,26 @@ def _tab_subarea(dlg):
                                  "Could not build a CSV link table from the selected "
                                  "link layer (gpkgcsv conversion failed) - see History log.")
             return
-        # Congested boundary times: the explicit override if given, else every
-        # link_performance file sitting beside the duckdb.
-        lps = ([w.linkperf.text().strip()] if w.linkperf.text().strip()
-               else _link_performance_files(_db(dlg)))
-        if not lps:
-            QMessageBox.warning(
-                dlg, "Subarea",
-                "No link_performance_*DTA.csv found beside the agentPaths duckdb.\n\n"
-                "Subarea boundary arrival times are walked against the assignment's "
-                "congested link times -- there is no free-flow fallback. Point the "
-                "'link performance (csv)' field at the file from the run that "
-                "produced this duckdb.")
-            return
-        _log("Subarea: boundary times from %d link-performance file(s): %s"
-             % (len(lps), ", ".join(os.path.basename(p) for p in lps)))
+        # Congested boundary times are opt-in; the files come from the common
+        # section at the top of the dialog, not from a second field here.
+        lps = []
+        if w.cb_boundary.isChecked():
+            lps = _link_performance_files(dlg)
+            if not lps:
+                QMessageBox.warning(
+                    dlg, "Subarea",
+                    "External arrival times need the link-performance files, and "
+                    "none of the three rows at the top of this dialog point at a "
+                    "file that exists.\n\nFill in at least the macroDTA row (and "
+                    "meso/micro if the run had them) with output from the SAME run "
+                    "as the agentPaths duckdb, or untick the box to extract without "
+                    "boundary times.")
+                return
+            _log("Subarea: boundary times from %d link-performance file(s): %s"
+                 % (len(lps), ", ".join(os.path.basename(p) for p in lps)))
+        else:
+            _log("Subarea: boundary-time walk skipped (checkbox off); EI/EE trips "
+                 "keep their statewide departure time")
         args = ["subarea", "--db", _db(dlg), "--mem", "32GB", "--nodes", nodes_csv,
                 "--trips", w.trips.text(),
                 "--links", links_csv,
@@ -1080,6 +1093,103 @@ def _tab_turns(dlg):
     return w
 
 
+def _agent_analysis_help(parent):
+    """Right-hand panel: what the four tabs are for, and where the numbers come
+    from. Deliberately about the CONCEPTS -- every field already has a tooltip,
+    so repeating them here would just go stale."""
+    from qgis.PyQt.QtWidgets import QTextBrowser
+    html = """
+<html><body style='font-family:Segoe UI,Arial; font-size:9pt; line-height:1.35;'>
+<h2 style='margin:0 0 6px 0;'>agentAnalysis &#8211; reading the assignment back</h2>
+
+<p>Every tab here answers a question about <b>the routes HyDRA actually chose</b>,
+by querying two things the assignment leaves behind.</p>
+
+<h4>1. Where the data comes from</h4>
+<p><b><code>agentPaths.duckdb</code></b> &#8211; written by HyDRA when
+<i>Agent paths</i> is ticked. Two tables carry everything:</p>
+<ul>
+<li><code>agents</code> &#8211; one row per vehicle trip: the 4-part identity
+(<code>hh_id</code>&#183;<code>person_id</code>&#183;<code>tour_id</code>&#183;<code>trip_id</code>),
+<code>origin</code>, <code>dest</code>, <code>depart_slot</code> (30-min),
+<code>weight</code> (vehicles), <code>purpose</code>, and a
+<b><code>key_id</code></b>.</li>
+<li><code>key_paths</code> &#8211; the ordered links of each <b>route key</b>:
+<code>key_id, seq, a_node, b_node</code>. Trips taking the identical route share
+one key, which is why 77M agents compress into ~35M keys.</li>
+</ul>
+<p><b>No travel times are stored</b> &#8211; only <code>cost_min</code> for the
+whole path. Anything time-dependent is therefore recomputed from:</p>
+<p><b><code>link_performance_&lt;macro|meso|micro&gt;DTA.csv</code></b> &#8211;
+<code>travel_time_min</code> for every link in every 15-minute interval. The three
+files <b>partition</b> the network (a link is written to exactly one), so supplying
+all three prices each link at <b>its own resolution</b>. They must come from the
+same run as the duckdb.</p>
+<p>The <b>link&#8594;key index</b> (<code>agentPaths_index.duckdb</code>) is built
+once beside the duckdb and reused; it turns a ~20-minute scan into seconds.</p>
+
+<h4>2. Path Trace</h4>
+<p><i>Where did this particular trip go?</i> Give a household (optionally person /
+tour / trip) and it lists that agent's route link by link, in order, from
+<code>key_paths</code>. Use it to sanity-check a suspicious OD pair or to see why
+a trip avoided a facility.</p>
+
+<h4>3. Subarea</h4>
+<p><i>Cut a window out of the statewide model.</i> Each trip's stored path is
+tested against the boundary and classified:</p>
+<ul>
+<li><b>II</b> &#8211; both ends inside; the row passes through unchanged.</li>
+<li><b>IE / EI</b> &#8211; one end inside; the outside end is rewritten to the
+<b>boundary crossing node</b>.</li>
+<li><b>EE</b> &#8211; neither end inside but the path crosses the window: a
+<b>through</b> trip, rewritten at both ends.</li>
+</ul>
+<p><code>TSM_O</code> / <code>TSM_D</code> keep the statewide origin and
+destination so a subarea trip can be traced back to the parent run. Outputs are a
+subarea <b>link</b> layer (whole links kept; centroid connectors only if wholly
+inside), a <b>node</b> layer (interior nodes plus the external boundary nodes,
+marked <code>DTA_Type&nbsp;=&nbsp;99</code> so they load as subarea zones), and the
+<b>trip list</b>.</p>
+<p>Ticking <i>compute external arrival time</i> walks each EI/EE path against the
+link-performance files, pricing every link at the interval the trip reaches it, and
+sets <code>depart_time</code> to the <b>congested</b> arrival at the boundary
+(<code>boundary_t_min</code> records the offset). Left off, the trip keeps its
+statewide departure and the offset is empty &#8211; never a free-flow guess.</p>
+
+<h4>4. Select Link</h4>
+<p><i>Who uses this link?</i> Give one or more A&#8211;B links; every agent whose
+route key contains them is selected. <b>OR</b> = uses any, <b>AND</b> = uses all,
+<b>EACH</b> = an independent select-link per link. Outputs the selected agents and
+their <b>loaded volumes</b> per link (<code>SL_VOL</code>), optionally split into
+<code>SL_VOL_&lt;purpose&gt;</code> or <code>&lt;market&gt;</code> columns. The
+split happens at agent level <i>before</i> the route-key rollup, so the columns
+always sum back to the total. Volumes are joined onto the link layer as a GPKG for
+mapping.</p>
+
+<h4>5. Turning Movements</h4>
+<p><i>How much turns where?</i> At each requested node, consecutive links of the
+same route key are paired &#8211; FROM&#8594;THRU&#8594;TO, or five nodes with
+<i>--five</i> &#8211; and agent weights summed per movement. The output is
+<b>aggregate</b>: one row per movement with an agent count and vehicle volume
+(plus per-purpose or per-market columns if asked). Individual agents are not
+listed.</p>
+
+<p style='color:#b9770e;'><b>Note:</b> <i>by hour</i> currently buckets on the
+agent's <b>departure</b> hour, not its arrival at the node, so movements far from
+trip origins read early. The path walk used by Subarea is what fixes this.</p>
+
+<h4>Units</h4>
+<p>All volumes are <b>actual vehicles</b> (raw agent weight), matching the
+vehicle-unit <code>link_performance</code> volumes &#8211; not person trips and not
+PCE.</p>
+</body></html>"""
+    tb = QTextBrowser(parent)
+    tb.setHtml(html)
+    tb.setOpenExternalLinks(True)
+    tb.setMinimumWidth(360)
+    return tb
+
+
 def add_agent_analysis_tabs(dlg):
     """Append the agentAnalysis QTabWidget under the Summarization controls
     (bottom of the dialog, SubareaAssignment-style)."""
@@ -1099,7 +1209,14 @@ def add_agent_analysis_tabs(dlg):
     grid = dlg.gridLayout
     row = grid.rowCount()
     grid.addWidget(tabs, row, 0, 1, 1)
-    dlg.resize(dlg.width() + 140, dlg.height() + 420)
+    # Help panel down the right-hand side, spanning the whole dialog the way the
+    # HyDRA and agentPlans dialogs do -- the existing rows all sit in column 0,
+    # so column 1 is free.
+    dlg._aa_help = _agent_analysis_help(dlg)
+    grid.addWidget(dlg._aa_help, 0, 1, row + 1, 1)
+    grid.setColumnStretch(0, 3)
+    grid.setColumnStretch(1, 2)
+    dlg.resize(dlg.width() + 560, dlg.height() + 420)
     return tabs
 
 
