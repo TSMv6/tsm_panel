@@ -13,6 +13,37 @@ from .tsm_settings import Config
 # Name of the netPrep control file written/read in the scenario (output) directory.
 SETTINGS_FILENAME = "link_consolidation_settings.txt"
 
+# Centroid-connector attributes passed to netPrep. They are model inputs rather
+# than engine constants, but they change rarely enough not to deserve their own
+# widgets yet, so they travel through Config (editable in the configuration
+# table) and are written into the control file on every run.
+CONNECTOR_DEFAULTS = {
+    "centroid_connector_speed": "10",       # free-flow SPEED on the connector
+    "centroid_connector_postspeed": "25",   # POSTSPEED of the synthesized link
+    "centroid_connector_capacity": "99999",
+}
+
+
+def parse_zone_range(text):
+    """'11501-11560' -> (11501, 11560); None if it is not a usable range.
+
+    Accepts '-', ',' and ':' as the separator, matching netPrep's own parser so
+    what the panel accepts is exactly what the engine accepts.
+    """
+    t = (text or "").strip()
+    if not t:
+        return None
+    for sep in (",", ":", ";"):
+        t = t.replace(sep, "-")
+    parts = [p.strip() for p in t.split("-") if p.strip()]
+    if len(parts) != 2:
+        return None
+    try:
+        lo, hi = int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+    return (lo, hi) if lo > 0 and hi >= lo else None
+
 
 class MultiFieldCombo(QComboBox):
     """Compact multi-select combo: each item is checkable, the popup stays open
@@ -111,21 +142,24 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         self.populate_layer_combobox(self.lineLayerCombo_2, "Point")        # centroid
         self.populate_layer_combobox(self.lineLayerCombo_3, "LineString")   # centroid connector
 
-        # Year dropdown
-        self.comboBox_Year.addItems(["2023", "2024", "2025", "2030", "2035", "2050"])
-
         # ------------------------------------------------------------------
         # Fallback prefill from Config (project settings). The settings file,
         # loaded below, takes precedence over these.
         # ------------------------------------------------------------------
         if settings.get("scenarioName"):
             self.lineEdit_ScenarioName.setText(settings.get("scenarioName"))
-        if settings.get("networkYear"):
-            self.comboBox_Year.setCurrentText(settings.get("networkYear"))
+        # Network Year is NOT set here: Project Settings owns it, and the run
+        # reads it from Config. Two widgets writing one value is how they drift.
         if settings.get("scenarioDir"):
             self.output_directory.setText(settings.get("scenarioDir"))
         if settings.get("max_internal_zones"):
             self.lineEdit_MaxZones.setText(str(settings.get("max_internal_zones")))
+        # The external-station block. Deliberately NOT defaulted: the ids differ
+        # per zone system (TSM 11501-11560, RPM 30001-30060 in the current
+        # GeoMaster), and a wrong guess does not fail loudly -- it just leaves
+        # every external station unmarked in Node.csv.
+        if settings.get("external_zone_range"):
+            self.lineEdit_ExtRange.setText(str(settings.get("external_zone_range")))
         # Shared GeoMaster layers + network version come from Config (set once in
         # Project Settings, or a prior run) so they are not re-picked per widget.
         # The scenario settings file, loaded below, still overrides these.
@@ -267,10 +301,10 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if cfg.get("scenario_name"):
             self.lineEdit_ScenarioName.setText(cfg["scenario_name"])
-        if cfg.get("year"):
-            self.comboBox_Year.setCurrentText(str(cfg["year"]))
         if cfg.get("max_internal_zones"):
             self.lineEdit_MaxZones.setText(str(cfg["max_internal_zones"]))
+        if cfg.get("external_zone_range"):
+            self.lineEdit_ExtRange.setText(str(cfg["external_zone_range"]))
 
         # Network version: explicit key wins, else infer from presence of the
         # separate centroid/connector layers (v6) vs link+node only (v5).
@@ -375,8 +409,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         """Persist the current selections into the Config store."""
         settings = Config()
         settings.set("scenarioName", self.lineEdit_ScenarioName.text())
-        settings.set("networkYear", self.comboBox_Year.currentText())
         settings.set("max_internal_zones", self.lineEdit_MaxZones.text())
+        settings.set("external_zone_range", self.lineEdit_ExtRange.text().strip())
         settings.set("scenarioDir", self.output_directory.text().strip())
         settings.set("network_version", self.networkVersion.currentText())
         settings.set("model_resolution", self.modelResolution.currentText())
@@ -525,8 +559,10 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         # Other fields
         scenario_name = self.lineEdit_ScenarioName.text()
-        selected_year = self.comboBox_Year.currentText()
-        max_internal_zones = self.lineEdit_MaxZones.text()
+        # Network Year comes from Project Settings, not from this dialog.
+        selected_year = (settings.get("networkYear") or "").strip()
+        max_internal_zones = self.lineEdit_MaxZones.text().strip()
+        ext_range_text = self.lineEdit_ExtRange.text().strip()
         model_resolution = self.modelResolution.currentText()
         msr_subarea = self.lineEdit_MSRSubarea.text().strip()
         msr_lookup = self.lineEdit_MSRLookup.text().strip()
@@ -539,6 +575,40 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if not output_dir or output_dir == "Select Output Directory":
             QMessageBox.critical(self, "Error", "Please select an output directory.")
+            return False
+        if not selected_year:
+            QMessageBox.critical(
+                self, "Error",
+                "No Network Year is set.\n\n"
+                "Set it in Project Settings > Network Year; the consolidator "
+                "reads it from there and no longer asks for it separately.")
+            return False
+        # Both halves of the zone numbering are required. netPrep uses them to
+        # mark centroids DTA_Type = 99 in Node.csv and to stop graphWalk
+        # consolidating through them; it refuses to run without them rather
+        # than assume one resolution's numbering.
+        if not max_internal_zones.isdigit() or int(max_internal_zones) <= 0:
+            QMessageBox.critical(
+                self, "Error",
+                "Max Internal Zones must be the highest INTERNAL zone number "
+                "(e.g. 8721 for TSM, 26274 for RPM).")
+            return False
+        ext_range = parse_zone_range(ext_range_text)
+        if ext_range is None:
+            QMessageBox.critical(
+                self, "Error",
+                "External Stn Range must be the first and last external-station "
+                "node id, e.g. 11501-11560 for TSM or 30001-30060 for RPM.\n\n"
+                "The external stations are a separate block of ids above the "
+                "internal zones; netPrep needs the range to mark them as zones.")
+            return False
+        if ext_range[0] <= int(max_internal_zones):
+            QMessageBox.critical(
+                self, "Error",
+                "External Stn Range (%d-%d) overlaps the internal zones "
+                "(1-%s).\n\nThe external stations are numbered above the "
+                "internal zones." % (ext_range[0], ext_range[1],
+                                     max_internal_zones))
             return False
         if model_resolution == "MSR" and not (msr_subarea and msr_lookup):
             QMessageBox.critical(self, "Error", "MSR resolution requires an MSR subarea polygon and lookup table.")
@@ -569,6 +639,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"scenario_name = {scenario_name}\n")
                 f.write(f"year = {selected_year}\n")
                 f.write(f"max_internal_zones = {max_internal_zones}\n")
+                # Zone ids in full: internal block + external-station block.
+                f.write(f"external_zone_range = {ext_range[0]}-{ext_range[1]}\n")
                 f.write(f"network_version = {network_version}\n")
                 f.write(f"Geomaster_line_layer = {line_path}\n")
                 f.write(f"Geomaster_node_layer = {node_path}\n")
@@ -588,6 +660,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"plugin_dir = {plugin_dir}\n")
                 # Capacities lookup path passed explicitly (no hardcoded path in the exe).
                 f.write(f"capacities_file = {capacities_file}\n")
+                # Centroid-connector attributes: model inputs, not engine
+                # constants. netPrep applies them by facility type (FTYPE 51),
+                # so they reach external connectors as well as internal ones.
+                for _k, _default in CONNECTOR_DEFAULTS.items():
+                    f.write(f"{_k} = {settings.get(_k) or _default}\n")
                 # Run both consolidation and GMNS export (GMNS feeds the DTA
                 # assignment; built from the consolidated network in one pass).
                 f.write("RUN_MODE = both\n")

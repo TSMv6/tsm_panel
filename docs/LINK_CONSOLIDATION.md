@@ -58,6 +58,49 @@ resolution afterward via a **hierarchical, sequential spatial disaggregation**
 
 ---
 
+## Zone numbering (**Max Internal Zones** and **External Stn Range**)
+
+Centroids are not ordinary network nodes: graphWalk must never consolidate
+*through* one, and netPrep marks every centroid `DTA_Type = 99` in `Node.csv`.
+Telling them apart from network nodes is by id, so netPrep has to be told which
+ids are zones — and that is a property of the network, not of the program.
+
+Zone ids come in **two separate blocks**, and both must be given:
+
+| Field | What it is | TSM | RPM |
+|---|---|---|---|
+| **Max Internal Zones** | highest *internal* zone id; internals are `1 … max` | `8721` | `26274` |
+| **External Stn Range** | first and last *external station* id, inclusive | `11501-11560` | `30001-30060` |
+
+The external stations are the same 60 places in both systems (I-10, I-75, I-95
+and the rest of the state-line crossings) — they are simply **numbered
+differently**, in their own block above the internal zones. That gap is why one
+"highest zone id" number cannot describe the zone system on its own: anything
+between `max internal` and the external block is not a zone at all.
+
+Neither field is defaulted, and netPrep refuses to run without them. A wrong
+value does not fail loudly — it just leaves centroids unmarked in `Node.csv`,
+which surfaces much later as zones that will not load.
+
+> Real network node ids are GeoMaster/Navteq ids in the tens of millions, so
+> there is no risk of a network node falling inside either block.
+
+---
+
+## Centroid connectors
+
+Connectors are synthesized as `FTYPE 51` links and carry fixed attributes rather
+than looked-up ones: a free-flow **speed** (so paths are not tempted to travel
+along them), the synthesized link's **posted speed**, and an effectively
+unlimited **capacity** (a connector must never be the binding constraint on
+loading a zone). These are written into `link_consolidation_settings.txt` on
+every run — `centroid_connector_speed`, `centroid_connector_postspeed` and
+`centroid_connector_capacity` — and can be changed in the configuration table
+without rebuilding netPrep. netPrep applies them by **facility type**, so
+connectors at external stations get them exactly as internal ones do.
+
+---
+
 ## 2. Why the navigation network can't be used as-is
 
 | Problem with raw navigation links | Consequence for the model |

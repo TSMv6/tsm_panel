@@ -51,38 +51,6 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="2">
-            <widget class="QLabel" name="label_Input_Year">
-             <property name="text">
-              <string>Select Year</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="3">
-            <widget class="QComboBox" name="comboBox_Year">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="autoFillBackground">
-              <bool>false</bool>
-             </property>
-             <property name="editable">
-              <bool>false</bool>
-             </property>
-             <property name="currentText">
-              <string/>
-             </property>
-             <property name="currentIndex">
-              <number>-1</number>
-             </property>
-             <property name="maxVisibleItems">
-              <number>10</number>
-             </property>
-             <property name="placeholderText">
-              <string>Year</string>
-             </property>
-            </widget>
-           </item>
            <item row="1" column="0">
             <widget class="QLabel" name="label_Input_MaxIntZ">
              <property name="text">
@@ -97,14 +65,14 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="2">
+           <item row="0" column="2">
             <widget class="QLabel" name="label_NetVersion">
              <property name="text">
               <string>Network Version</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="3">
+           <item row="0" column="3">
             <widget class="QComboBox" name="networkVersion">
              <property name="toolTip">
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TSMv6: separate GeoMaster line, node, centroid &amp; connector layers. TSMv5: link + node only (centroids in node file, connectors in link file).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -125,6 +93,25 @@
                <string>TSMv5</string>
               </property>
              </item>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QLabel" name="label_ExtRange">
+             <property name="text">
+              <string>External Stn Range</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QLineEdit" name="lineEdit_ExtRange">
+             <property name="placeholderText">
+              <string>e.g. 11501-11560</string>
+             </property>
+             <property name="toolTip">
+              <string>Node-id range of the external stations, first-last inclusive.
+These sit in their own block above the internal zones and differ per zone system — in the current GeoMaster, TSM numbers them 11501-11560 and RPM numbers the same stations 30001-30060.
+netPrep marks every internal zone and external station DTA_Type = 99 in Node.csv; without this range the external ones would be missed.</string>
+             </property>
             </widget>
            </item>
           </layout>
@@ -453,17 +440,17 @@
       <bool>true</bool>
      </property>
      <property name="html">
-      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+      <string>&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name="qrichtext" content="1" /&gt;&lt;style type="text/css"&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Many to One Tool&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-weight:600;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Github page:&lt;a href=&quot;https://github.com/4Step/Many_to_One&quot;&gt;&lt;span style=&quot; font-size:7pt; text-decoration: underline; color:#0000ff;&quot;&gt;Many-to-One&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Link Consolidation is a process of merging several links to reduce the network required for modeling. There are about 3 million links covering every roadway section (between two interchanges or stops) that are used in navigation databases like Navteq, OSM, Google, Bing Maps. For modeling we don't need this resolution as many of them are neighborhood streets (which are often not modeled). There are still over 500,000 links after exlcuing the neighborhood streets, and these represent only one feature per roadway, meaning if there is a undivided two-way street, only one feature is maintained while the attributes for the other direction are coded for the reverse direction. So for modeling such detailed networks need to be reduced for efficiency without loss of geometry that influences path distance /time. &lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;This program, reduced the networks and converts link &amp;amp; node files into graphs (networks with edges &amp;amp; vertices). &lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=" font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:400; font-style:normal;"&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" font-weight:600;"&gt;Many to One Tool&lt;/span&gt;&lt;/p&gt;
+&lt;p style="-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-weight:600;"&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Github page:&lt;a href="https://github.com/4Step/Many_to_One"&gt;&lt;span style=" font-size:7pt; text-decoration: underline; color:#0000ff;"&gt;Many-to-One&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;Link Consolidation is a process of merging several links to reduce the network required for modeling. There are about 3 million links covering every roadway section (between two interchanges or stops) that are used in navigation databases like Navteq, OSM, Google, Bing Maps. For modeling we don't need this resolution as many of them are neighborhood streets (which are often not modeled). There are still over 500,000 links after exlcuing the neighborhood streets, and these represent only one feature per roadway, meaning if there is a undivided two-way street, only one feature is maintained while the attributes for the other direction are coded for the reverse direction. So for modeling such detailed networks need to be reduced for efficiency without loss of geometry that influences path distance /time. &lt;/p&gt;
+&lt;p style="-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;This program, reduced the networks and converts link &amp;amp; node files into graphs (networks with edges &amp;amp; vertices). &lt;/p&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="textInteractionFlags">
       <set>Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>

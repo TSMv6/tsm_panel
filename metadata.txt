@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.71
-date=2026-09-24
+version=2.72
+date=2026-09-25
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -59,7 +59,20 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (114 commits, 2026-06-19 to 2026-09-24):
+    One version per commit, newest first (115 commits, 2026-06-19 to 2026-09-25):
+    .
+    2.72 (2026-09-25): Link Consolidator passes the zone numbering to netPrep
+    instead of letting it assume one. Both halves are inputs now: Max Internal
+    Zones, and a new External Stn Range beside it (TSM 11501-11560, RPM
+    30001-30060 - the same 60 stations, numbered differently). netPrep's
+    DTA_Type = 99 rule had the external block hardcoded to the TSM ids, so
+    under RPM no value of Max Internal Zones could mark the 60 external
+    stations, and at the TSM default 67% of RPM zones went unmarked as well.
+    Select Year is gone from this dialog - Project Settings > Network Year
+    already owns it - and Network Version takes its place. Centroid-connector
+    speed, posted speed and capacity are written to the control file too
+    (editable in View Settings) rather than compiled into netPrep. Needs the
+    matching netPrep, which now refuses to run without the zone ids.
     .
     2.71 (2026-09-24): LDT Visitor's reference-run block is two inputs on two
     rows - Reference Year, and Reference Tour File with a browse button beside

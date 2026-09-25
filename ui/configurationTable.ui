@@ -29,7 +29,7 @@
       <bool>true</bool>
      </property>
      <property name="rowCount">
-      <number>130</number>
+      <number>134</number>
      </property>
      <property name="window" stdset="0">
       <string/>
@@ -2262,6 +2262,46 @@
      <item row="129" column="1">
       <property name="text">
        <string>netprep_capacities_file</string>
+      </property>
+     </item>
+     <item row="130" column="0">
+      <property name="text">
+       <string>Link Consolidator: External station range</string>
+      </property>
+     </item>
+     <item row="130" column="1">
+      <property name="text">
+       <string>external_zone_range</string>
+      </property>
+     </item>
+     <item row="131" column="0">
+      <property name="text">
+       <string>Link Consolidator: Centroid connector speed</string>
+      </property>
+     </item>
+     <item row="131" column="1">
+      <property name="text">
+       <string>centroid_connector_speed</string>
+      </property>
+     </item>
+     <item row="132" column="0">
+      <property name="text">
+       <string>Link Consolidator: Centroid connector posted speed</string>
+      </property>
+     </item>
+     <item row="132" column="1">
+      <property name="text">
+       <string>centroid_connector_postspeed</string>
+      </property>
+     </item>
+     <item row="133" column="0">
+      <property name="text">
+       <string>Link Consolidator: Centroid connector capacity</string>
+      </property>
+     </item>
+     <item row="133" column="1">
+      <property name="text">
+       <string>centroid_connector_capacity</string>
       </property>
      </item>
     </widget>
