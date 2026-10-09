@@ -5,8 +5,8 @@ date=2026-10-09
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
-commit=487f56a
-commit_date=2026-09-25
+commit=c3ab069
+commit_date=2026-10-09
 # Standard QGIS plugin metadata keys; the About dialog links the
 # source revision straight at the commit on GitHub.
 repository=https://github.com/TSMv6/tsm_panel
