@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>460</width>
-    <height>620</height>
+    <height>660</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -92,11 +92,53 @@
        </widget>
       </item>
       <item row="5" column="1" colspan="2">
-       <widget class="QLineEdit" name="lineEdit_costCoeff">
-        <property name="text">
-         <string>1.246</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="hbox_cost">
+         <item>
+          <widget class="QLineEdit" name="lineEdit_costCoeff">
+           <property name="minimumSize">
+            <size>
+             <width>70</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>70</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>1.246</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_tollField">
+           <property name="minimumSize">
+            <size>
+             <width>85</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Toll Field</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_tollField">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Link field holding the toll ((none) = no tolls)</string>
+           </property>
+          </widget>
+         </item>
+       </layout>
       </item>
       <item row="6" column="0">
        <widget class="QLabel" name="label_5">
@@ -106,11 +148,53 @@
        </widget>
       </item>
       <item row="6" column="1" colspan="2">
-       <widget class="QLineEdit" name="lineEdit_distCoeff">
-        <property name="text">
-         <string>4.45</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="hbox_dist">
+         <item>
+          <widget class="QLineEdit" name="lineEdit_distCoeff">
+           <property name="minimumSize">
+            <size>
+             <width>70</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>70</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>4.45</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_distField">
+           <property name="minimumSize">
+            <size>
+             <width>85</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Distance Field</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_distField">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Link field holding length in miles</string>
+           </property>
+          </widget>
+         </item>
+       </layout>
       </item>
       <item row="7" column="0">
        <widget class="QLabel" name="label_6">
@@ -120,11 +204,66 @@
        </widget>
       </item>
       <item row="7" column="1" colspan="2">
-       <widget class="QLineEdit" name="lineEdit_timeCoeff">
-        <property name="text">
-         <string>1.0</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="hbox_time">
+         <item>
+          <widget class="QLineEdit" name="lineEdit_timeCoeff">
+           <property name="minimumSize">
+            <size>
+             <width>70</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>70</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>1.0</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_timeField">
+           <property name="minimumSize">
+            <size>
+             <width>85</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Time Field</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_timeField">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Link field used for travel time (a speed or a time field - see the units box)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_timeUnits">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Speed (mph): time = 60 x distance / speed.  Travel time (min): the field is already minutes.</string>
+           </property>
+          </widget>
+         </item>
+       </layout>
       </item>
       <item row="8" column="0">
        <widget class="QLabel" name="label_disconnected">
@@ -273,6 +412,16 @@
           <widget class="QPushButton" name="browse_debugFile">
            <property name="text">
             <string>...</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="3">
+          <widget class="QPushButton" name="button_traceOnly">
+           <property name="toolTip">
+            <string>Trace only this O-D pair (one shortest-path search) without building the skim</string>
+           </property>
+           <property name="text">
+            <string>Run Trace Only</string>
            </property>
           </widget>
          </item>

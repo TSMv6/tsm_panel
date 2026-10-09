@@ -58,6 +58,9 @@ class TsmPanelPlugin():
         self.iface = iface
         self.dock_widget = None
         self.action = None
+        self.help_actions = []   # Help-menu entries + separators added by initGui
+
+    HELP_MENU_ITEMS = ('TSM Overview', 'TSM AI Chat', 'About TSM Plugin')
 
     def initGui(self):
         """Initialize the plugin UI."""
@@ -68,22 +71,21 @@ class TsmPanelPlugin():
         # Add website links to the Help menu
         help_menu = self.iface.helpMenu()
         if help_menu:  # Ensure the Help menu exists
-            website_action1 = QAction('TSM Overview', self.iface.mainWindow())
-            website_action1.triggered.connect(self.open_website)
-            help_menu.addSeparator()
-            help_menu.addAction(website_action1)
+            # Drop entries left behind by an earlier load (a reload used to leave
+            # 'About TSM Plugin' in place, stacking one more copy each time).
+            self._remove_help_actions(help_menu)
 
-            website_action2 = QAction('TSM AI Chat', self.iface.mainWindow())
-            website_action2.triggered.connect(self.open_website2)
-            help_menu.addSeparator()
-            help_menu.addAction(website_action2)
-
-            # Version/build info, so a user can tell which build they are on
-            # without digging through the plugin folder.
-            about_action = QAction('About TSM Plugin', self.iface.mainWindow())
-            about_action.triggered.connect(self.show_about)
-            help_menu.addSeparator()
-            help_menu.addAction(about_action)
+            # One separator above the TSM block; every action and separator is
+            # tracked so unload() removes exactly what was added.
+            self.help_actions.append(help_menu.addSeparator())
+            # 'About TSM Plugin': version/build info, so a user can tell which
+            # build they are on without digging through the plugin folder.
+            for text, slot in zip(self.HELP_MENU_ITEMS,
+                                  (self.open_website, self.open_website2, self.show_about)):
+                action = QAction(text, self.iface.mainWindow())
+                action.triggered.connect(slot)
+                help_menu.addAction(action)
+                self.help_actions.append(action)
         else:
             print("Help menu not found. Unable to add website links.")
 
@@ -247,14 +249,30 @@ class TsmPanelPlugin():
         webbrowser.open(url)
         
 
+    def _remove_help_actions(self, help_menu):
+        """Remove the TSM Help-menu entries: the ones this instance added, plus any
+        stray copies (matched by text) a previous plugin version failed to remove,
+        along with any separator that is left doubled or trailing."""
+        for action in self.help_actions:
+            help_menu.removeAction(action)
+        self.help_actions = []
+        for action in help_menu.actions():
+            if action.text() in self.HELP_MENU_ITEMS:
+                help_menu.removeAction(action)
+        actions = help_menu.actions()
+        for prev, action in zip([None] + actions, actions):
+            if action.isSeparator() and (prev is None or prev.isSeparator()):
+                help_menu.removeAction(action)
+        actions = help_menu.actions()
+        while actions and actions[-1].isSeparator():
+            help_menu.removeAction(actions.pop())
+
     def unload(self):
         """Remove UI elements when the plugin is unloaded."""
         self.iface.removePluginMenu("TSM UI", self.action)
         help_menu = self.iface.helpMenu()
         if help_menu:
-            for action in help_menu.actions():
-                if action.text() in ['TSM Overview', 'TSM AI Chat']:
-                    help_menu.removeAction(action)
+            self._remove_help_actions(help_menu)
         if self.dock_widget:
             self.iface.mainWindow().removeDockWidget(self.dock_widget)
         

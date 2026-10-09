@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.72
-date=2026-09-25
+version=2.73
+date=2026-10-09
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -44,7 +44,7 @@ engine_afdta=agentflow-dta 6fb22e8 2026-09-22
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep ef22285 2026-07-12
 engine_agentanalysis=agentAnalysis 0787071 2026-09-24
-engine_pathskim=PathSkim 07202a8 2026-07-15
+engine_pathskim=PathSkim eb7c271 2026-10-09
 engine_utilities=utilities 88fa388 2026-07-15
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
 
@@ -59,7 +59,21 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (115 commits, 2026-06-19 to 2026-09-25):
+    One version per commit, newest first (116 commits, 2026-06-19 to 2026-10-09):
+    .
+    2.73 (2026-10-09): Skimmy traces one O-D pair on its own. Path Trace has a
+    Run Trace Only button that runs a single shortest-path search (seconds)
+    instead of the full statewide skim. The trace file is a link-by-link CSV
+    with running distance/time/toll/impedance plus a _summary.txt verdict; for
+    a disconnected pair it shows the route up to the break, the GAP (closest
+    node pair between the two sides, from node X,Y) and the route on from
+    there, or flags a centroid connector the only route would use mid-path.
+    The traced links and gap nodes are selected on the map. Distance, Time and
+    Toll link fields are now dropdowns beside their coefficients; the time
+    field can be a speed (mph) or a travel time (min), and toll can be none.
+    Help > About TSM Plugin no longer stacks a new copy on every plugin
+    reload (unload left it behind); stray copies are cleared on next load.
+    Ships PathSkim eb7c271.
     .
     2.72 (2026-09-25): Link Consolidator passes the zone numbering to netPrep
     instead of letting it assume one. Both halves are inputs now: Max Internal
