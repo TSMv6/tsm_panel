@@ -54,6 +54,29 @@ STA_VDFS = {
     "Akcelik (time-dependent)":  "akcelik",
 }
 
+# ODME mode label -> ODME_MODE. "Grow only" raises under-loaded routes only:
+# the added trips are the unmodeled (missing) market, written to
+# odme_supplement.csv so later runs -- base or future year -- can load them.
+ODME_MODES = {"Grow only (missing market)": "GROW", "Grow and reduce": "BOTH"}
+
+# The ODME line edits: (widget attribute, settings key). Paired fields
+# ("lo / hi") are split when the control file is written.
+ODME_FIELDS = (("lineEdit_OdmeRounds", "hydra_odme_rounds"),
+               ("lineEdit_OdmeReassign", "hydra_odme_reassign"),
+               ("lineEdit_OdmePasses", "hydra_odme_passes"),
+               ("lineEdit_OdmeAlpha", "hydra_odme_alpha"),
+               ("lineEdit_OdmeMaxStep", "hydra_odme_max_step"),
+               ("lineEdit_OdmeBounds", "hydra_odme_bounds"),
+               ("lineEdit_OdmeMinImportance", "hydra_odme_min_importance"),
+               ("lineEdit_OdmeModelClip", "hydra_odme_model_clip"))
+
+
+def _pair(text, default_a, default_b):
+    """Split an "a / b" field into two strings, falling back per side."""
+    a, _, b = (text or "").partition("/")
+    return (a.strip() or default_a), (b.strip() or default_b)
+
+
 # VDF aggregation window label -> BPR_PERIOD_MIN.
 BPR_PERIODS = {"15 min": "15", "30 min": "30", "60 min (hourly)": "60"}
 
@@ -112,6 +135,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.browse_SegParams.clicked.connect(lambda: self.select_file(self.lineEdit_SegParams, "CSV (*.csv)"))
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
+        self.browse_CountFile.clicked.connect(lambda: self.select_file(self.lineEdit_CountFile, "Counts (*.csv)"))
+        self.browse_SuppFile.clicked.connect(lambda: self.select_file(self.lineEdit_SuppFile, "Trip list (*.csv *.csv.gz)"))
+        self.browse_SuppGrowth.clicked.connect(lambda: self.select_file(self.lineEdit_SuppGrowth, "CSV (*.csv)"))
+        self.checkBox_Odme.toggled.connect(self.toggle_odme)
         self.run_Hydra.clicked.connect(lambda: self.run_hydra(show_message=True))
         # Save persists and LEAVES THE DIALOG OPEN (accepted -> update_settings,
         # never accept()), so settings can be saved and then run without
@@ -183,6 +210,20 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.checkBox_AgentPlans.setChecked(_b_on("hydra_agent_plans"))
         self.checkBox_AgentPaths.setChecked(_b_on("hydra_agent_paths"))
         self.checkBox_Checkpoint.setChecked(_b_on("hydra_checkpoint"))
+        # Counts / ODME / supplemental demand
+        for key, edit in (("hydra_count_file", self.lineEdit_CountFile),
+                          ("hydra_supp_file", self.lineEdit_SuppFile),
+                          ("hydra_supp_scale", self.lineEdit_SuppScale),
+                          ("hydra_supp_growth", self.lineEdit_SuppGrowth)):
+            if settings.get(key) not in (None, ""):
+                edit.setText(str(settings.get(key)))
+        for attr, key in ODME_FIELDS:
+            if settings.get(key) not in (None, ""):
+                getattr(self, attr).setText(str(settings.get(key)))
+        if settings.get("hydra_odme_mode"):
+            self._select_combo(self.comboBox_OdmeMode, settings.get("hydra_odme_mode"))
+        self.checkBox_Odme.setChecked(_b("hydra_odme"))
+        self.toggle_odme(self.checkBox_Odme.isChecked())
 
         # ---- STA tab ----
         if settings.get("hydra_sta_method"):
@@ -428,6 +469,45 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.comboBox_Coupling.setEnabled(on)
         self.comboBox_MicroChoice.setEnabled(on)
 
+    def toggle_odme(self, on):
+        """ODME tuning only matters when ODME runs; the count file and the
+        supplement stay live (validation and supplement loading work alone)."""
+        self.comboBox_OdmeMode.setEnabled(on)
+        for attr, _ in ODME_FIELDS:
+            getattr(self, attr).setEnabled(on)
+
+    def _write_odme_ctl(self, f):
+        """Counts, ODME and supplemental-demand keys. Every ODME key is written
+        explicitly when ODME is on, so the control file documents the run."""
+        counts = self.lineEdit_CountFile.text().strip()
+        if counts:
+            f.write(f"TIME_COUNT_FILE       {counts}\n")
+        if self.checkBox_Odme.isChecked():
+            if not counts:
+                raise ValueError("ODME is checked but no count file is set "
+                                 "(Counts / ODME tab).")
+            lo, hi = _pair(self.lineEdit_OdmeBounds.text(), "0.5", "2.0")
+            min_model, clip = _pair(self.lineEdit_OdmeModelClip.text(), "1", "10")
+            f.write("ODME                  YES\n")
+            f.write(f"ODME_MODE             {ODME_MODES.get(self.comboBox_OdmeMode.currentText(), 'GROW')}\n")
+            f.write(f"ODME_ROUNDS           {self.lineEdit_OdmeRounds.text().strip() or '2'}\n")
+            f.write(f"ODME_REASSIGN_ITERS   {self.lineEdit_OdmeReassign.text().strip() or '3'}\n")
+            f.write(f"ODME_PASSES           {self.lineEdit_OdmePasses.text().strip() or '5'}\n")
+            f.write(f"ODME_ALPHA            {self.lineEdit_OdmeAlpha.text().strip() or '0.5'}\n")
+            f.write(f"ODME_MAX_STEP         {self.lineEdit_OdmeMaxStep.text().strip() or '0.25'}\n")
+            f.write(f"ODME_BOUND_LO         {lo}\n")
+            f.write(f"ODME_BOUND_HI         {hi}\n")
+            f.write(f"ODME_MIN_IMPORTANCE   {self.lineEdit_OdmeMinImportance.text().strip() or '0'}\n")
+            f.write(f"ODME_MIN_MODEL        {min_model}\n")
+            f.write(f"ODME_RATIO_CLIP       {clip}\n")
+        supp = self.lineEdit_SuppFile.text().strip()
+        if supp:
+            f.write(f"SUPPLEMENT_TRIP_FILE  {supp}\n")
+            f.write(f"SUPPLEMENT_SCALE      {self.lineEdit_SuppScale.text().strip() or '1.0'}\n")
+            growth = self.lineEdit_SuppGrowth.text().strip()
+            if growth:
+                f.write(f"SUPPLEMENT_GROWTH_FILE {growth}\n")
+
     def select_file(self, line_edit, file_filter):
         path, _ = QFileDialog.getOpenFileName(self, "Select File", "", file_filter + ";; All Files (*)")
         if path:
@@ -528,6 +608,15 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_agent_paths", self.checkBox_AgentPaths.isChecked())
         settings.set("hydra_load_refresh", self.comboBox_LoadRefresh.currentText())
         settings.set("hydra_load_schedule", self.lineEdit_LoadSchedule.text().strip())
+        # Counts / ODME / supplemental demand
+        settings.set("hydra_count_file", self.lineEdit_CountFile.text().strip())
+        settings.set("hydra_odme", self.checkBox_Odme.isChecked())
+        settings.set("hydra_odme_mode", self.comboBox_OdmeMode.currentText())
+        for attr, key in ODME_FIELDS:
+            settings.set(key, getattr(self, attr).text().strip())
+        settings.set("hydra_supp_file", self.lineEdit_SuppFile.text().strip())
+        settings.set("hydra_supp_scale", self.lineEdit_SuppScale.text().strip())
+        settings.set("hydra_supp_growth", self.lineEdit_SuppGrowth.text().strip())
         # ---- STA tab ----
         settings.set("hydra_sta_method", self.comboBox_StaMethod.currentText())
         settings.set("hydra_bpr_period", self.comboBox_BprPeriod.currentText())
@@ -746,6 +835,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 #                  feeds agentAnalysis select-link/trace/tiers)
                 f.write(f"WRITE_AGENT_PLANS     {'YES' if self.checkBox_AgentPlans.isChecked() else 'NO'}\n")
                 f.write(f"WRITE_AGENT_PATHS     {'YES' if self.checkBox_AgentPaths.isChecked() else 'NO'}\n")
+                self._write_odme_ctl(f)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error writing hydra_run.ctl: {e}")
             return False

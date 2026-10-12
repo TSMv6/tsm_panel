@@ -667,6 +667,303 @@
               </item>
              </layout>
             </widget>
+            <widget class="QWidget" name="page_DTA_Odme">
+             <attribute name="title">
+              <string>Counts / ODME</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_OdmeLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_Odme">
+                <property name="title">
+                 <string>Counts and demand adjustment (ODME)</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_odme">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_countFile">
+                   <property name="text">
+                    <string>Count file</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" colspan="2">
+                  <widget class="QLineEdit" name="lineEdit_CountFile">
+                   <property name="placeholderText">
+                    <string>(blank = no time-windowed validation, no ODME)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>TIME_COUNT_FILE — ELToD time-sliced counts: A,B,StartTime,EndTime,Count,Importance (HH:MM:SS, vehicles). Always writes count_windows.csv; also the target for ODME.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QPushButton" name="browse_CountFile">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_Odme">
+                   <property name="text">
+                    <string>Adjust demand to the counts (ODME)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME — after the assignment converges, scale route-key demand toward the counts, re-assigning warm between rounds. Every output then reflects the adjusted demand; count_windows_pre_odme.csv keeps the unadjusted fit.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_odmeMode">
+                   <property name="text">
+                    <string>Mode</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QComboBox" name="comboBox_OdmeMode">
+                   <property name="toolTip">
+                    <string>ODME_MODE — Grow only: raise under-loaded routes only; the added trips are the unmodeled (missing) market, written to odme_supplement.csv. Grow and reduce: also lowers over-loaded routes (reductions are reported in od_adjustment.csv, never in the supplement).</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Grow only (missing market)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Grow and reduce</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_odmeRounds">
+                   <property name="text">
+                    <string>Rounds</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="lineEdit_OdmeRounds">
+                   <property name="text">
+                    <string>2</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_ROUNDS — weight-update rounds; each ends with a warm re-assignment so routes and congestion respond to the new demand.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="label_odmeReassign">
+                   <property name="text">
+                    <string>Re-assign iterations</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="lineEdit_OdmeReassign">
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_REASSIGN_ITERS — equilibrium iterations per re-assignment (0 = reload the fixed paths through the loader without re-routing).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_odmePasses">
+                   <property name="text">
+                    <string>Passes per round</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QLineEdit" name="lineEdit_OdmePasses">
+                   <property name="text">
+                    <string>5</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_PASSES — weight-update passes per round on the fixed paths.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_odmeAlpha">
+                   <property name="text">
+                    <string>Damping (alpha)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="lineEdit_OdmeAlpha">
+                   <property name="text">
+                    <string>0.5</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_ALPHA — exponent on each pass's obs/model factor (1 = full step, smaller = gentler).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_odmeMaxStep">
+                   <property name="text">
+                    <string>Max step per pass</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QLineEdit" name="lineEdit_OdmeMaxStep">
+                   <property name="text">
+                    <string>0.25</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_MAX_STEP — cap on one pass's change as a fraction (0.25 = ±25%).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="label_odmeBounds">
+                   <property name="text">
+                    <string>Weight bounds (lo / hi)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="lineEdit_OdmeBounds">
+                   <property name="text">
+                    <string>0.5 / 2.0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_BOUND_LO / ODME_BOUND_HI — cumulative factor limits on any route key vs its modeled demand. Grow only forces lo = 1.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_odmeMinImp">
+                   <property name="text">
+                    <string>Min importance</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLineEdit" name="lineEdit_OdmeMinImportance">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_MIN_IMPORTANCE — ignore count windows whose Importance is below this.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="2">
+                  <widget class="QLabel" name="label_odmeClip">
+                   <property name="text">
+                    <string>Min model vol / ratio clip</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3">
+                  <widget class="QLineEdit" name="lineEdit_OdmeModelClip">
+                   <property name="text">
+                    <string>1 / 10</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>ODME_MIN_MODEL / ODME_RATIO_CLIP — skip windows with model volume below the first value; clip each window's obs/model to [1/clip, clip].</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_Supplement">
+                <property name="title">
+                 <string>Supplemental demand (unmodeled market, e.g. a prior odme_supplement.csv)</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_supp">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_suppFile">
+                   <property name="text">
+                    <string>Supplement trips</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1" colspan="2">
+                  <widget class="QLineEdit" name="lineEdit_SuppFile">
+                   <property name="placeholderText">
+                    <string>(blank = none)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SUPPLEMENT_TRIP_FILE — appended after the trip list and tagged market ODME. Do not combine with ODME on the run that created it unless you want a cumulative re-estimate.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QPushButton" name="browse_SuppFile">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_suppScale">
+                   <property name="text">
+                    <string>Scale</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_SuppScale">
+                   <property name="text">
+                    <string>1.0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SUPPLEMENT_SCALE — flat factor on every supplement trip (future-year growth of the unmodeled market).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_suppGrowth">
+                   <property name="text">
+                    <string>Zonal growth file</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1" colspan="2">
+                  <widget class="QLineEdit" name="lineEdit_SuppGrowth">
+                   <property name="placeholderText">
+                    <string>(blank = flat scale only)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SUPPLEMENT_GROWTH_FILE — zone,factor CSV (zone = O/D centroid id). Each supplement trip O→D is multiplied by sqrt(g_O × g_D); zones not listed grow 1.0.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QPushButton" name="browse_SuppGrowth">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_DTA_OdmeSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
            </widget>
           </item>
           <item>
