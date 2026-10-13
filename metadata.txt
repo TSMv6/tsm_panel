@@ -1,11 +1,11 @@
 [general]
 name=TSM Model Plugin
-version=2.74
+version=2.75
 date=2026-10-13
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
-commit=9155c70
+commit=c494793
 commit_date=2026-10-13
 # Standard QGIS plugin metadata keys; the About dialog links the
 # source revision straight at the commit on GitHub.
@@ -59,8 +59,14 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (118 commits, 2026-06-19 to 2026-10-13):
+    One version per commit, newest first (119 commits, 2026-06-19 to 2026-10-13):
     .
+    2.75 (2026-10-13): Network version shows as Navteq24 / Navteq11 in Link
+    Consolidator and Project Settings (stored values stay TSMv6 / TSMv5, so
+    saved scenarios are unaffected). Project Settings offers the network years
+    each version has: Navteq24 2024-2055, Navteq11 2023, 2024, 2025, 2030,
+    2035 and 2050. PopSyn, SDT Resident and SDT Visitor run buttons read "Run"
+    like the rest.
     2.74 (2026-10-13): Summarization > Subarea writes link and node CSVs (A,B / N
     plus the statewide TSM_A,TSM_B / TSM_N) for a HyDRA subarea run, and can
     renumber the subarea (zones 1..n, external stations next) from a generated
