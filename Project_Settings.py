@@ -40,7 +40,7 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
 
          # Populate Year specific list in dropdown
         self.comboBox_ScenYear.addItems(["2023", "2024", "2025", "2030", "2035", "2040", "2045", "2050", "2055", "2060"])
-        self.comboBox_NetYear.addItems(["2023",  "2024", "2025", "2030", "2035", "2050"])
+        self.comboBox_NetYear.addItems(["2023", "2024", "2025", "2030", "2035", "2040", "2045", "2050", "2055"])
         
         # Update Settings ("Main Panel -> Load Settings -> Config()")
         if settings.get("scenarioName"):

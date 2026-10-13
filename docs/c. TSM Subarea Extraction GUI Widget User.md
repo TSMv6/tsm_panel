@@ -30,8 +30,13 @@ The Subarea Extraction widget is part of the Turnpike State Model (TSM), designe
 #### 2. **Node Consistency Across Years**
 - **Description:** Maintains node numbering consistency over multiple scenario years.
 - **Interaction:** Check to activate consistency management.
-  - **Read Node Crosswalk:** Specify the file path to an existing crosswalk file.
-  - **Save Node Crosswalk:** Specify the file path to save a new crosswalk file.
+  - **Read Node Crosswalk:** Specify the file path to an existing crosswalk file
+    (`N,Sub_N`). Nodes it lists keep its numbers; new nodes are numbered after it.
+  - **Save Node Crosswalk:** Specify the file path to save a new crosswalk file
+    (`N,Sub_N,node_type` for every subarea node).
+  - Numbering: zones `1..k`, external (boundary) nodes next, network nodes keep
+    their TSM ids. The same crosswalk works in the Summarization → Subarea tab,
+    which uses the same numbering engine (`subarea.exe`).
 
 ---
 

@@ -298,6 +298,33 @@ def _run(args, log_name):
                             log_path=log_path, console=True)
 
 
+def _check(parent, text, key):
+    """Checkbox persisted under `key`."""
+    cb = QCheckBox(text, parent)
+    cb.setChecked(str(Config().get(key)).lower() in ("true", "1", "yes"))
+    cb.toggled.connect(lambda ch: Config().set(key, ch))
+    return cb
+
+
+def _align_labels(rows):
+    """Give the leading label of each row the width of the widest one, so the
+    controls after them start in one column."""
+    labels = [r.itemAt(0).widget() for r in rows
+              if r.count() and isinstance(r.itemAt(0).widget(), QLabel)]
+    if labels:
+        wmax = max(lab.sizeHint().width() for lab in labels)
+        for lab in labels:
+            lab.setFixedWidth(wmax)
+
+
+def _set_row_enabled(lay, on):
+    """Enable/disable every widget in a _browse_row layout."""
+    for i in range(lay.count()):
+        wid = lay.itemAt(i).widget()
+        if wid is not None:
+            wid.setEnabled(on)
+
+
 def _hline(parent):
     """Horizontal separator line between dialog sections."""
     ln = QtWidgets.QFrame(parent)
@@ -510,7 +537,7 @@ def _tab_subarea(dlg):
         lay = QHBoxLayout()
         lab = QLabel(label, w); lab.setMinimumWidth(150)
         cb = _layer_combo(w, geom, key)
-        lay.addWidget(lab); lay.addWidget(cb)
+        lay.addWidget(lab); lay.addWidget(cb, 1)
         return lay, cb
 
     b_lay, w.boundary = combo_row("subarea boundary (polygon layer)", "Polygon", "aa_sub_boundary_lyr")
@@ -522,6 +549,7 @@ def _tab_subarea(dlg):
     tl_lay, w.trips = _browse_row(w, "trip list (csv/gz)",
                                   filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
     v.addLayout(tl_lay)
+    _align_labels((b_lay, z_lay, n_lay, l_lay, tl_lay))
     # Opt-in, because it is the expensive half of the extraction: every EI/EE
     # path is walked link by link to find when the trip actually reaches the
     # boundary. Off, the trip keeps its statewide departure time and
@@ -541,8 +569,17 @@ def _tab_subarea(dlg):
     w.cb_boundary.setChecked(str(_b).lower() in ("true", "1", "yes"))
     w.cb_boundary.toggled.connect(
         lambda ch: Config().set("aa_sub_boundary_time", ch))
-    v.addWidget(w.cb_boundary)
-    v.addWidget(_hline(w))
+
+    # Two sub-tabs under the inputs: what the extraction writes, and the
+    # optional renumbering + ELToD trip table done by subarea.exe finalize.
+    sub_tabs = QTabWidget(w)
+    out_page, tt_page = QWidget(), QWidget()
+    vo, vt = QVBoxLayout(out_page), QVBoxLayout(tt_page)
+    sub_tabs.addTab(out_page, "Outputs")
+    sub_tabs.addTab(tt_page, "ELToD TripTable")
+    v.addWidget(sub_tabs)
+    vo.addWidget(w.cb_boundary)
+    vo.addWidget(_hline(out_page))
     ol_lay, w.out_links = _browse_row(w, "output subarea links (gpkg)", "save",
                                       "GeoPackage (*.gpkg)", "aa_sub_out_links")
     on_lay, w.out_nodes = _browse_row(w, "output subarea nodes (gpkg)", "save",
@@ -550,7 +587,47 @@ def _tab_subarea(dlg):
     ot_lay, w.out_trips = _browse_row(w, "output subarea trip list (csv/gz)", "save",
                                       "CSV (*.csv *.gz)", "aa_sub_out")
     for lay in (ol_lay, on_lay, ot_lay):
-        v.addLayout(lay)
+        vo.addLayout(lay)
+    hint = QLabel("Link and node CSVs (A,B / N for HyDRA) are always written beside "
+                  "the GeoPackages.", out_page)
+    hint.setStyleSheet("color: gray;")
+    vo.addWidget(hint)
+    vo.addStretch(1)
+    # Renumbering + trip table are done by subarea.exe finalize -- the same
+    # numbering engine as the Subarea Extraction dialog, so one equivalency file
+    # means the same numbers in both tools.
+    w.cb_renum = _check(w, "Renumber subarea nodes (zones 1..n, external stations "
+                           "next; network nodes keep their TSM ids)", "aa_sub_renumber")
+    w.cb_renum.setToolTip(
+        "Rewrites the link/node layers (Sub_A/Sub_B on links, N on nodes with the "
+        "statewide id kept as TSM_N), writes a renumbered copy of the trip list "
+        "(<name>_renumbered.csv) and the node equivalency file. The CSVs carry "
+        "A,B = subarea ids and TSM_A,TSM_B = statewide ids.")
+    cwi_lay, w.cw_in = _browse_row(w, "node equivalency in (csv, optional)", "open",
+                                   "CSV (*.csv);;All Files (*)", "aa_sub_cw_in")
+    w.cw_in.setToolTip("N,Sub_N file from an earlier run (either tool). Blank = "
+                       "generate new numbers. Nodes it lists keep its numbers; new "
+                       "nodes are numbered after it.")
+    cwo_lay, w.cw_out = _browse_row(w, "node equivalency out (csv)", "save",
+                                    "CSV (*.csv)", "aa_sub_cw_out")
+    w.cw_out.setToolTip("Blank = <subarea nodes>_equivalency.csv")
+    w.cb_table = _check(w, "Aggregate the subarea trip list to an hourly trip table "
+                           "(ELToD subarea assignment)", "aa_sub_triptable")
+    tt_lay, w.tt_out = _browse_row(w, "ELToD trip table out (csv)", "save",
+                                   "CSV (*.csv)", "aa_sub_tt_out")
+    w.tt_out.setToolTip("STARTTIME,O,D,<marketVot...> (the ELTOD_tt_HourClock layout). "
+                        "Blank = ELTOD_subarea_tt_HourClock.csv beside the trip list.")
+    vt.addWidget(w.cb_renum)
+    vt.addLayout(cwi_lay)
+    vt.addLayout(cwo_lay)
+    vt.addWidget(_hline(tt_page))
+    vt.addWidget(w.cb_table)
+    vt.addLayout(tt_lay)
+    vt.addStretch(1)
+    for cb, rows in ((w.cb_renum, (cwi_lay, cwo_lay)), (w.cb_table, (tt_lay,))):
+        cb.toggled.connect(lambda on, rows=rows: [_set_row_enabled(r, on) for r in rows])
+        for r in rows:
+            _set_row_enabled(r, cb.isChecked())
     run = QPushButton("Run Subarea Extraction", w)
     v.addWidget(run)
     v.addStretch(1)
@@ -680,14 +757,23 @@ def _tab_subarea(dlg):
         #    ids are referenced by the trip list but sit outside it -- they were
         #    missing from the node layer, leaving the trip list pointing at
         #    nodes the subarea network did not contain.
+        #    Zone centroids inside and every endpoint of a kept link go in too:
+        #    a real link clipping the boundary has its far node outside, and a
+        #    link whose endpoint has no node row cannot be loaded.
         n_ext = 0
         if w.out_nodes.text():
             try:
                 inside_ids = set()
                 for feat in sel_nodes.getFeatures():
                     inside_ids.add(int(feat[ni]))
-                ext_ids = _subarea_external_nodes(w.out_trips.text(), inside_ids)
-                want = inside_ids | ext_ids
+                zone_ids = set()
+                for feat in sel_zones.getFeatures():
+                    try:
+                        zone_ids.add(int(feat[zi]))
+                    except (TypeError, ValueError):
+                        continue
+                ext_ids = _subarea_external_nodes(w.out_trips.text(), inside_ids | zone_ids)
+                want = inside_ids | zone_ids | ext_ids | _link_endpoints(w.out_links.text())
                 n_ext = len(ext_ids)
                 keep = []
                 for feat in nodes_lyr.getFeatures():
@@ -711,20 +797,117 @@ def _tab_subarea(dlg):
             except Exception as e:
                 _log("Subarea: node layer failed: %s" % e)
 
-        # 5) show the extracted network
+        # 5) CSVs (+ optional renumbering / ELToD trip table) via subarea.exe
+        fin = _subarea_finalize(dlg, w, nodes_csv)
+        if fin is None:
+            return
+
+        # 6) show the extracted network
         _add_layer(w.out_links.text(), "Subarea links")
         _add_layer(w.out_nodes.text(), "Subarea nodes")
 
         QMessageBox.information(dlg, "Subarea",
             "Subarea outputs written:\n%s\n%s  (+%d external boundary nodes, "
             "DTA_Type=99 so they load as subarea zones)"
-            "\n%s\n\nThe trip list keeps the statewide origin/destination as "
+            "\n%s%s\n\nThe trip list keeps the statewide origin/destination as "
             "TSM_O / TSM_D beside the boundary-crossing O / D." % (
                 w.out_links.text() or "(links skipped)",
                 w.out_nodes.text() or "(nodes skipped)", n_ext,
-                w.out_trips.text()))
+                w.out_trips.text(), "".join("\n" + p for p in fin)))
     run.clicked.connect(go)
     return w
+
+
+def _link_endpoints(path):
+    """A/B node ids of a link GeoPackage (empty set if it can't be read).
+
+    Read with plain OGR and closed explicitly: a QgsVectorLayer leaves a pooled
+    handle on the file, which then blocks subarea.exe from rewriting it."""
+    ids = set()
+    if not path or not os.path.exists(path):
+        return ids
+    try:
+        from osgeo import ogr
+        ds = ogr.Open(path)
+        lyr = ds.GetLayer(0)
+        defn = lyr.GetLayerDefn()
+        if defn.GetFieldIndex("A") < 0 or defn.GetFieldIndex("B") < 0:
+            ds = None
+            return ids
+        for feat in lyr:
+            for k in ("A", "B"):
+                v = feat.GetField(k)
+                if v is not None:
+                    ids.add(int(v))
+        ds = None
+    except Exception as e:
+        _log("Subarea: could not read link endpoints from %s: %s" % (path, e))
+    return ids
+
+
+def _renumbered_path(p):
+    """trips.csv -> trips_renumbered.csv; trips.csv.gz -> trips_renumbered.csv.gz"""
+    base, gz = (p[:-3], ".gz") if p.lower().endswith(".gz") else (p, "")
+    root, ext = os.path.splitext(base)
+    return root + "_renumbered" + (ext or ".csv") + gz
+
+
+def _subarea_finalize(dlg, w, inside_csv):
+    """Run `subarea.exe finalize` on the extraction just written: link/node CSVs
+    always, plus (opt-in) renumbering of network + trip list against a generated
+    or supplied node equivalency, and the hourly ELToD trip table.
+
+    Returns the list of extra output paths, or None on failure (already reported).
+    """
+    links, nodes, trips = (w.out_links.text().strip(), w.out_nodes.text().strip(),
+                           w.out_trips.text().strip())
+    if not (links and nodes and os.path.exists(links) and os.path.exists(nodes)):
+        _log("Subarea: link/node GeoPackage outputs not set - CSVs, renumbering "
+             "and trip table skipped")
+        return []
+    renum, table = w.cb_renum.isChecked(), w.cb_table.isChecked()
+    cw_in = w.cw_in.text().strip() if renum else ""
+    if cw_in and not os.path.exists(cw_in):
+        QMessageBox.warning(dlg, "Subarea", "Node equivalency file not found:\n%s" % cw_in)
+        return None
+    fwd = lambda p: p.replace("\\", "/")
+    link_csv = os.path.splitext(links)[0] + ".csv"
+    node_csv = os.path.splitext(nodes)[0] + ".csv"
+    S = {"link_file": links, "node_file": nodes, "inside_nodes": inside_csv,
+         "trip_file": trips, "link_csv": link_csv, "node_csv": node_csv,
+         "renumber": renum, "readCW_file": cw_in,
+         "max_zone": Config().get("subarea_max_zone") or "11560"}
+    out = [link_csv, node_csv]
+    if renum:
+        S["saveCW_file"] = w.cw_out.text().strip() or os.path.splitext(nodes)[0] + "_equivalency.csv"
+        S["boundary_linklist"] = os.path.splitext(links)[0] + "_Boundary_LinkList.csv"
+        S["trip_out"] = _renumbered_path(trips)
+        out += [S["saveCW_file"], S["boundary_linklist"], S["trip_out"]]
+    if table:
+        if not w.tt_out.text().strip():
+            w.tt_out.setText(fwd(os.path.join(os.path.dirname(trips),
+                                              "ELTOD_subarea_tt_HourClock.csv")))
+            Config().set("aa_sub_tt_out", w.tt_out.text())
+        S["triptable_out"] = w.tt_out.text().strip()
+        out.append(S["triptable_out"])
+    exe = Config().app_exe("utilities/subarea.exe")
+    if not os.path.exists(exe):
+        QMessageBox.critical(dlg, "Subarea", "subarea.exe not found at %s" % exe)
+        return None
+    settings_file = os.path.splitext(links)[0] + "_finalize_settings.txt"
+    with open(settings_file, "w") as f:
+        for k, val in S.items():
+            f.write("%s = %s\n" % (k, fwd(str(val))))
+    for p in (links, nodes):
+        _drop_layers_for(p)    # gpkgs are rewritten in place when renumbering
+    _log("Subarea: subarea finalize %s" % settings_file)
+    r = Config().run_app([exe, "finalize", settings_file],
+                         log_path=os.path.splitext(settings_file)[0] + ".log", console=True)
+    if r.returncode != 0:
+        QMessageBox.critical(dlg, "Subarea", "subarea finalize failed - see %s"
+                             % (os.path.splitext(settings_file)[0] + ".log"))
+        return None
+    return out
 
 
 _LINK_RE = re.compile(r"(\d+)\s*[->]+\s*(\d+)")
@@ -1149,7 +1332,16 @@ destination so a subarea trip can be traced back to the parent run. Outputs are 
 subarea <b>link</b> layer (whole links kept; centroid connectors only if wholly
 inside), a <b>node</b> layer (interior nodes plus the external boundary nodes,
 marked <code>DTA_Type&nbsp;=&nbsp;99</code> so they load as subarea zones), and the
-<b>trip list</b>.</p>
+<b>trip list</b>. Link and node <b>CSVs</b> (<code>A,B</code> / <code>N</code>,
+plus the statewide <code>TSM_A,TSM_B</code> / <code>TSM_N</code>) are written
+beside the GeoPackages for HyDRA.</p>
+<p><i>Renumber subarea nodes</i> numbers zones <code>1..n</code> and the external
+stations after them (network nodes keep their TSM ids), rewrites the layers, writes
+<code>&lt;trip list&gt;_renumbered.csv</code> and the node equivalency file. Give
+an equivalency from an earlier run (this tab or Subarea Extraction &#8211; same
+engine) to keep its numbers. <i>Aggregate &#8230; trip table</i> writes the hourly
+ELToD table (<code>STARTTIME,O,D,&lt;marketVot&gt;</code>) for an ELToD subarea
+assignment, in subarea numbers when renumbering.</p>
 <p>Ticking <i>compute external arrival time</i> walks each EI/EE path against the
 link-performance files, pricing every link at the interval the trip reaches it, and
 sets <code>depart_time</code> to the <b>congested</b> arrival at the boundary
