@@ -75,22 +75,22 @@
            <item row="0" column="3">
             <widget class="QComboBox" name="networkVersion">
              <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TSMv6: separate GeoMaster line, node, centroid &amp; connector layers. TSMv5: link + node only (centroids in node file, connectors in link file).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Navteq24 (TSMv6): separate GeoMaster line, node, centroid &amp; connector layers. Navteq11 (TSMv5): link + node only (centroids in node file, connectors in link file).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="currentText">
-              <string>TSMv6</string>
+              <string>Navteq24</string>
              </property>
              <property name="currentIndex">
               <number>0</number>
              </property>
              <item>
               <property name="text">
-               <string>TSMv6</string>
+               <string>Navteq24</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>TSMv5</string>
+               <string>Navteq11</string>
               </property>
              </item>
             </widget>

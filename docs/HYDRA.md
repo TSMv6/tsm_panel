@@ -97,10 +97,25 @@ person / tour / trip that made it.
 
 - **Select link** — flag link(s) and extract every agent path that uses them (and
   the O-D pattern feeding them), keyed by the 4-part ID.
-- **Calibration to counts (ODME)** — reweights agents so modeled link volumes match
-  observed counts. The score/adjustment is stratified by
-  **O · D · person-type · VOT category**, so the reweighting preserves market mix
-  rather than scaling links blindly (`CALIBRATE`, `CALIB_*`).
+- **Counts / ODME** (DTA → Counts / ODME tab) — after the assignment converges,
+  scales demand per route key (**O · D · 30-min departure · VOT segment**) toward
+  the count file, re-assigning warm between rounds. Every output then shows the
+  adjusted demand (`count_windows_pre_odme.csv` keeps the unadjusted fit).
+  **Grow only** raises under-loaded routes and treats the additions as the
+  **unmodeled market** (deliveries, commercial-to-commercial, escort trips):
+  they are written to `odme_supplement.csv`. **Grow and reduce** also lowers
+  over-loaded routes; reductions are reported in `od_adjustment.csv`, never
+  added to the supplement.
+- **Subarea runs** — ODME is meant for a subarea, not the statewide network.
+  Use the Agent Analysis subarea trip list as the Trip list: its O/D can be
+  cordon (highway) nodes and it keeps the true zones in `TSM_O` / `TSM_D`.
+  HyDRA turns county routing masks off automatically for such a list, carries
+  `TSM_O` / `TSM_D` into the agent and ODME outputs, splits the ODME summary by
+  II / IE / EI / EE, and grows the supplement by the TSM zones.
+- **Supplemental demand** — load a base-year `odme_supplement.csv` into any
+  later run (base or future year) with ODME off. For a future year, grow it
+  with **Scale** and/or a `zone,factor` **Zonal growth file** (each trip O→D ×
+  sqrt(g_O · g_D)).
 - **Subarea** — extract a subarea (`SUBAREA_BOUNDARY_FILE` + seed node): agents whose
   paths touch the subarea are cut at the boundary into a subarea trip list (with
   external stations at the cut points). Because the 4-part ID is preserved, the

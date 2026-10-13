@@ -186,7 +186,7 @@ class Ui_Dialog_PopSyn(object):
         self.label_7.setText(_translate("Dialog_PopSyn", "Reference File: PER"))
         self.lineEdit_RefSynPer.setText(_translate("Dialog_PopSyn", "synthetic_per.csv"))
         self.browse_RefSynPer.setText(_translate("Dialog_PopSyn", "Browse"))
-        self.runPopSim.setText(_translate("Dialog_PopSyn", "Run POPSIM"))
+        self.runPopSim.setText(_translate("Dialog_PopSyn", "Run"))
         self.textBrowser.setPlainText(_translate("Dialog_PopSyn", "About PopSyn:\n"
 "The PopSyn  is part of  ActivitySIM that is used in TSM. \n"
 "\n"

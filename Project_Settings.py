@@ -4,6 +4,7 @@ from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
+from .network_version import fill_versions, set_version, version
 
 from .Project_Settings_ui import Ui_Dialog_ProjectSettings
 
@@ -36,11 +37,14 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         # inputs. TSMv5 embeds these in the node/link files (inputs hidden below).
         self.populate_layer_combobox(self.centroidLayerCombo, "Point")
         self.populate_layer_combobox(self.cenconLayerCombo, "LineString")
-        self.comboBox_NetworkVersion.addItems(["TSMv6", "TSMv5"])
+        # Shown as Navteq24 / Navteq11, stored as TSMv6 / TSMv5. Set before the
+        # network years: which years are offered depends on the version.
+        fill_versions(self.comboBox_NetworkVersion)
+        set_version(self.comboBox_NetworkVersion, settings.get("network_version") or "TSMv6")
 
          # Populate Year specific list in dropdown
         self.comboBox_ScenYear.addItems(["2023", "2024", "2025", "2030", "2035", "2040", "2045", "2050", "2055", "2060"])
-        self.comboBox_NetYear.addItems(["2023",  "2024", "2025", "2030", "2035", "2050"])
+        self._fill_net_years()
         
         # Update Settings ("Main Panel -> Load Settings -> Config()")
         if settings.get("scenarioName"):
@@ -72,8 +76,7 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
             if landuse_layer_name in [self.landuseLayerCombo.itemText(i) for i in range(self.landuseLayerCombo.count())]:
                     self.landuseLayerCombo.setCurrentText(landuse_layer_name)
 
-        # Network version + the TSMv6-only centroid / cen-con layers.
-        self.comboBox_NetworkVersion.setCurrentText(settings.get("network_version") or "TSMv6")
+        # TSMv6-only centroid / cen-con layers (the version itself is set above).
         if settings.get("GM_centroid_layer"):
             centroid_name = settings.get("GM_centroid_layer")
             if centroid_name in [self.centroidLayerCombo.itemText(i) for i in range(self.centroidLayerCombo.count())]:
@@ -116,10 +119,24 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
     def toggle_network_version(self):
         """TSMv6 uses separate GeoMaster centroid + cen-con layers; TSMv5 embeds
         them in the node/link files, so those inputs are hidden for v5."""
-        is_v6 = self.comboBox_NetworkVersion.currentText() == "TSMv6"
+        is_v6 = version(self.comboBox_NetworkVersion) == "TSMv6"
         for widget in (self.centroidLayerCombo, self.label_Input_Centroidlayer,
                        self.cenconLayerCombo, self.label_Input_Cenconlayer):
             widget.setVisible(is_v6)
+        self._fill_net_years()
+
+    # Network years each version has networks for (keyed by stored value).
+    NET_YEARS = {"TSMv6": ["2024", "2025", "2030", "2035", "2040", "2045", "2050", "2055"],  # Navteq24
+                 "TSMv5": ["2023", "2024", "2025", "2030", "2035", "2050"]}                  # Navteq11
+
+    def _fill_net_years(self):
+        """Offer the network years valid for the selected version, keeping the
+        current pick when it is still valid."""
+        keep = self.comboBox_NetYear.currentText()
+        years = self.NET_YEARS.get(version(self.comboBox_NetworkVersion), self.NET_YEARS["TSMv6"])
+        self.comboBox_NetYear.clear()
+        self.comboBox_NetYear.addItems(years)
+        self.comboBox_NetYear.setCurrentIndex(years.index(keep) if keep in years else -1)
 
     def populate_layer_combobox(self, combobox, geom_type):
         """Populate the dropdown with layers of the specified geometry type."""
@@ -163,8 +180,8 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
             landuse_layer = self.landuseLayerCombo.currentData()
             settings.set("landuse_layer", landuse_layer.name())
         # Network version + the TSMv6-only centroid / cen-con layers.
-        settings.set("network_version", self.comboBox_NetworkVersion.currentText())
-        if self.comboBox_NetworkVersion.currentText() == "TSMv6":
+        settings.set("network_version", version(self.comboBox_NetworkVersion))
+        if version(self.comboBox_NetworkVersion) == "TSMv6":
             if self.centroidLayerCombo.currentData():
                 settings.set("GM_centroid_layer", self.centroidLayerCombo.currentData().name())
             if self.cenconLayerCombo.currentData():

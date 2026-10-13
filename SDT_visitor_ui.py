@@ -104,7 +104,7 @@ class Ui_Dialog_SDTVis(object):
         self.label_models.setText(_translate("Dialog_SDTVis", "Models to run:"))
         self.cb_runResident.setText(_translate("Dialog_SDTVis", "Resident"))
         self.cb_runVisitor.setText(_translate("Dialog_SDTVis", "Visitor"))
-        self.Run_SDTVis.setText(_translate("Dialog_SDTVis", "Run SDT Vis"))
+        self.Run_SDTVis.setText(_translate("Dialog_SDTVis", "Run"))
         self.textBrowser.setPlainText(_translate("Dialog_SDTVis", "Land-use layer:\n"
 "SE data is maintained at the highest resolution (regional planning model level) with 25,000 zones to allow portablity between TSM and other egional models.  However the model is run at the TSM level with ~8700 zones for run timeand resource efficiency.  This layer is regional planning level and during the run, prepratory steps are run to aggregate the data to TSM level (Yes, TSM zonal strucute is desiged to nest quite well with regional model zone structure and is updated on annual basis).\n"
 "\n"

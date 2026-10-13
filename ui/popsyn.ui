@@ -268,7 +268,7 @@
             <item>
              <widget class="QPushButton" name="runPopSim">
               <property name="text">
-               <string>Run POPSIM</string>
+               <string>Run</string>
               </property>
              </widget>
             </item>

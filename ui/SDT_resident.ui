@@ -255,7 +255,7 @@
            <item>
             <widget class="QPushButton" name="Run_SDTRes">
              <property name="text">
-              <string>Run SDT</string>
+              <string>Run</string>
              </property>
             </widget>
            </item>
