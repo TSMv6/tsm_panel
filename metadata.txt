@@ -1,12 +1,12 @@
 [general]
 name=TSM Model Plugin
-version=2.73
-date=2026-10-09
+version=2.74
+date=2026-10-13
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
-commit=c3ab069
-commit_date=2026-10-09
+commit=9155c70
+commit_date=2026-10-13
 # Standard QGIS plugin metadata keys; the About dialog links the
 # source revision straight at the commit on GitHub.
 repository=https://github.com/TSMv6/tsm_panel
@@ -40,12 +40,12 @@ engine_popsim=tsm_PopSim f6c2610 2026-06-21
 engine_sdt=SDTModel d3e8fea 2026-08-11
 engine_ldt=LDTModel 1ad62fb 2026-07-15
 engine_agentplans=agentPlans 16eab94 2026-09-21
-engine_afdta=agentflow-dta 6fb22e8 2026-09-22
+engine_afdta=agentflow-dta c0083b9 2026-10-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep ef22285 2026-07-12
 engine_agentanalysis=agentAnalysis 0787071 2026-09-24
 engine_pathskim=PathSkim eb7c271 2026-10-09
-engine_utilities=utilities 88fa388 2026-07-15
+engine_utilities=utilities 85a4c9f 2026-10-13
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
 
 changelog=
@@ -59,8 +59,19 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (116 commits, 2026-06-19 to 2026-10-09):
+    One version per commit, newest first (118 commits, 2026-06-19 to 2026-10-13):
     .
+    2.74 (2026-10-13): Summarization > Subarea writes link and node CSVs (A,B / N
+    plus the statewide TSM_A,TSM_B / TSM_N) for a HyDRA subarea run, and can
+    renumber the subarea (zones 1..n, external stations next) from a generated
+    or supplied node equivalency - the same engine as Subarea Extraction, so
+    one equivalency gives the same numbers in both - with a renumbered trip
+    list and an hourly ELToD trip table for an ELToD subarea assignment.
+    Outputs and ELToD TripTable are sub-tabs. Subarea Extraction no longer
+    renumbers interior nodes as externals when only a centroid connector is
+    missing, and its crosswalk, links and nodes always agree. HyDRA gains a
+    Counts / ODME tab with supplemental demand (2026-10-12). Network years
+    2040, 2045 and 2055.
     2.73 (2026-10-09): Skimmy traces one O-D pair on its own. Path Trace has a
     Run Trace Only button that runs a single shortest-path search (seconds)
     instead of the full statewide skim. The trace file is a link-by-link CSV
