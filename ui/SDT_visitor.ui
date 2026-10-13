@@ -115,7 +115,7 @@
            <item>
             <widget class="QPushButton" name="Run_SDTVis">
              <property name="text">
-              <string>Run SDT Vis</string>
+              <string>Run</string>
              </property>
             </widget>
            </item>

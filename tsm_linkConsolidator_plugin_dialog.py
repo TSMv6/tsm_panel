@@ -9,6 +9,7 @@ from qgis.PyQt import uic  # For loading .ui dynamically
 from qgis.PyQt.QtCore import Qt, QEvent
 from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem
 from .tsm_settings import Config
+from .network_version import fill_versions, set_version, version
 
 # Name of the netPrep control file written/read in the scenario (output) directory.
 SETTINGS_FILENAME = "link_consolidation_settings.txt"
@@ -131,6 +132,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         # Load the UI dynamically
         uic.loadUi(ui_file, self)
+        # Shown as Navteq24 / Navteq11, stored as TSMv6 / TSMv5.
+        fill_versions(self.networkVersion)
 
         # Populate the layer dropdowns by geometry type.
         #   line     -> GeoMaster line layer        (LineString)
@@ -164,7 +167,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # Project Settings, or a prior run) so they are not re-picked per widget.
         # The scenario settings file, loaded below, still overrides these.
         if settings.get("network_version"):
-            self.networkVersion.setCurrentText(settings.get("network_version"))
+            set_version(self.networkVersion, settings.get("network_version"))
         self._select_layer_by_name(self.lineLayerCombo,   settings.get("GM_line_layer"))
         self._select_layer_by_name(self.nodeLayerCombo,   settings.get("GM_node_layer"))
         self._select_layer_by_name(self.lineLayerCombo_2, settings.get("GM_centroid_layer"))
@@ -311,7 +314,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         nv = cfg.get("network_version")
         if not nv:
             nv = "TSMv6" if (cfg.get("Geomaster_centroid_layer") or cfg.get("Geomaster_cencon_layer")) else "TSMv5"
-        self.networkVersion.setCurrentText(nv.strip())
+        set_version(self.networkVersion, nv)
 
         # Layer combos store full paths in the settings file. Line/node accept the
         # legacy v5 line_layer/node_layer keys as a fallback.
@@ -382,7 +385,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         """TSMv5 networks embed centroids in the node file and connectors in the
         link file, so the separate centroid/connector inputs are hidden for v5.
         TSMv5 also supports the TSM resolution only (no RPM, no MSR)."""
-        is_v6 = self.networkVersion.currentText() == "TSMv6"
+        is_v6 = version(self.networkVersion) == "TSMv6"
         for widget in (self.lineLayerCombo_2, self.label_Input_Linelayer_2,
                        self.lineLayerCombo_3, self.label_Input_Linelayer_3):
             widget.setEnabled(is_v6)
@@ -412,7 +415,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         settings.set("max_internal_zones", self.lineEdit_MaxZones.text())
         settings.set("external_zone_range", self.lineEdit_ExtRange.text().strip())
         settings.set("scenarioDir", self.output_directory.text().strip())
-        settings.set("network_version", self.networkVersion.currentText())
+        settings.set("network_version", version(self.networkVersion))
         settings.set("model_resolution", self.modelResolution.currentText())
         settings.set("msr_subarea", self.lineEdit_MSRSubarea.text())
         settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
@@ -539,7 +542,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         """Write the netPrep control file and run netPrep.exe."""
         settings = Config()
         plugin_dir = settings.get("plugin_dir")
-        network_version = self.networkVersion.currentText()
+        network_version = version(self.networkVersion)
 
         # Collect layer paths
         line_path = self.get_layer_path(self.lineLayerCombo.currentData())

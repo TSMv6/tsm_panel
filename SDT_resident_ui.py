@@ -183,7 +183,7 @@ class Ui_Dialog_SDTRes(object):
         self.cb_tour.setText(_translate("Dialog_SDTRes", "Tour"))
         self.cb_stop.setText(_translate("Dialog_SDTRes", "Stop"))
         self.cb_trip.setText(_translate("Dialog_SDTRes", "Trip"))
-        self.Run_SDTRes.setText(_translate("Dialog_SDTRes", "Run SDT"))
+        self.Run_SDTRes.setText(_translate("Dialog_SDTRes", "Run"))
         self.textBrowser.setPlainText(_translate("Dialog_SDTRes", "Land-use layer:\n"
 "SE data is maintained at the highest resolution (regional planning model level) with 25,000 zones to allow portablity between TSM and other egional models.  However the model is run at the TSM level with ~8700 zones for run timeand resource efficiency.  This layer is regional planning level and during the run, prepratory steps are run to aggregate the data to TSM level (Yes, TSM zonal strucute is desiged to nest quite well with regional model zone structure and is updated on annual basis).\n"
 "\n"
