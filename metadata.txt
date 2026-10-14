@@ -1,12 +1,12 @@
 [general]
 name=TSM Model Plugin
-version=2.75
-date=2026-10-13
+version=2.76
+date=2026-10-14
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
-commit=c494793
-commit_date=2026-10-13
+commit=b3b8cd4
+commit_date=2026-10-14
 # Standard QGIS plugin metadata keys; the About dialog links the
 # source revision straight at the commit on GitHub.
 repository=https://github.com/TSMv6/tsm_panel
@@ -43,7 +43,7 @@ engine_agentplans=agentPlans 16eab94 2026-09-21
 engine_afdta=agentflow-dta c0083b9 2026-10-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep ef22285 2026-07-12
-engine_agentanalysis=agentAnalysis 0787071 2026-09-24
+engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
 engine_utilities=utilities 85a4c9f 2026-10-13
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
@@ -59,8 +59,17 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (119 commits, 2026-06-19 to 2026-10-13):
+    One version per commit, newest first (120 commits, 2026-06-19 to 2026-10-14):
     .
+    2.76 (2026-10-14): Turning Movements can time each movement by ARRIVAL at
+    the node - every path walked against the run's link performance, as the
+    engine times its own path volumes - in 15-minute intervals labelled
+    HH:MM:SS (after-midnight times fold onto the clock), and can list every
+    agent through each movement with depart/arrive times to the second.
+    Subarea boundary arrival times use the same walk: trips leave on the
+    engine's 15-min cohorts instead of the slot start, after-midnight links
+    are priced at their own time, empty intervals at free flow, and a trip
+    reaching the boundary after midnight keeps 24:xx.
     2.75 (2026-10-13): Network version shows as Navteq24 / Navteq11 in Link
     Consolidator and Project Settings (stored values stay TSMv6 / TSMv5, so
     saved scenarios are unaffected). Project Settings offers the network years
