@@ -1215,12 +1215,12 @@ def _tab_turns(dlg):
 
     opts = QHBoxLayout()
     w.cb_five = QCheckBox("5-node movements (FROM-1, FROM, THRU, TO, TO+1)", w)
-    w.cb_hour = QCheckBox("by hour (period clock)", w)
+    w.cb_hour = QCheckBox("by time of day (15-min, HH:MM:SS)", w)
     w.cb_hour.setChecked(True)
     opts.addWidget(w.cb_five)
     opts.addWidget(w.cb_hour)
     v.addLayout(opts)
-    # Persist the two option checkboxes (by-hour defaults on).
+    # Persist the option checkboxes (time of day defaults on).
     _five = Config().get("aa_turns_five")
     if _five is not None:
         w.cb_five.setChecked(bool(_five))
@@ -1229,20 +1229,42 @@ def _tab_turns(dlg):
         w.cb_hour.setChecked(bool(_byhour))
     w.cb_five.toggled.connect(lambda ch: Config().set("aa_turns_five", ch))
     w.cb_hour.toggled.connect(lambda ch: Config().set("aa_turns_byhour", ch))
-    hint = QLabel("Periods are the agents' DEPARTURE hour (stored paths carry "
-                  "no per-link arrival times).", w)
-    hint.setStyleSheet("color: gray;")
-    v.addWidget(hint)
+    # Network time, not departure time: the paths carry no per-link times, so
+    # each agent cohort is walked to the node against the link-performance
+    # files at the top of the dialog (the engine's own path timing).
+    w.cb_arrival = _check(w, "Time = arrival at the node (walk each path against the "
+                             "link performance files above)", "aa_turns_arrival")
+    w.cb_arrival.setToolTip(
+        "ON: each movement is timed when the agents reach the node -- departure "
+        "cohorts walked link by link, every link priced at the 15-min interval "
+        "the cohort enters it, using the macro/meso/micro link_performance files "
+        "at the top of this dialog (same run as the duckdb). Implies time of day.\n\n"
+        "OFF: time = the agents' departure, spread over the slot's 15-min "
+        "cohorts as the engine loads them.\n\n"
+        "Times after midnight fold onto the clock (24:15 -> 00:15).")
+    w.cb_arrival.toggled.connect(lambda on: w.cb_hour.setChecked(True) if on else None)
+    v.addWidget(w.cb_arrival)
 
     by_lay, w.by = _by_row(w, "aa_turns_by", "volumes")
     v.addLayout(by_lay)
-    trips_lay, w.trips = _browse_row(w, "trip list (for market)", mode="open",
+    trips_lay, w.trips = _browse_row(w, "trip list (market / exact departures)", mode="open",
                                      filt="Trip list (*.csv.gz *.csv)",
                                      key="aa_turns_trips")
+    w.trips.setToolTip("The tripList this duckdb was built from. Needed for a market "
+                       "breakdown. When its clocks carry time within the 30-min slot, "
+                       "each agent's own clock places it; otherwise agents are spread "
+                       "over the engine's 15-min cohorts.")
     v.addLayout(trips_lay)
     out_lay, w.out = _browse_row(w, "output turns (csv)", mode="save",
                                  filt="CSV (*.csv)", key="aa_turns_out")
     v.addLayout(out_lay)
+    ag_lay, w.agents_out = _browse_row(w, "list agents (csv, optional)", mode="save",
+                                       filt="CSV (*.csv)", key="aa_turns_agents_out")
+    w.agents_out.setToolTip("One row per agent per movement: ids, purpose, O/D, "
+                            "vehicles, depart time and (with arrival on) arrive time "
+                            "at the node, HH:MM:SS. Blank = not written.")
+    v.addLayout(ag_lay)
+    _align_labels((nd_lay, by_lay, trips_lay, out_lay, ag_lay))
     run = QPushButton("Run Turning Movements", w)
     v.addWidget(run)
     v.addStretch(1)
@@ -1258,18 +1280,37 @@ def _tab_turns(dlg):
                 "--out", w.out.text()]
         if w.cb_five.isChecked():
             args += ["--five"]
-        if w.cb_hour.isChecked():
-            args += ["--by-hour"]
+        if w.cb_hour.isChecked() or w.cb_arrival.isChecked():
+            args += ["--by-time"]
+        if w.cb_arrival.isChecked():
+            lps = _link_performance_files(dlg)
+            if not lps:
+                QMessageBox.warning(
+                    dlg, "Turning Movements",
+                    "Arrival times at the node need the link-performance files, and "
+                    "none of the rows at the top of this dialog point at a file that "
+                    "exists.\n\nFill in the macroDTA row (and meso/micro if the run "
+                    "had them) from the SAME run as the agentPaths duckdb, or untick "
+                    "the arrival box.")
+                return
+            args += ["--arrival"]
+            for p in lps:
+                args += ["--linkperf", p]
         by = _by_args(dlg, w.by, w.trips.text(), "Turning Movements")
         if by is None:
             return
         args += by
-        if by and w.trips.text():
+        agents_out = w.agents_out.text().strip()
+        if agents_out:
+            args += ["--agents-out", agents_out]
+        if w.trips.text() and (by or agents_out):
             args += ["--trips", w.trips.text()]
         r = _run(args, "agentAnalysis_turns.log")
         if r.returncode == 0:
             QMessageBox.information(dlg, "Turning Movements",
-                                    "Turns written:\n%s" % w.out.text())
+                                    "Turns written:\n%s%s" % (
+                                        w.out.text(),
+                                        ("\nAgents: %s" % agents_out) if agents_out else ""))
         else:
             QMessageBox.critical(dlg, "Turning Movements", "agentAnalysis turns failed - see History log.")
     run.clicked.connect(go)
@@ -1343,10 +1384,14 @@ engine) to keep its numbers. <i>Aggregate &#8230; trip table</i> writes the hour
 ELToD table (<code>STARTTIME,O,D,&lt;marketVot&gt;</code>) for an ELToD subarea
 assignment, in subarea numbers when renumbering.</p>
 <p>Ticking <i>compute external arrival time</i> walks each EI/EE path against the
-link-performance files, pricing every link at the interval the trip reaches it, and
-sets <code>depart_time</code> to the <b>congested</b> arrival at the boundary
-(<code>boundary_t_min</code> records the offset). Left off, the trip keeps its
-statewide departure and the offset is empty &#8211; never a free-flow guess.</p>
+link-performance files &#8211; the same walk as Turning Movements' arrival time:
+the engine's 15-min loading cohorts, every link priced at the interval the trip
+reaches it, past midnight on the 30-hour day. <code>depart_time</code> becomes the
+trip's own departure plus that <b>congested</b> time to the boundary, to the
+second (<code>boundary_t_min</code> records the offset); a trip reaching the
+boundary after midnight stays <code>24:xx</code>, which HyDRA loads natively. Left
+off, the trip keeps its statewide departure and the offset is empty &#8211; never a
+free-flow guess.</p>
 
 <h4>4. Select Link</h4>
 <p><i>Who uses this link?</i> Give one or more A&#8211;B links; every agent whose
@@ -1363,12 +1408,29 @@ mapping.</p>
 same route key are paired &#8211; FROM&#8594;THRU&#8594;TO, or five nodes with
 <i>--five</i> &#8211; and agent weights summed per movement. The output is
 <b>aggregate</b>: one row per movement with an agent count and vehicle volume
-(plus per-purpose or per-market columns if asked). Individual agents are not
-listed.</p>
-
-<p style='color:#b9770e;'><b>Note:</b> <i>by hour</i> currently buckets on the
-agent's <b>departure</b> hour, not its arrival at the node, so movements far from
-trip origins read early. The path walk used by Subarea is what fixes this.</p>
+(plus per-purpose or per-market columns if asked). <i>List agents</i> also writes
+every agent through each movement.</p>
+<p><i>By time of day</i> splits volumes into <b>15-minute intervals</b> labelled by
+their start (<code>07:15:00</code>). The stored paths carry no per-link times, so
+the time is either:</p>
+<ul>
+<li><b>departure</b> (default) &#8211; the agents' departure on the slot's 15-min
+cohorts, as the engine releases them; or</li>
+<li><b>arrival at the node</b> (box ticked) &#8211; each cohort walked along its
+path, every link priced at the interval the cohort enters it, from the
+link-performance files at the top of the dialog. This is the engine's own path
+timing, so turns into a link add up to that link's path-based volume.</li>
+</ul>
+<p>Times after midnight fold onto the clock (24:15 &#8594; 00:15). Agent lists
+give departure and arrival to the second, with a <code>next_day</code> flag. HyDRA
+keeps only each agent's 30-min slot and releases it as two 15-min cohorts; every
+agent is placed in one &#8211; by its own trip-list clock when that carries time
+within the slot, otherwise alternately &#8211; and the timed volumes are summed
+from those same agents, so the agent list adds up to them exactly.</p>
+<p style='color:#b9770e;'><b>Note:</b> link travel times do not include time spent
+<b>waiting to enter</b> the network &#8211; at a saturated origin, or in the meso
+admission queue. Where the run is that congested, the engine's discharged link
+volumes run later than any path-based timing, arrival included.</p>
 
 <h4>Units</h4>
 <p>All volumes are <b>actual vehicles</b> (raw agent weight), matching the
@@ -1468,4 +1530,6 @@ def save_agent_settings(dlg):
         cfg.set("aa_turns_nodes", tn.nodes.text().strip())
         cfg.set("aa_turns_five", tn.cb_five.isChecked())
         cfg.set("aa_turns_byhour", tn.cb_hour.isChecked())
+        cfg.set("aa_turns_arrival", tn.cb_arrival.isChecked())
         cfg.set("aa_turns_out", tn.out.text().strip())
+        cfg.set("aa_turns_agents_out", tn.agents_out.text().strip())
