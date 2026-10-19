@@ -222,9 +222,9 @@
        </layout>
       </item>
       <item row="5" column="0">
-       <widget class="QLabel" name="label_Save_2">
+       <widget class="QLabel" name="label_ModelResolution">
         <property name="text">
-         <string>Geographic Coverage</string>
+         <string>Model Resolution</string>
         </property>
        </widget>
       </item>
@@ -236,16 +236,19 @@
        </widget>
       </item>
       <item row="6" column="0">
-       <widget class="QRadioButton" name="radioButton">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
+       <widget class="QRadioButton" name="radioButton_StdTSM">
         <property name="text">
-         <string>Statewide</string>
+         <string>Standard TSM</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="toolTip">
+         <string>All 8,721 TSM zones (the land use aggregated to TSM_NG).</string>
         </property>
        </widget>
       </item>
-      <item row="6" column="1" rowspan="2">
+      <item row="6" column="1">
        <widget class="QSplitter" name="splitter_12">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -262,15 +265,58 @@
         </widget>
        </widget>
       </item>
-      <item row="7" column="0">
-       <widget class="QRadioButton" name="radioButton_2">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
+      <item row="7" column="0" colspan="2">
+       <widget class="QRadioButton" name="radioButton_MSR">
         <property name="text">
-         <string>Subarea</string>
+         <string>MSR -- TSM zones outside + RPM zones inside the region below</string>
+        </property>
+        <property name="toolTip">
+         <string>Link consolidation builds the TSM network (skims) plus an MSR network, agentPlans disaggregates the trip list to the RPM zones, and HyDRA assigns on the MSR network. Demand models and skims stay at TSM.</string>
         </property>
        </widget>
+      </item>
+      <item row="8" column="0" colspan="2">
+       <layout class="QGridLayout" name="gridLayout_MSR">
+        <property name="leftMargin">
+         <number>20</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QRadioButton" name="radioButton_RPMRegion">
+          <property name="text">
+           <string>RPM region</string>
+          </property>
+          <property name="toolTip">
+           <string>A regional model from the land use's Model column. All its TSM zones become RPM detail.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="comboBox_RPMRegion"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QRadioButton" name="radioButton_UserBoundary">
+          <property name="text">
+           <string>User-defined boundary</string>
+          </property>
+          <property name="toolTip">
+           <string>A polygon layer. Every RPM zone it overlaps brings in its whole TSM zone, so the region is always whole TSM zones. The RPM zones inside it replace their TSM zones.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="comboBox_BoundaryLayer"/>
+        </item>
+        <item row="2" column="0" colspan="2">
+         <widget class="QLabel" name="label_MSRSummary">
+          <property name="text">
+           <string/>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item row="12" column="0" colspan="2">
        <widget class="Line" name="line_6">

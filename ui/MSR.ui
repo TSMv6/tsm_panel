@@ -3,7 +3,7 @@
  <class>Dialog_MSR</class>
  <widget class="QDialog" name="Dialog_MSR">
   <property name="windowModality">
-   <enum>Qt::WindowModal</enum>
+   <enum>Qt::ApplicationModal</enum>
   </property>
   <property name="geometry">
    <rect>

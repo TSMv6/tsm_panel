@@ -14,7 +14,7 @@ from qgis.PyQt import QtCore, QtGui, QtWidgets
 class Ui_Dialog_SDTRes(object):
     def setupUi(self, Dialog_SDTRes):
         Dialog_SDTRes.setObjectName("Dialog_SDTRes")
-        Dialog_SDTRes.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        Dialog_SDTRes.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         Dialog_SDTRes.resize(618, 330)
         self.horizontalLayout_5 = QtWidgets.QHBoxLayout(Dialog_SDTRes)
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")

@@ -1,10 +1,12 @@
 import os
 import subprocess
-from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QApplication, QButtonGroup, QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
 from .network_version import fill_versions, set_version, version
+from . import msr_region
 
 from .Project_Settings_ui import Ui_Dialog_ProjectSettings
 
@@ -37,6 +39,8 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         # inputs. TSMv5 embeds these in the node/link files (inputs hidden below).
         self.populate_layer_combobox(self.centroidLayerCombo, "Point")
         self.populate_layer_combobox(self.cenconLayerCombo, "LineString")
+        # MSR user-defined boundary: a loaded polygon layer.
+        self.populate_layer_combobox(self.comboBox_BoundaryLayer, "Polygon")
         # Shown as Navteq24 / Navteq11, stored as TSMv6 / TSMv5. Set before the
         # network years: which years are offered depends on the version.
         fill_versions(self.comboBox_NetworkVersion)
@@ -86,6 +90,33 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
             if cencon_name in [self.cenconLayerCombo.itemText(i) for i in range(self.cenconLayerCombo.count())]:
                     self.cenconLayerCombo.setCurrentText(cencon_name)
 
+        # Model Resolution: Standard TSM, or MSR with an RPM region OR a user
+        # boundary (whose RPM zones replace their TSM zones). The RPM list is
+        # read from the land use's Model column. Two exclusive groups: all four
+        # radios share one parent, so Qt's auto-exclusivity would merge them.
+        self._grp_res = QButtonGroup(self)
+        self._grp_res.addButton(self.radioButton_StdTSM)
+        self._grp_res.addButton(self.radioButton_MSR)
+        self._grp_region = QButtonGroup(self)
+        self._grp_region.addButton(self.radioButton_RPMRegion)
+        self._grp_region.addButton(self.radioButton_UserBoundary)
+        self._fill_rpm_regions(settings.get("msr_rpm_model"))
+        self.landuseLayerCombo.currentIndexChanged.connect(lambda _i: self._fill_rpm_regions())
+        if settings.get("msr_boundary_layer"):
+            self.comboBox_BoundaryLayer.setCurrentText(settings.get("msr_boundary_layer"))
+        is_msr = settings.get("model_structure") == "MSR"
+        self.radioButton_MSR.setChecked(is_msr)
+        self.radioButton_StdTSM.setChecked(not is_msr)
+        if settings.get("msr_boundary_layer"):
+            self.radioButton_UserBoundary.setChecked(True)
+        else:
+            self.radioButton_RPMRegion.setChecked(True)
+        if settings.get("msr_summary"):
+            self.label_MSRSummary.setText("Last saved: " + settings.get("msr_summary"))
+        for w in (self.radioButton_MSR, self.radioButton_RPMRegion, self.radioButton_UserBoundary):
+            w.toggled.connect(self.toggle_msr)
+        self.toggle_msr()
+
         # Connect buttons to browse function
         self.browse_Scendir.clicked.connect(lambda: self.select_directory(self.scenario_directory))
         # Show/hide the v6-only inputs as the network version changes.
@@ -115,6 +146,67 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         directory = QFileDialog.getExistingDirectory(self, "Select Directory")
         if directory:
             self.scenario_directory.setText(directory)
+
+    def _fill_rpm_regions(self, keep=None):
+        """RPM regions = the selected land use's Model values (needs PopSyn_Index)."""
+        keep = keep or self.comboBox_RPMRegion.currentText()
+        self.comboBox_RPMRegion.clear()
+        layer = self.landuseLayerCombo.currentData()
+        models = msr_region.regional_models(layer) if layer is not None else []
+        self.comboBox_RPMRegion.addItems(models)
+        if keep in models:
+            self.comboBox_RPMRegion.setCurrentText(keep)
+
+    def toggle_msr(self):
+        msr = self.radioButton_MSR.isChecked()
+        for w in (self.radioButton_RPMRegion, self.radioButton_UserBoundary):
+            w.setEnabled(msr)
+        self.comboBox_RPMRegion.setEnabled(msr and self.radioButton_RPMRegion.isChecked())
+        self.comboBox_BoundaryLayer.setEnabled(msr and self.radioButton_UserBoundary.isChecked())
+
+    def _build_zone_structure(self, settings):
+        """Write the region files + the model's zonal land use for the chosen
+        Model Resolution into the scenario directory. Returns False (after
+        telling the user) when the choice cannot be built."""
+        msr = self.radioButton_MSR.isChecked()
+        models = [self.comboBox_RPMRegion.currentText()] if (
+            msr and self.radioButton_RPMRegion.isChecked() and self.comboBox_RPMRegion.currentText()) else []
+        boundary = self.comboBox_BoundaryLayer.currentData() if (
+            msr and self.radioButton_UserBoundary.isChecked()) else None
+        if msr and not models and boundary is None:
+            QMessageBox.warning(self, "Model Resolution",
+                                "MSR needs an RPM region or a user-defined boundary layer.")
+            return False
+        landuse = self.landuseLayerCombo.currentData()
+        scen = (self.scenario_directory.text() or "").strip()
+        if landuse is None or not scen:
+            QMessageBox.warning(self, "Model Resolution",
+                                "Pick the SE Data (land use) layer and the scenario directory "
+                                "to build the model's zone structure.")
+            return not msr
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            r = msr_region.build_zone_structure(landuse, scen, models, boundary)
+        except Exception as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.warning(self, "Model Resolution", f"Could not build the zone structure:\n{e}")
+            return False
+        QApplication.restoreOverrideCursor()
+        lo, hi = msr_region.popsyn_range(landuse)
+        what = " + ".join(models + ([f"boundary '{boundary.name()}'"] if boundary is not None else []))
+        summary = (f"MSR ({what}): {r['region_tsm_zones']:,} TSM zones -> {r['rpm_zones']:,} RPM zones; "
+                   f"{r['tsm_zones'] + r['rpm_zones']:,} model zones" if msr
+                   else f"Standard TSM: {r['tsm_zones']:,} zones")
+        settings.set("model_structure", "MSR" if msr else "TSM")
+        settings.set("msr_rpm_model", models[0] if models else "")
+        settings.set("msr_boundary_layer", boundary.name() if boundary is not None else "")
+        settings.set("msr_zones_file", r["region_csv"] or "")
+        settings.set("msr_boundary_file", r["boundary_gpkg"] or "")
+        settings.set("zone_landuse_file", r["landuse_gpkg"])
+        settings.set("rpm_zone_range", f"{lo}-{hi}" if lo else "")
+        settings.set("msr_summary", summary)
+        self.label_MSRSummary.setText("Last saved: " + summary)
+        return True
 
     def toggle_network_version(self):
         """TSMv6 uses separate GeoMaster centroid + cen-con layers; TSMv5 embeds
@@ -186,6 +278,8 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
                 settings.set("GM_centroid_layer", self.centroidLayerCombo.currentData().name())
             if self.cenconLayerCombo.currentData():
                 settings.set("GM_cencon_layer", self.cenconLayerCombo.currentData().name())
+        if not self._build_zone_structure(settings):
+            return
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
         # self.close() 

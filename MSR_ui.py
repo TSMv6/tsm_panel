@@ -14,7 +14,7 @@ from qgis.PyQt import QtCore, QtGui, QtWidgets
 class Ui_Dialog_MSR(object):
     def setupUi(self, Dialog_MSR):
         Dialog_MSR.setObjectName("Dialog_MSR")
-        Dialog_MSR.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        Dialog_MSR.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
         Dialog_MSR.resize(900, 520)
         self.topLayout = QtWidgets.QHBoxLayout(Dialog_MSR)
         self.topLayout.setObjectName("topLayout")

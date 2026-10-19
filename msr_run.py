@@ -68,7 +68,7 @@ def write_control(out_path, trip_list, subarea, lookup, msr_out, hourly_out,
     settings = settings or Config()
     tomls = sizeterm_tomls(settings)
     parent_col = settings.get("msr_parent_col") or "TSM_NG"
-    index_col  = settings.get("msr_index_col") or "Index"
+    index_col  = settings.get("msr_index_col") or "TAZ_REG"
     od_res     = settings.get("msr_od_resolution") or "MSR"
 
     def fwd(p):

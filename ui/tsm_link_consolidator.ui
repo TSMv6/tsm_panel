@@ -51,20 +51,6 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_Input_MaxIntZ">
-             <property name="text">
-              <string>Max Internal Zones:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLineEdit" name="lineEdit_MaxZones">
-             <property name="text">
-              <string>8721</string>
-             </property>
-            </widget>
-           </item>
            <item row="0" column="2">
             <widget class="QLabel" name="label_NetVersion">
              <property name="text">
@@ -95,22 +81,16 @@
              </item>
             </widget>
            </item>
-           <item row="1" column="2">
-            <widget class="QLabel" name="label_ExtRange">
+           <item row="1" column="0" colspan="4">
+            <widget class="QLabel" name="label_ZoneIds">
              <property name="text">
-              <string>External Stn Range</string>
+              <string>Zone ids: read from the GeoMaster centroid layer</string>
              </property>
-            </widget>
-           </item>
-           <item row="1" column="3">
-            <widget class="QLineEdit" name="lineEdit_ExtRange">
-             <property name="placeholderText">
-              <string>e.g. 11501-11560</string>
+             <property name="wordWrap">
+              <bool>true</bool>
              </property>
              <property name="toolTip">
-              <string>Node-id range of the external stations, first-last inclusive.
-These sit in their own block above the internal zones and differ per zone system — in the current GeoMaster, TSM numbers them 11501-11560 and RPM numbers the same stations 30001-30060.
-netPrep marks every internal zone and external station DTA_Type = 99 in Node.csv; without this range the external ones would be missed.</string>
+              <string>Zone numbering comes from the GeoMaster centroid layer (its type field): for each of TSM and RPM, the ids below the largest gap are internal zones and those above are external stations. MSR uses TSM numbering outside the region and RPM inside, including the external stations the region covers.</string>
              </property>
             </widget>
            </item>
@@ -169,6 +149,31 @@ netPrep marks every internal zone and external station DTA_Type = 99 in Node.csv
             <widget class="QLabel" name="label_Input_Linelayer">
              <property name="text">
               <string>GeoMaster Line layer</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_Capacities">
+           <item>
+            <widget class="QLabel" name="label_Capacities">
+             <property name="text">
+              <string>Capacities File</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEdit_Capacities">
+             <property name="toolTip">
+              <string>QLOS capacities lookup (FTYPE|lanes -&gt; capacity) used to set ELToD link capacities. Default: {tsm_location}/Inputs/netPrep/QLOS_capacities.csv</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="browse_Capacities">
+             <property name="text">
+              <string>Browse</string>
              </property>
             </widget>
            </item>
@@ -235,71 +240,10 @@ netPrep marks every internal zone and external station DTA_Type = 99 in Node.csv
          </item>
          <item>
           <widget class="QLabel" name="label_MSRSubarea">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
            <property name="text">
             <string>MSR Subarea Polygon:</string>
            </property>
           </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <item>
-            <widget class="QLineEdit" name="lineEdit_MSRSubarea">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="placeholderText">
-              <string>MSR subarea polygon (.gpkg)</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="browse_MSRSubarea">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>Browse</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_MSRLookup">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string>MSR Lookup Table:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_MSRLookup">
-           <item>
-            <widget class="QLineEdit" name="lineEdit_MSRLookup">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="placeholderText">
-              <string>MSR lookup table (.csv)</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="browse_MSRLookup">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>Browse</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
          </item>
          <item>
           <widget class="Line" name="line">
@@ -376,23 +320,40 @@ netPrep marks every internal zone and external station DTA_Type = 99 in Node.csv
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_Capacities">
+          <layout class="QHBoxLayout" name="horizontalLayout_MSRLink">
            <item>
-            <widget class="QLabel" name="label_Capacities">
+            <widget class="QLabel" name="label_MSRLink">
              <property name="text">
-              <string>Capacities File</string>
+              <string>MSR Link File</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit_Capacities">
-             <property name="toolTip">
-              <string>QLOS capacities lookup (FTYPE|lanes -&gt; capacity) used to set ELToD link capacities. Default: {tsm_location}/Inputs/netPrep/QLOS_capacities.csv</string>
+            <widget class="QLineEdit" name="lineEdit_MSRLink"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="browse_MSRLink">
+             <property name="text">
+              <string>Browse</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_MSRNode">
+           <item>
+            <widget class="QLabel" name="label_MSRNode">
+             <property name="text">
+              <string>MSR Node File</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="browse_Capacities">
+            <widget class="QLineEdit" name="lineEdit_MSRNode"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="browse_MSRNode">
              <property name="text">
               <string>Browse</string>
              </property>

@@ -36,7 +36,7 @@ of network shape or connectivity.
 
 ---
 
-## Network resolution (the **Network Resolution** dropdown)
+## Network resolution (set in **Project Settings > Model Resolution**)
 
 The network can be consolidated at three spatial resolutions:
 
@@ -44,46 +44,59 @@ The network can be consolidated at three spatial resolutions:
   resolution used for **skimming and the demand models**.
 - **RPM** — **Regional Planning Model** zones (centroids and centroid connectors)
   at **~26,000 zones** — a finer, regional-planning-grade zone system.
-- **MSR** — **Multi-Spatial Resolution**: a **hybrid of TSM and RPM** where a
-  user-chosen study area (subarea) carries the high-resolution RPM network while the
-  rest of the state stays at TSM resolution.
+- **MSR** — **Multi-Spatial Resolution**: TSM zones outside a region and RPM
+  zones inside it. The region is chosen in **Project Settings > Model
+  Resolution** as **either** one regional model (CFRPM, D1RPM, …, read from the
+  land use's `Model` column) **or** a user-defined boundary layer. A boundary is
+  always widened to whole TSM zones: every RPM zone it overlaps brings in its TSM
+  zone, and all RPM zones of those TSM zones are inside.
+
+With MSR the **Network Resolution** dropdown is locked to MSR and one run writes
+**two networks**:
+
+| Output | Used by |
+|---|---|
+| **TSM Link / TSM Node** file (`Link.csv`, `Node.csv`) | skims, Skimmy — identical to a TSM run |
+| **MSR Link / MSR Node** file (`Link_msr.csv`, `Node_msr.csv`) | HyDRA |
+
+The MSR network keeps every TSM link, adds the `useinRPM` links inside the
+region (plus RPM links that cross the boundary onto a TSM road), and swaps the
+region's TSM centroids and connectors for its RPM ones.
 
 **RPM and MSR are not used in skimming or the demand models** — those always run at
-TSM. Instead, the demand-model outputs are **disaggregated** to the RPM/MSR
-resolution afterward via a **hierarchical, sequential spatial disaggregation**
-(see the **MSR widget**).
+TSM. The demand-model trip list is **disaggregated** to the RPM zones of the
+region afterward by agentPlans (see the **MSR widget**).
 
 > **TSMv5** networks support **TSM resolution only** (no RPM, no MSR); the dropdown
 > is locked to TSM when Network Version = TSMv5.
 
 ---
 
-## Zone numbering (**Max Internal Zones** and **External Stn Range**)
+## Zone numbering (read automatically)
 
 Centroids are not ordinary network nodes: graphWalk must never consolidate
 *through* one, and netPrep marks every centroid `DTA_Type = 99` in `Node.csv`.
-Telling them apart from network nodes is by id, so netPrep has to be told which
-ids are zones — and that is a property of the network, not of the program.
+Telling them apart from network nodes is by id.
 
-Zone ids come in **two separate blocks**, and both must be given:
+The ids are **read from the GeoMaster centroid layer**, not typed in. For each
+centroid `type` (TSM, RPM) the ids below the largest gap are the internal zones
+and those above it are the external stations:
 
-| Field | What it is | TSM | RPM |
-|---|---|---|---|
-| **Max Internal Zones** | highest *internal* zone id; internals are `1 … max` | `8721` | `26274` |
-| **External Stn Range** | first and last *external station* id, inclusive | `11501-11560` | `30001-30060` |
+| Block | TSM | RPM |
+|---|---|---|
+| Internal zones | `1-8721` | `20001-46274` (the land use's `PopSyn_Index`) |
+| External stations | `11501-11560` | `50001-50060` |
 
-The external stations are the same 60 places in both systems (I-10, I-75, I-95
-and the rest of the state-line crossings) — they are simply **numbered
-differently**, in their own block above the internal zones. That gap is why one
-"highest zone id" number cannot describe the zone system on its own: anything
-between `max internal` and the external block is not a zone at all.
-
-Neither field is defaulted, and netPrep refuses to run without them. A wrong
-value does not fail loudly — it just leaves centroids unmarked in `Node.csv`,
-which surfaces much later as zones that will not load.
+The external stations are the same 60 state-line crossings in both systems,
+numbered in step (`11501+i` = `50001+i`). In an **MSR** network a station whose
+roads lead into the region uses its RPM copy, the rest keep their TSM id — e.g.
+an NERPM region uses `11501-11554, 50055-50060`. netPrep finds a station's
+region by walking the network from its connector to the first zoned node, and
+writes the map to `msr_externals.csv` (`TSM_EXT, RPM_EXT, TSM_NG, IN_REGION,
+ZONE_ID`); the dialog shows the ids the last run used.
 
 > Real network node ids are GeoMaster/Navteq ids in the tens of millions, so
-> there is no risk of a network node falling inside either block.
+> there is no risk of a network node falling inside a zone block.
 
 ---
 

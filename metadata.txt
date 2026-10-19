@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.76
-date=2026-10-14
+version=2.77
+date=2026-10-19
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -42,10 +42,10 @@ engine_ldt=LDTModel 1ad62fb 2026-07-15
 engine_agentplans=agentPlans 16eab94 2026-09-21
 engine_afdta=agentflow-dta c0083b9 2026-10-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
-engine_netprep=netprep ef22285 2026-07-12
+engine_netprep=netprep d40ba3e 2026-10-19
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
-engine_utilities=utilities 85a4c9f 2026-10-13
+engine_utilities=utilities ce6461c 2026-10-19
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
 
 changelog=
@@ -59,7 +59,21 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (120 commits, 2026-06-19 to 2026-10-14):
+    One version per commit, newest first (121 commits, 2026-06-19 to 2026-10-19):
+    .
+    2.77 (2026-10-19): Model Resolution in Project Settings - Standard TSM,
+    or MSR (TSM zones outside + RPM zones inside) for ONE regional model
+    (from the land use's Model column) OR a user boundary layer, widened to
+    whole TSM zones. Save writes the region (msr_region_zones.csv), its
+    dissolved boundary and the model's zonal land use
+    (model_zones_landuse.gpkg: TSM zones outside, RPM zones inside, SE totals
+    preserved). Link Consolidation follows it: MSR writes the TSM network
+    (skims) plus MSR_Link/MSR_Node (HyDRA), switches the region's external
+    stations to their RPM ids, and reads zone ids from the centroid layer
+    instead of typed fields; Capacities File moved to the inputs. Tool
+    dialogs are application-modal, so the panel is locked while one is open.
+    msr.exe: subzone id TAZ_REG, size terms read the real land-use columns,
+    LDT purposes and coefficients match the models.
     .
     2.76 (2026-10-14): Turning Movements can time each movement by ARRIVAL at
     the node - every path walked against the run's link performance, as the

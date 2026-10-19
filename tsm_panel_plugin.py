@@ -734,6 +734,9 @@ class TsmPanelPlugin():
         print("Dialog instance created")
         # Auto-log every interaction in this dialog (fields, browse, checks, OK).
         tsm_history.instrument_dialog(dialog, self._TOOL_LABELS.get(tool_name, tool_name))
+        # Tool dialogs have no parent window, so a .ui-level WindowModal blocks
+        # nothing and the panel stays clickable underneath. Force app-modal.
+        dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
         dialog.exec()
         # If the SDT Resident dialog was set to run both resident + visitor, clear the
         # main-panel SDT Visitor step (the visitor was produced by the resident run).

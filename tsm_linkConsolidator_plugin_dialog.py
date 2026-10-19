@@ -9,6 +9,7 @@ from qgis.PyQt import uic  # For loading .ui dynamically
 from qgis.PyQt.QtCore import Qt, QEvent
 from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem
 from .tsm_settings import Config
+from . import msr_region
 from .network_version import fill_versions, set_version, version
 
 # Name of the netPrep control file written/read in the scenario (output) directory.
@@ -23,6 +24,11 @@ CONNECTOR_DEFAULTS = {
     "centroid_connector_postspeed": "25",   # POSTSPEED of the synthesized link
     "centroid_connector_capacity": "99999",
 }
+
+
+# TSM numbering when no TSMv6 centroid layer is available to read it from
+# (TSMv5 networks carry their centroids inside the node file).
+TSM_ZONE_DEFAULT = (1, 8721, 11501, 11560)
 
 
 def parse_zone_range(text):
@@ -155,14 +161,6 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # reads it from Config. Two widgets writing one value is how they drift.
         if settings.get("scenarioDir"):
             self.output_directory.setText(settings.get("scenarioDir"))
-        if settings.get("max_internal_zones"):
-            self.lineEdit_MaxZones.setText(str(settings.get("max_internal_zones")))
-        # The external-station block. Deliberately NOT defaulted: the ids differ
-        # per zone system (TSM 11501-11560, RPM 30001-30060 in the current
-        # GeoMaster), and a wrong guess does not fail loudly -- it just leaves
-        # every external station unmarked in Node.csv.
-        if settings.get("external_zone_range"):
-            self.lineEdit_ExtRange.setText(str(settings.get("external_zone_range")))
         # Shared GeoMaster layers + network version come from Config (set once in
         # Project Settings, or a prior run) so they are not re-picked per widget.
         # The scenario settings file, loaded below, still overrides these.
@@ -179,12 +177,12 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_TSMLink.setText(settings.get("TSM_Link_File"))
         if settings.get("TSM_Node_File"):
             self.lineEdit_TSMNode.setText(settings.get("TSM_Node_File"))
+        if settings.get("MSR_Link_File"):
+            self.lineEdit_MSRLink.setText(settings.get("MSR_Link_File"))
+        if settings.get("MSR_Node_File"):
+            self.lineEdit_MSRNode.setText(settings.get("MSR_Node_File"))
         if settings.get("model_resolution"):
             self.modelResolution.setCurrentText(str(settings.get("model_resolution")))
-        if settings.get("msr_subarea"):
-            self.lineEdit_MSRSubarea.setText(settings.get("msr_subarea"))
-        if settings.get("msr_lookup"):
-            self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
         if settings.get("bool_Counts") is not None:
             self.checkBox_Counts.setChecked(self._str2bool(settings.get("bool_Counts")))
         # Count field(s): user-driven (no hardcoded TSMv5.COUNT_24). Multi-select --
@@ -238,10 +236,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         self.browse_Outdir.clicked.connect(self.select_directory)
         self.browse_TSMLink.clicked.connect(lambda: self.select_file(self.lineEdit_TSMLink, "save"))
         self.browse_TSMNode.clicked.connect(lambda: self.select_file(self.lineEdit_TSMNode, "save"))
-        self.browse_MSRSubarea.clicked.connect(
-            lambda: self.select_file(self.lineEdit_MSRSubarea, "open", "GeoPackage (*.gpkg);; Shapefiles (*.shp)"))
-        self.browse_MSRLookup.clicked.connect(
-            lambda: self.select_file(self.lineEdit_MSRLookup, "open", "CSV (*.csv)"))
+        self.browse_MSRLink.clicked.connect(lambda: self.select_file(self.lineEdit_MSRLink, "save"))
+        self.browse_MSRNode.clicked.connect(lambda: self.select_file(self.lineEdit_MSRNode, "save"))
+        # Zone ids are read from the centroid layer; refresh the line on change.
+        self.lineLayerCombo_2.currentIndexChanged.connect(lambda _i: self._show_zone_ids())
+        self.modelResolution.currentTextChanged.connect(lambda _t: self._show_zone_ids())
         self.browse_Capacities.clicked.connect(
             lambda: self.select_file(self.lineEdit_Capacities, "open", "CSV (*.csv)"))
 
@@ -304,10 +303,6 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if cfg.get("scenario_name"):
             self.lineEdit_ScenarioName.setText(cfg["scenario_name"])
-        if cfg.get("max_internal_zones"):
-            self.lineEdit_MaxZones.setText(str(cfg["max_internal_zones"]))
-        if cfg.get("external_zone_range"):
-            self.lineEdit_ExtRange.setText(str(cfg["external_zone_range"]))
 
         # Network version: explicit key wins, else infer from presence of the
         # separate centroid/connector layers (v6) vs link+node only (v5).
@@ -327,10 +322,6 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if cfg.get("model_resolution"):
             self.modelResolution.setCurrentText(cfg["model_resolution"].strip())
-        if cfg.get("msr_subarea"):
-            self.lineEdit_MSRSubarea.setText(cfg["msr_subarea"])
-        if cfg.get("msr_lookup"):
-            self.lineEdit_MSRLookup.setText(cfg["msr_lookup"])
         if cfg.get("capacities_file"):
             self.lineEdit_Capacities.setText(cfg["capacities_file"])
 
@@ -345,6 +336,10 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_TSMLink.setText(cfg["TSM_Link_File"])
         if cfg.get("TSM_Node_File"):
             self.lineEdit_TSMNode.setText(cfg["TSM_Node_File"])
+        if cfg.get("MSR_Link_File"):
+            self.lineEdit_MSRLink.setText(cfg["MSR_Link_File"])
+        if cfg.get("MSR_Node_File"):
+            self.lineEdit_MSRNode.setText(cfg["MSR_Node_File"])
 
         self.toggle_msr_fields()
         self.toggle_network_version()
@@ -375,11 +370,65 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         self.comboBox_CountField.set_fields(names, set(checked))
 
     def toggle_msr_fields(self):
-        """Enable MSR subarea/lookup inputs only for the MSR resolution."""
-        is_msr = self.modelResolution.currentText() == "MSR"
-        for widget in (self.label_MSRSubarea, self.lineEdit_MSRSubarea, self.browse_MSRSubarea,
-                       self.label_MSRLookup, self.lineEdit_MSRLookup, self.browse_MSRLookup):
+        """MSR is chosen in Project Settings > Model Resolution, not here: that
+        one setting drives the network (here), the trip list (agentPlans) and
+        HyDRA, so they cannot disagree. This dialog only shows it. With MSR,
+        Network Resolution is locked to MSR; otherwise it offers TSM / RPM."""
+        settings = Config()
+        is_msr = settings.get("model_structure") == "MSR"
+        for widget in (self.label_MSRLink, self.lineEdit_MSRLink, self.browse_MSRLink,
+                       self.label_MSRNode, self.lineEdit_MSRNode, self.browse_MSRNode):
             widget.setEnabled(is_msr)
+        idx = self.modelResolution.findText("MSR")
+        if is_msr:
+            if idx < 0:
+                self.modelResolution.addItem("MSR")
+            self.modelResolution.setCurrentText("MSR")
+            self.modelResolution.setEnabled(False)
+            self.label_MSRSubarea.setText(
+                (settings.get("msr_summary") or "MSR") +
+                "\nWrites TSM_Link/TSM_Node (skims) and MSR_Link/MSR_Node (HyDRA)."
+                "  Change it in Project Settings > Model Resolution.")
+        else:
+            if idx >= 0:
+                if self.modelResolution.currentText() == "MSR":
+                    self.modelResolution.setCurrentText("TSM")
+                self.modelResolution.removeItem(idx)
+            self.label_MSRSubarea.setText(
+                "MSR (TSM outside + RPM inside a region) is set in Project Settings > Model Resolution.")
+        self.label_MSRSubarea.setWordWrap(True)
+        self._show_zone_ids()
+
+    def _zone_numbering(self):
+        """(TSM, RPM) zone blocks (int_lo, int_hi, ext_lo, ext_hi) read from the
+        GeoMaster centroid layer. RPM is None when the layer has no RPM type."""
+        lyr = self.lineLayerCombo_2.currentData()
+        blocks = {}
+        if lyr is not None and version(self.networkVersion) == "TSMv6":
+            key = lyr.id() if hasattr(lyr, "id") else str(lyr)
+            if getattr(self, "_zone_cache", (None,))[0] != key:
+                try:
+                    self._zone_cache = (key, msr_region.zone_blocks(lyr))
+                except Exception as e:
+                    print(f"zone ids: cannot read centroid layer: {e}")
+                    self._zone_cache = (key, {})
+            blocks = self._zone_cache[1]
+        return blocks.get("TSM", TSM_ZONE_DEFAULT), blocks.get("RPM")
+
+    def _show_zone_ids(self):
+        tsm, rpm = self._zone_numbering()
+        res = self.modelResolution.currentText()
+        f = lambda b: f"{b[0]}-{b[1]}, externals {b[2]}-{b[3]}"
+        if res == "RPM" and rpm:
+            text = f"Zone ids: RPM {f(rpm)}"
+        elif res == "MSR" and rpm:
+            used = Config().get("msr_external_ids")
+            text = (f"Zone ids: TSM {tsm[0]}-{tsm[1]} outside + RPM {rpm[0]}-{rpm[1]} inside; "
+                    f"externals {tsm[2]}-{tsm[3]}, with the region's stations as RPM "
+                    f"{rpm[2]}-{rpm[3]}" + (f" (last run: {used})" if used else ""))
+        else:
+            text = f"Zone ids: TSM {f(tsm)}"
+        self.label_ZoneIds.setText(text + "   (from the GeoMaster centroid layer)")
 
     def toggle_network_version(self):
         """TSMv5 networks embed centroids in the node file and connectors in the
@@ -394,6 +443,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.modelResolution.setCurrentText("TSM")
         self.modelResolution.setEnabled(is_v6)
         self.toggle_msr_fields()
+        if not is_v6:
+            self.modelResolution.setEnabled(False)
 
     def _load_help_doc(self, md_path):
         """Render a markdown help file into the side panel (Qt >= 5.14 setMarkdown)."""
@@ -412,13 +463,9 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         """Persist the current selections into the Config store."""
         settings = Config()
         settings.set("scenarioName", self.lineEdit_ScenarioName.text())
-        settings.set("max_internal_zones", self.lineEdit_MaxZones.text())
-        settings.set("external_zone_range", self.lineEdit_ExtRange.text().strip())
         settings.set("scenarioDir", self.output_directory.text().strip())
         settings.set("network_version", version(self.networkVersion))
         settings.set("model_resolution", self.modelResolution.currentText())
-        settings.set("msr_subarea", self.lineEdit_MSRSubarea.text())
-        settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
         settings.set("netprep_capacities_file", self.lineEdit_Capacities.text())
         settings.set("bool_Counts", self.checkBox_Counts.isChecked())
         # Global count field(s), comma-joined -- netPrep, Summarization and
@@ -431,8 +478,31 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         settings.set("GM_cencon_layer", self.lineLayerCombo_3.currentText())
         settings.set("TSM_Link_File", self.lineEdit_TSMLink.text())
         settings.set("TSM_Node_File", self.lineEdit_TSMNode.text())
+        if self.lineEdit_MSRLink.text().strip():
+            settings.set("MSR_Link_File", self.lineEdit_MSRLink.text().strip())
+        if self.lineEdit_MSRNode.text().strip():
+            settings.set("MSR_Node_File", self.lineEdit_MSRNode.text().strip())
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
+
+    @staticmethod
+    def _msr_external_ids(output_dir):
+        """Compress msr_externals.csv's ZONE_ID column into id ranges."""
+        import csv
+        path = os.path.join(output_dir, "msr_externals.csv")
+        try:
+            with open(path, newline="") as fh:
+                ids = sorted(int(r["ZONE_ID"]) for r in csv.DictReader(fh))
+        except Exception:
+            return ""
+        out, i = [], 0
+        while i < len(ids):
+            j = i
+            while j + 1 < len(ids) and ids[j + 1] == ids[j] + 1:
+                j += 1
+            out.append(f"{ids[i]}-{ids[j]}" if j > i else str(ids[i]))
+            i = j + 1
+        return ", ".join(out)
 
     def cancel_action(self):
         print("Action canceled. Closing dialog.")
@@ -456,6 +526,10 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.lineEdit_TSMLink.setText(f"{out_dir}/TSM_Link.gpkg")
         if not self.lineEdit_TSMNode.text().strip():
             self.lineEdit_TSMNode.setText(f"{out_dir}/TSM_Node.gpkg")
+        if not self.lineEdit_MSRLink.text().strip():
+            self.lineEdit_MSRLink.setText(f"{out_dir}/MSR_Link.gpkg")
+        if not self.lineEdit_MSRNode.text().strip():
+            self.lineEdit_MSRNode.setText(f"{out_dir}/MSR_Node.gpkg")
 
     def select_file(self, line_edit, type, file_filter="GeoPackage (*.gpkg);; Shapefiles (*.shp)"):
         if type == "open":
@@ -564,11 +638,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         scenario_name = self.lineEdit_ScenarioName.text()
         # Network Year comes from Project Settings, not from this dialog.
         selected_year = (settings.get("networkYear") or "").strip()
-        max_internal_zones = self.lineEdit_MaxZones.text().strip()
-        ext_range_text = self.lineEdit_ExtRange.text().strip()
         model_resolution = self.modelResolution.currentText()
-        msr_subarea = self.lineEdit_MSRSubarea.text().strip()
-        msr_lookup = self.lineEdit_MSRLookup.text().strip()
         output_dir = self.output_directory.text().strip()
         # Ensure default output paths are filled so the run always has loadable
         # TSM_Link / TSM_Node targets even if the fields were cleared.
@@ -586,36 +656,37 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 "Set it in Project Settings > Network Year; the consolidator "
                 "reads it from there and no longer asks for it separately.")
             return False
-        # Both halves of the zone numbering are required. netPrep uses them to
-        # mark centroids DTA_Type = 99 in Node.csv and to stop graphWalk
-        # consolidating through them; it refuses to run without them rather
-        # than assume one resolution's numbering.
-        if not max_internal_zones.isdigit() or int(max_internal_zones) <= 0:
+        # Zone numbering is read from the GeoMaster centroid layer, not typed:
+        # netPrep needs it to mark centroids DTA_Type = 99 and to keep graphWalk
+        # from consolidating through them. TSM and MSR pass the TSM blocks (MSR
+        # adds the RPM blocks for the region); RPM passes the RPM blocks.
+        tsm_ids, rpm_ids = self._zone_numbering()
+        if model_resolution in ("RPM", "MSR") and not rpm_ids:
             QMessageBox.critical(
                 self, "Error",
-                "Max Internal Zones must be the highest INTERNAL zone number "
-                "(e.g. 8721 for TSM, 26274 for RPM).")
+                f"{model_resolution} needs RPM centroids (type = RPM) in the GeoMaster "
+                "centroid layer to read the RPM zone ids from.")
             return False
-        ext_range = parse_zone_range(ext_range_text)
-        if ext_range is None:
-            QMessageBox.critical(
-                self, "Error",
-                "External Stn Range must be the first and last external-station "
-                "node id, e.g. 11501-11560 for TSM or 30001-30060 for RPM.\n\n"
-                "The external stations are a separate block of ids above the "
-                "internal zones; netPrep needs the range to mark them as zones.")
-            return False
-        if ext_range[0] <= int(max_internal_zones):
-            QMessageBox.critical(
-                self, "Error",
-                "External Stn Range (%d-%d) overlaps the internal zones "
-                "(1-%s).\n\nThe external stations are numbered above the "
-                "internal zones." % (ext_range[0], ext_range[1],
-                                     max_internal_zones))
-            return False
-        if model_resolution == "MSR" and not (msr_subarea and msr_lookup):
-            QMessageBox.critical(self, "Error", "MSR resolution requires an MSR subarea polygon and lookup table.")
-            return False
+        base = rpm_ids if model_resolution == "RPM" else tsm_ids
+        max_internal_zones = base[1]
+        ext_range = (base[2], base[3])
+        settings.set("max_internal_zones", str(max_internal_zones))
+        settings.set("external_zone_range", f"{ext_range[0]}-{ext_range[1]}")
+
+        # MSR: the region comes from Project Settings > Model Resolution
+        # (msr_region.build_zone_structure).
+        msr_zones_file = (settings.get("msr_zones_file") or "").strip()
+        msr_linkfile = msr_nodefile = ""
+        if model_resolution == "MSR":
+            if not (msr_zones_file and os.path.exists(msr_zones_file)):
+                QMessageBox.critical(
+                    self, "Error",
+                    "MSR needs its region: open Project Settings, pick Model Resolution > MSR "
+                    "(RPM region or user-defined boundary) and Save.\n\n"
+                    f"Region file: {msr_zones_file or '(none)'}")
+                return False
+            msr_linkfile = self.lineEdit_MSRLink.text().strip()
+            msr_nodefile = self.lineEdit_MSRNode.text().strip()
 
         bool_Counts = self.checkBox_Counts.isChecked()
         # User-selected ground-count field(s) (multi-select next to Keep Counts),
@@ -651,8 +722,12 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                     f.write(f"Geomaster_centroid_layer = {centroid_path}\n")
                     f.write(f"Geomaster_cencon_layer = {cencon_path}\n")
                 f.write(f"model_resolution = {model_resolution}\n")
-                f.write(f"msr_subarea = {msr_subarea}\n")
-                f.write(f"msr_lookup = {msr_lookup}\n")
+                if model_resolution == "MSR":
+                    f.write(f"msr_zones_file = {msr_zones_file}\n")
+                    f.write(f"rpm_zone_range = {rpm_ids[0]}-{rpm_ids[1]}\n")
+                    f.write(f"rpm_external_range = {rpm_ids[2]}-{rpm_ids[3]}\n")
+                    f.write(f"MSR_Link_File = {msr_linkfile}\n")
+                    f.write(f"MSR_Node_File = {msr_nodefile}\n")
                 f.write(f"output_dir = {output_dir}\n")
                 f.write(f"Settings_File = {settings_file}\n")
                 f.write(f"keep_Counts = {bool_Counts}\n")
@@ -725,6 +800,27 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.load_layer_symbology(node_qml_file, node_layer_name)
             settings.set("link_layer_name", link_layer_name)
             settings.set("node_layer_name", node_layer_name)
+            # MSR: the second network (TSM outside + RPM inside) is HyDRA's.
+            # Skims/Skimmy keep the TSM layers above.
+            if model_resolution == "MSR":
+                msr_link_name = os.path.splitext(os.path.basename(msr_linkfile))[0]
+                msr_node_name = os.path.splitext(os.path.basename(msr_nodefile))[0]
+                if not (self.load_output_layer(msr_linkfile, msr_link_name) and
+                        self.load_output_layer(msr_nodefile, msr_node_name)):
+                    QMessageBox.critical(self, "Error",
+                                         "netPrep finished but the MSR network could not be loaded:\n"
+                                         f"{msr_linkfile}\n{msr_nodefile}")
+                    return False
+                self.load_layer_symbology(link_qml_file, msr_link_name)
+                self.load_layer_symbology(node_qml_file, msr_node_name)
+                settings.set("MSR_Link_File", msr_linkfile)
+                settings.set("MSR_Node_File", msr_nodefile)
+                settings.set("msr_link_layer_name", msr_link_name)
+                settings.set("msr_node_layer_name", msr_node_name)
+                # The external station ids the MSR network used (TSM outside
+                # the region, RPM inside), e.g. "11501-11554, 50055-50060".
+                settings.set("msr_external_ids", self._msr_external_ids(output_dir))
+                self._show_zone_ids()
 
             if show_message:
                 QMessageBox.information(self, "Success", "Link consolidation completed successfully.")
