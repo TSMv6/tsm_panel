@@ -20,6 +20,9 @@ build_zone_structure() writes, to the scenario directory:
                            (ZONE = TSM_NG outside / PopSyn_Index inside, RES =
                            TSM | RPM) with the SE data summed to that zone, so
                            centroids and network can be checked against it.
+                           Every row carries TSM_NG and PopSyn_Index (= TSM_NG on
+                           aggregated rows), the same index fields as the 26k
+                           land use, so PopSyn runs on either.
 
 Ids are taken from the land use as-is: the RPM zone id IS PopSyn_Index (the
 GeoMaster RPM centroids carry the same numbers), nothing is offset in code.
@@ -63,6 +66,13 @@ def regional_models(landuse):
         return []
     vals = {str(v) for v in lyr.uniqueValues(i) if v not in (None, "")}
     return sorted(v for v in vals if v.lower() != "non-mpo")
+
+
+def output_paths(landuse_out):
+    """(zonal land use, MSR boundary, MSR zones csv) named from the zonal land
+    use: <dir>/<name>.gpkg -> <name>_msr_boundary.gpkg, <name>_msr_zones.csv."""
+    base = os.path.splitext(str(landuse_out).replace("\\", "/"))[0]
+    return base + ".gpkg", base + "_msr_boundary.gpkg", base + "_msr_zones.csv"
 
 
 def zone_blocks(centroids):
@@ -161,15 +171,24 @@ def _sum_fields(lyr):
     return out
 
 
-def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print):
+def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print,
+                         landuse_out=None, all_rpm=False):
     """Write the region files (MSR) and the final zonal land use for the chosen
-    structure. models/boundary both empty = Standard TSM. Returns a summary dict
-    with the written paths and zone counts."""
+    structure. models/boundary both empty = Standard TSM. landuse_out names the
+    zonal land-use file (default <out_dir>/model_zones_landuse.gpkg). all_rpm
+    (Standard TSM, PopSyn at RPM level statewide) writes every 26k zone as an
+    RPM zone and no region files -- the network stays TSM. Returns a summary
+    dict with the written paths and zone counts."""
     lyr = _layer(landuse)
     _check_fields(lyr)
     os.makedirs(out_dir, exist_ok=True)
+    if landuse_out:
+        os.makedirs(os.path.dirname(os.path.abspath(landuse_out)), exist_ok=True)
     msr = bool(models) or boundary is not None
     region = region_tsm_zones(lyr, models, boundary, log) if msr else set()
+    if all_rpm and not msr:
+        i = lyr.fields().indexOf("TSM_NG")
+        region = {int(v) for v in lyr.uniqueValues(i) if v not in (None, "")}
     if msr and not region:
         raise ValueError("the MSR region is empty (no TSM zones selected)")
 
@@ -204,7 +223,8 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print):
     # --- region list + boundary (MSR) ---
     region_csv = boundary_gpkg = None
     if msr:
-        region_csv = os.path.join(out_dir, REGION_CSV).replace("\\", "/")
+        region_csv = (output_paths(landuse_out)[2] if landuse_out
+                      else os.path.join(out_dir, REGION_CSV).replace("\\", "/"))
         with open(region_csv, "w", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(["PopSyn_Index", "TSM_NG", "TAZ_REG", "Model", "County"])
@@ -212,7 +232,8 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print):
                 w.writerow([int(f["PopSyn_Index"]), int(f["TSM_NG"]),
                             f["TAZ_REG"] if fields.indexOf("TAZ_REG") >= 0 else "",
                             f["Model"], f["County"] if fields.indexOf("County") >= 0 else ""])
-        boundary_gpkg = os.path.join(out_dir, BOUNDARY_GPKG).replace("\\", "/")
+        boundary_gpkg = (output_paths(landuse_out)[1] if landuse_out
+                         else os.path.join(out_dir, BOUNDARY_GPKG).replace("\\", "/"))
         bf = QgsFields()
         for n, t in (("models", QMetaType.Type.QString), ("tsm_zones", QMetaType.Type.Int),
                      ("rpm_zones", QMetaType.Type.Int)):
@@ -244,7 +265,10 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print):
         ft = QgsFeature(of)
         ft.setGeometry(QgsGeometry.unaryUnion(a["geoms"]))
         county = max(a["county"].items(), key=lambda kv: kv[1])[0]
-        vals = [t, "TSM", t, None, None, a["model"], county]
+        # PopSyn_Index = TSM_NG on aggregated rows, so PopSyn keys on
+        # PopSyn_Index whichever land use it is given (ids never collide:
+        # TSM 1-8721, RPM 20001+).
+        vals = [t, "TSM", t, t, None, a["model"], county]
         vals += [a["sum"][k] for k in sums]
         vals += [(a["w"][k][0] / a["w"][k][1]) if a["w"][k][1] > 0 else None
                  for k in WEIGHTED if fields.indexOf(k) >= 0]
@@ -261,7 +285,8 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print):
         vals += [f[k] for k in WEIGHTED if fields.indexOf(k) >= 0]
         ft.setAttributes(vals)
         out.append(ft)
-    landuse_gpkg = os.path.join(out_dir, LANDUSE_GPKG).replace("\\", "/")
+    landuse_gpkg = (landuse_out or os.path.join(out_dir, LANDUSE_GPKG)).replace("\\", "/")
+    os.makedirs(os.path.dirname(landuse_gpkg) or ".", exist_ok=True)
     _write_gpkg(landuse_gpkg, "model_zones_landuse", of, QgsWkbTypes.Type.MultiPolygon,
                 lyr.crs(), out)
     log(f"[msr region] model zones: {len(tsm_acc)} TSM + {len(rpm_rows)} RPM "

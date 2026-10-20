@@ -266,6 +266,19 @@
        </widget>
       </item>
       <item row="7" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBox_PopSynRPM">
+        <property name="text">
+         <string>PopSyn at RPM level statewide (all 26k zones)</string>
+        </property>
+        <property name="toolTip">
+         <string>Standard TSM only. Unchecked: the zonal land use is the 8,721 TSM zones and PopSyn runs at TSM level. Checked: it is all 26k RPM zones, so PopSyn synthesizes households in RPM zones (each still carries its TSM zone for the demand models).</string>
+        </property>
+        <property name="styleSheet">
+         <string>margin-left: 20px;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="0" colspan="2">
        <widget class="QRadioButton" name="radioButton_MSR">
         <property name="text">
          <string>MSR -- TSM zones outside + RPM zones inside the region below</string>
@@ -275,7 +288,7 @@
         </property>
        </widget>
       </item>
-      <item row="8" column="0" colspan="2">
+      <item row="10" column="0" colspan="2">
        <layout class="QGridLayout" name="gridLayout_MSR">
         <property name="leftMargin">
          <number>20</number>
@@ -313,6 +326,41 @@
           </property>
           <property name="wordWrap">
            <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="11" column="0" colspan="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_ZoneLanduse">
+        <item>
+         <widget class="QLabel" name="label_ZoneLanduse">
+          <property name="text">
+           <string>Zonal land use (output)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_ZoneLanduse">
+          <property name="toolTip">
+           <string>The model's zone structure with its land use, written on Save and loaded into the Layers panel -- pick this layer in PopSyn. Default: &lt;scenario&gt;/model_zones_landuse.gpkg</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="browse_ZoneLanduse">
+          <property name="text">
+           <string>Browse</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_CreateMSRLU">
+          <property name="text">
+           <string>Create MSR LU</string>
+          </property>
+          <property name="toolTip">
+           <string>Build the zone structure chosen above from the SE Data layer and load it: the zonal land use (styled TSM / RPM) and, for MSR, its region boundary. Also writes the region zone list (&lt;name&gt;_msr_zones.csv) that Link Consolidation and agentPlans read.</string>
           </property>
          </widget>
         </item>

@@ -4,7 +4,7 @@ from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import run_gated_model, begin_run_console, closes_run_console
+from .model_run import run_gated_model, begin_run_console, closes_run_console, end_run_console
 
 from .popsyn_ui import Ui_Dialog_PopSyn
 
@@ -174,13 +174,15 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         print(f"Added NP column (= ResPOP) to {se_data}")
 
     @staticmethod
-    def _generate_toml(template_path, out_path, scenario_dir, threads, tsm_location="", plugin_dir=""):
-        """Fill {scenario_dir}, {threads}, {tsm_location} and {plugin_dir} in a
-        template TOML. se_data + output stay per-scenario; the large seeds/crosswalk
-        live under {tsm_location}/Inputs/popsim_seed; the popsim CONTROLS ship inside
-        the plugin at {plugin_dir}/config/popsim."""
+    def _generate_toml(template_path, out_path, scenario_dir, threads, tsm_location="", plugin_dir="",
+                       se_data=""):
+        """Fill {scenario_dir}, {se_data}, {threads}, {tsm_location} and {plugin_dir}
+        in a template TOML. se_data + output stay per-scenario; the large
+        seeds/crosswalk live under {tsm_location}/Inputs/popsim_seed; the popsim
+        CONTROLS ship inside the plugin at {plugin_dir}/config/popsim."""
         with open(template_path, "r", encoding="utf-8") as f:
             text = f.read()
+        text = text.replace("{se_data}", str(se_data).replace("\\", "/"))
         text = text.replace("{scenario_dir}", scenario_dir.replace("\\", "/"))
         text = text.replace("{tsm_location}", str(tsm_location).replace("\\", "/").rstrip("/"))
         text = text.replace("{plugin_dir}", str(plugin_dir).replace("\\", "/").rstrip("/"))
@@ -257,15 +259,48 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
                     QMessageBox.critical(self, "Error", f"{label} not found at: {path}")
                     return False
 
-        # 1) Build the PopSim control land use (se_data) -> tsm_landuse.csv AT TSM
-        # level: se_aggregate sums the subzone (TAZ_REG) fields up to the parent
-        # TSM_NG and appends the derived TSM-level columns from the second file
-        # (tsm_landuse_default.csv) -- same prep SDT/MSR use. The default land-use
-        # table is a MODEL input ({tsm_location}/Inputs/landuse), not a plugin asset.
+        # 1) Build the PopSim control land use (se_data). The level follows
+        # Project Settings > Model Resolution: MSR, or Standard TSM with "PopSyn
+        # at RPM level statewide", synthesizes in the land use's own zones
+        # (PopSyn_Index: the 26k land use, or model_zones_landuse.gpkg, whose TSM
+        # rows carry PopSyn_Index = TSM_NG); Standard TSM otherwise aggregates to
+        # TSM_NG, whichever layer is picked. Both write popsyn_landuse.csv, and the
+        # combine step gives every household TAZ = its TSM zone (demand models)
+        # plus PopSyn_Index = the zone it was synthesized in (= TAZ at TSM level).
+        # A land use without PopSyn_Index aggregates to TSM_NG as before
+        # (tsm_landuse.csv joined to {tsm_location}/Inputs/landuse/tsm_landuse_default.csv).
         landuse_path = self.get_layer_path(landuse_layer)
-        se_data = os.path.join(scenario_dir, "tsm_landuse.csv").replace("\\", "/")
-        lu_default = os.path.join(tsm_location, "Inputs", "landuse",
-                                  "tsm_landuse_default.csv").replace("\\", "/")
+        has_index = landuse_layer.fields().indexOf("PopSyn_Index") >= 0
+        rpm_level = (settings.get("model_structure") == "MSR" or
+                     str(settings.get("popsyn_rpm_statewide")) in ("True", "true", "1"))
+        by_index = has_index and rpm_level
+        print(f"PopSyn level: {'land-use zones (PopSyn_Index)' if by_index else 'TSM zones (TSM_NG)'}")
+        if incremental and by_index and \
+                self.comboBox_RefLUlayer.currentData().fields().indexOf("PopSyn_Index") < 0:
+            QMessageBox.warning(self, "Warning",
+                "Incremental: the land use has PopSyn_Index but the reference land use does not; "
+                "pick a reference with the same zone fields.")
+            return False
+        if by_index:
+            # Every zone needs its id: a model_zones_landuse.gpkg built before
+            # TSM rows carried PopSyn_Index has them empty, and those zones
+            # would not be synthesized at all.
+            from qgis.core import QgsFeatureRequest
+            req = QgsFeatureRequest().setFilterExpression(
+                '"PopSyn_Index" IS NULL OR "PopSyn_Index" <= 0')
+            req.setFlags(QgsFeatureRequest.Flag.NoGeometry)
+            n_missing = sum(1 for _ in landuse_layer.getFeatures(req))
+            if n_missing:
+                QMessageBox.warning(self, "Warning",
+                    f"{n_missing:,} zones of '{landuse_layer.name()}' have no PopSyn_Index, so "
+                    "they would not be synthesized.\n\nIf this is model_zones_landuse.gpkg, "
+                    "rebuild it: open Project Settings and Save.")
+                return False
+        key_args = ["--src-key", "PopSyn_Index"] if by_index else []
+        se_data = os.path.join(scenario_dir, "popsyn_landuse.csv" if has_index
+                               else "tsm_landuse.csv").replace("\\", "/")
+        lu_default = "-" if has_index else os.path.join(
+            tsm_location, "Inputs", "landuse", "tsm_landuse_default.csv").replace("\\", "/")
         prep_log = os.path.join(scenario_dir, "PopSyn_landuse.log")
         try:
             if incremental:
@@ -275,8 +310,10 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
                 # SDT/LDT use the full user land use.
                 scen_tsm = os.path.join(scenario_dir, "scenario_tsm_landuse.csv").replace("\\", "/")
                 ref_tsm = os.path.join(scenario_dir, "reference_tsm_landuse.csv").replace("\\", "/")
-                ra = settings.run_app([se_agg_exe, landuse_path, scen_tsm, lu_default], log_path=prep_log, console=True)
-                rb = settings.run_app([se_agg_exe, ref_landuse_path, ref_tsm, lu_default], log_path=prep_log, console=True, append=True)
+                ra = settings.run_app([se_agg_exe, landuse_path, scen_tsm, lu_default] + key_args,
+                                      log_path=prep_log, console=True)
+                rb = settings.run_app([se_agg_exe, ref_landuse_path, ref_tsm, lu_default] + key_args,
+                                      log_path=prep_log, console=True, append=True)
                 if ra.returncode != 0 or rb.returncode != 0 or not (os.path.exists(scen_tsm) and os.path.exists(ref_tsm)):
                     QMessageBox.critical(self, "Error", "Failed to aggregate scenario/reference land use to TSM (se_aggregate).")
                     return False
@@ -284,7 +321,8 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
                                       "--key", "TAZ", "--keep-zero", "--floor0"], log_path=prep_log, console=True, append=True)
                 err = "Failed to build TSM-level delta land-use (landuse_delta)."
             else:
-                r = settings.run_app([se_agg_exe, landuse_path, se_data, lu_default], log_path=prep_log, console=True)
+                r = settings.run_app([se_agg_exe, landuse_path, se_data, lu_default] + key_args,
+                                     log_path=prep_log, console=True)
                 err = "Failed to aggregate land use to TSM (se_aggregate)."
             if r.returncode != 0 or not os.path.exists(se_data):
                 QMessageBox.critical(self, "Error", err)
@@ -303,6 +341,30 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
             QMessageBox.critical(self, "Error", f"Could not add NP column to land use: {e}")
             return False
 
+        # 1c) PopSim silently skips a land-use zone that is not in the
+        # crosswalk, so check coverage first (zones with households or GQ).
+        try:
+            import csv
+            xw_path = os.path.join(tsm_location, "Inputs", "popsim_seed", "PopSyn_geo_Crosswalk.csv")
+            with open(xw_path, newline="") as f:
+                xw = {int(float(r["TAZ"])) for r in csv.DictReader(f)}
+            missing = []
+            with open(se_data, newline="") as f:
+                for r in csv.DictReader(f):
+                    if float(r.get("TotHH") or 0) > 0 or float(r.get("GQ") or 0) > 0:
+                        z = int(float(r["TAZ"]))
+                        if z not in xw:
+                            missing.append(z)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not check the PopSim crosswalk: {e}")
+            return False
+        if missing:
+            QMessageBox.critical(self, "Error",
+                f"{len(missing):,} land-use zones with households or GQ are not in "
+                f"{xw_path}, so PopSim would skip them (first: "
+                f"{', '.join(map(str, sorted(missing)[:10]))}).")
+            return False
+
         # 2) Generate the HH + GQ TOMLs into the config folder
         config_popsim = os.path.join(plugin_dir, "config", "popsim")
         hh_toml = os.path.join(config_popsim, "popsim_run_HH.toml")
@@ -310,8 +372,8 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         tmpl_hh = os.path.join(plugin_dir, "templates", "popsim_run_HH_template.toml")
         tmpl_gq = os.path.join(plugin_dir, "templates", "popsim_run_GQ_template.toml")
         try:
-            self._generate_toml(tmpl_hh, hh_toml, scenario_dir, threads, tsm_location, plugin_dir)
-            self._generate_toml(tmpl_gq, gq_toml, scenario_dir, threads, tsm_location, plugin_dir)
+            self._generate_toml(tmpl_hh, hh_toml, scenario_dir, threads, tsm_location, plugin_dir, se_data)
+            self._generate_toml(tmpl_gq, gq_toml, scenario_dir, threads, tsm_location, plugin_dir, se_data)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error writing PopSim TOML configs: {e}")
             return False
@@ -329,8 +391,6 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         # 4) Resolve the user's output files (synHH/synPer) and combine HH + GQ
         # (C++ popsimprep -- fast streaming). Non-incremental writes the combined
         # population STRAIGHT to synHH/synPer (no intermediate "Combined" dir).
-        hh_dir = os.path.join(scenario_dir, "HH")
-        gq_dir = os.path.join(scenario_dir, "GQ")
         synHH = self.lineEdit_SynHH.text().strip()
         synPer = self.lineEdit_SynPer.text().strip()
         if not synHH or synHH == "synthetic_hh.csv":
@@ -347,7 +407,14 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         else:
             comb_hh, comb_per = synHH, synPer
         try:
-            r = settings.run_app([popsimprep_exe, "combine", hh_dir, gq_dir, comb_hh, comb_per],
+            # PopSim writes HH_* and GQ_* files into the scenario folder. With
+            # PopSyn_Index zones, --zone-map (the se_data, which carries TSM_NG;
+            # incremental: the full scenario land use, not the delta) rewrites
+            # the households' TAZ to the parent TSM zone and appends PopSyn_Index.
+            zone_map = (scen_tsm if incremental else se_data) if has_index else None
+            r = settings.run_app([popsimprep_exe, "combine", scenario_dir, scenario_dir, comb_hh, comb_per,
+                                  "--hh-prefix", "HH_", "--gq-prefix", "GQ_"] +
+                                 (["--zone-map", zone_map] if zone_map else []),
                                  log_path=os.path.join(scenario_dir, "PopSyn_combine.log"), console=True)
             if r.returncode != 0 or not os.path.exists(comb_hh):
                 QMessageBox.critical(self, "Error", "Combining HH + GQ outputs failed.")
@@ -385,6 +452,9 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         settings.set("synPer_file", synPer)
 
         print("PopSyn completed successfully.")
+        # Close the live run-log window first, so the success message is not
+        # left behind it (the decorator's close is then a no-op).
+        end_run_console()
         if show_message:
             QMessageBox.information(
                 self, "Success",

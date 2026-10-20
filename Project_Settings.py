@@ -112,7 +112,12 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         else:
             self.radioButton_RPMRegion.setChecked(True)
         if settings.get("msr_summary"):
-            self.label_MSRSummary.setText("Last saved: " + settings.get("msr_summary"))
+            self.label_MSRSummary.setText("Last created: " + settings.get("msr_summary"))
+        self.checkBox_PopSynRPM.setChecked(str(settings.get("popsyn_rpm_statewide")) in ("True", "true", "1"))
+        if settings.get("zone_landuse_file"):
+            self.lineEdit_ZoneLanduse.setText(settings.get("zone_landuse_file"))
+        self.browse_ZoneLanduse.clicked.connect(self._browse_zone_landuse)
+        self.pushButton_CreateMSRLU.clicked.connect(lambda: self.create_zone_structure())
         for w in (self.radioButton_MSR, self.radioButton_RPMRegion, self.radioButton_UserBoundary):
             w.toggled.connect(self.toggle_msr)
         self.toggle_msr()
@@ -157,8 +162,63 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         if keep in models:
             self.comboBox_RPMRegion.setCurrentText(keep)
 
+    def _browse_zone_landuse(self):
+        start = self.lineEdit_ZoneLanduse.text().strip() or os.path.join(
+            (self.scenario_directory.text() or "").strip(), msr_region.LANDUSE_GPKG)
+        path, _ = QFileDialog.getSaveFileName(self, "Zonal land use (output)", start,
+                                              "GeoPackage (*.gpkg)")
+        if path:
+            if not path.lower().endswith(".gpkg"):
+                path += ".gpkg"
+            self.lineEdit_ZoneLanduse.setText(path.replace("\\", "/"))
+
+    @staticmethod
+    def _same_file(a, b):
+        return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+    def _release_layers(self, *paths):
+        """Remove every layer reading one of `paths` from the project: Windows
+        keeps a loaded GeoPackage open, so it could not be rewritten."""
+        paths = [p for p in paths if p and os.path.exists(p)]
+        for lyr in list(QgsProject.instance().mapLayers().values()):
+            src = lyr.source().split("|")[0] if hasattr(lyr, "source") else ""
+            if src.startswith("file:"):                      # delimited-text layers
+                src = src[5:].lstrip("/").split("?")[0]
+            if src and any(self._same_file(src, p) for p in paths):
+                QgsProject.instance().removeMapLayer(lyr.id())
+
+    def _resolution_choice(self):
+        """The Model Resolution picked in the dialog, as one comparable tuple."""
+        msr = self.radioButton_MSR.isChecked()
+        model = self.comboBox_RPMRegion.currentText() if (msr and self.radioButton_RPMRegion.isChecked()) else ""
+        bnd = self.comboBox_BoundaryLayer.currentData() if (msr and self.radioButton_UserBoundary.isChecked()) else None
+        lu = self.landuseLayerCombo.currentData()
+        return ("MSR" if msr else "TSM", model, bnd.name() if bnd is not None else "",
+                (not msr) and self.checkBox_PopSynRPM.isChecked(),
+                lu.name() if lu is not None else "", (self.lineEdit_ZoneLanduse.text() or "").strip())
+
+    def create_zone_structure(self):
+        """'Create MSR LU': build and load the zone structure, then save the
+        settings so the region the files describe is the one on record."""
+        settings = Config()
+        if self.scenario_directory.text().strip():
+            settings.set("scenarioDir", self.scenario_directory.text().strip())
+        if self.landuseLayerCombo.currentData():
+            settings.set("landuse_layer", self.landuseLayerCombo.currentData().name())
+        if not self._build_zone_structure(settings):
+            return False
+        settings.set("msr_choice", list(self._resolution_choice()))
+        settings.check_and_save_to_file("scenario_settings_file")
+        QMessageBox.information(self, "Model Resolution",
+                                settings.get("msr_summary") + "\n\nLoaded:\n" +
+                                "\n".join(p for p in (settings.get("zone_landuse_file"),
+                                                       settings.get("msr_boundary_file"),
+                                                       settings.get("msr_zones_file")) if p))
+        return True
+
     def toggle_msr(self):
         msr = self.radioButton_MSR.isChecked()
+        self.checkBox_PopSynRPM.setEnabled(not msr)
         for w in (self.radioButton_RPMRegion, self.radioButton_UserBoundary):
             w.setEnabled(msr)
         self.comboBox_RPMRegion.setEnabled(msr and self.radioButton_RPMRegion.isChecked())
@@ -183,10 +243,20 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
             QMessageBox.warning(self, "Model Resolution",
                                 "Pick the SE Data (land use) layer and the scenario directory "
                                 "to build the model's zone structure.")
-            return not msr
+            return False
+        all_rpm = (not msr) and self.checkBox_PopSynRPM.isChecked()
+        lu_out = (self.lineEdit_ZoneLanduse.text() or "").strip() or \
+            os.path.join(scen, msr_region.LANDUSE_GPKG).replace("\\", "/")
+        if landuse is not None and self._same_file(self.get_layer_path(landuse) or "", lu_out):
+            QMessageBox.warning(self, "Model Resolution",
+                                "The zonal land use (output) cannot overwrite the SE Data layer it is built from.")
+            return False
+        # Drop every layer reading the files about to be rewritten.
+        self._release_layers(*msr_region.output_paths(lu_out))
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            r = msr_region.build_zone_structure(landuse, scen, models, boundary)
+            r = msr_region.build_zone_structure(landuse, scen, models, boundary,
+                                                landuse_out=lu_out, all_rpm=all_rpm)
         except Exception as e:
             QApplication.restoreOverrideCursor()
             QMessageBox.warning(self, "Model Resolution", f"Could not build the zone structure:\n{e}")
@@ -196,6 +266,7 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         what = " + ".join(models + ([f"boundary '{boundary.name()}'"] if boundary is not None else []))
         summary = (f"MSR ({what}): {r['region_tsm_zones']:,} TSM zones -> {r['rpm_zones']:,} RPM zones; "
                    f"{r['tsm_zones'] + r['rpm_zones']:,} model zones" if msr
+                   else f"Standard TSM, PopSyn at RPM level statewide: {r['rpm_zones']:,} RPM zones" if all_rpm
                    else f"Standard TSM: {r['tsm_zones']:,} zones")
         settings.set("model_structure", "MSR" if msr else "TSM")
         settings.set("msr_rpm_model", models[0] if models else "")
@@ -203,9 +274,22 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
         settings.set("msr_zones_file", r["region_csv"] or "")
         settings.set("msr_boundary_file", r["boundary_gpkg"] or "")
         settings.set("zone_landuse_file", r["landuse_gpkg"])
+        settings.set("popsyn_rpm_statewide", all_rpm)
+        self.lineEdit_ZoneLanduse.setText(r["landuse_gpkg"])
+        # Load them, so the zonal land use can be picked in PopSyn right away.
+        qml = os.path.join(settings.get("plugin_dir") or os.path.dirname(__file__),
+                           "qgis_styles", "TSM_and_RPM_model_zones_landuse.qml")
+        for path, style in ((r["boundary_gpkg"], None), (r["landuse_gpkg"], qml)):
+            if not path:
+                continue
+            lyr = QgsVectorLayer(path, os.path.splitext(os.path.basename(path))[0], "ogr")
+            if lyr.isValid():
+                if style and os.path.exists(style):
+                    lyr.loadNamedStyle(style)
+                QgsProject.instance().addMapLayer(lyr)
         settings.set("rpm_zone_range", f"{lo}-{hi}" if lo else "")
         settings.set("msr_summary", summary)
-        self.label_MSRSummary.setText("Last saved: " + summary)
+        self.label_MSRSummary.setText("Last created: " + summary)
         return True
 
     def toggle_network_version(self):
@@ -278,8 +362,14 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
                 settings.set("GM_centroid_layer", self.centroidLayerCombo.currentData().name())
             if self.cenconLayerCombo.currentData():
                 settings.set("GM_cencon_layer", self.cenconLayerCombo.currentData().name())
-        if not self._build_zone_structure(settings):
-            return
+        # Save does not build the zone structure (Create MSR LU does); warn when
+        # the Model Resolution shown is not the one last created.
+        last = settings.get("msr_choice")
+        if last is None or list(self._resolution_choice()) != list(last):
+            QMessageBox.warning(self, "Model Resolution",
+                                "The Model Resolution shown has not been created yet -- click "
+                                "'Create MSR LU' to build and load its zonal land use. The rest "
+                                "of the settings are saved.")
         settings.check_and_save_to_file("scenario_settings_file")
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
         # self.close() 

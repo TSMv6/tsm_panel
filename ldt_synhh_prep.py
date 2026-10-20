@@ -97,7 +97,9 @@ def resident(syn_all, syn_veh, template, out_path):
     df = _read(syn_all)
     if "household_id" not in df.columns:
         sys.exit("SYN_ALL has no household_id column")
-    df = df.drop(columns=[c for c in ("BLD", "hh_id_pums", "HH") if c in df.columns])
+    # PopSyn_Index: the RPM zone the household was synthesized in (TAZ holds its
+    # parent TSM zone); LDT reads zones by position, so it is not carried.
+    df = df.drop(columns=[c for c in ("BLD", "hh_id_pums", "HH", "PopSyn_Index") if c in df.columns])
     vehval = df["household_id"].map(vehmap)        # NaN where no SDT match (= blank)
     if "VEH" in df.columns:
         df["VEH"] = vehval                          # overwrite in place (keeps position)
