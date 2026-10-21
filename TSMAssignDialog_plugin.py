@@ -450,7 +450,7 @@ class TSMAssignDialog(QDialog, Ui_DialogTSMAssign):
                     'TRIP_FILE'      : settings.get("triptable_file").replace("/", "\\") ,          
                     'NEW_VOLUME_FILE': settings.get("volume_file").replace("/", "\\"),
                     'MAXIMUM_ITERATIONS' : settings.get("max_iterations"),
-                    'NUMBER_OF_THREADS' : settings.get("num_processors")
+                    'NUMBER_OF_THREADS' : settings.num_processors()
                   }
         
         # Remove all conditional keys if none of the selections are checked

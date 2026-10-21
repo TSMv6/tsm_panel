@@ -52,7 +52,7 @@ class FLSkim(QDialog, Ui_Dialog_Skimmy):
             self.comboBox_timeUnits.addItem(label, code)
 
         # Default threads from General Configuration
-        self.lineEdit_Threads.setText(str(settings.get("num_processors") or "0"))
+        self.lineEdit_Threads.setText(str(settings.num_processors()))
 
         # Connections
         self.browse_skimFile.clicked.connect(lambda: self.select_file(self.lineEdit_OutSkimFile, "save", "OMX (*.omx);; CSV (*.csv)"))

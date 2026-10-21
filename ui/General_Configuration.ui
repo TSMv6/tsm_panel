@@ -107,7 +107,21 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_NumProcessors"/>
+         <widget class="QSpinBox" name="spinBox_NumProcessors">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="toolTip">
+           <string>Threads the model engines (PopSyn, Skimmy, SDT, HyDRA, ELToD) use. Default: 80% of the processors on this machine, leaving headroom for QGIS and Windows; raise it up to the maximum for a dedicated run.</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_MaxProcessors">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
         <item>
          <spacer name="horizontalSpacer">
@@ -116,7 +130,7 @@
           </property>
           <property name="sizeHint" stdset="0">
            <size>
-            <width>300</width>
+            <width>200</width>
             <height>20</height>
            </size>
           </property>

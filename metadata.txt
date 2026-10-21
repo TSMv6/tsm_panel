@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.78
-date=2026-10-20
+version=2.79
+date=2026-10-21
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -42,10 +42,10 @@ engine_ldt=LDTModel 1ad62fb 2026-07-15
 engine_agentplans=agentPlans 16eab94 2026-09-21
 engine_afdta=agentflow-dta c0083b9 2026-10-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
-engine_netprep=netprep d40ba3e 2026-10-19
+engine_netprep=netprep 1974215 2026-10-21
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
-engine_utilities=utilities e3eec49 2026-10-20
+engine_utilities=utilities 03bbbbd 2026-10-21
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
 
 changelog=
@@ -59,7 +59,20 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (122 commits, 2026-06-19 to 2026-10-20):
+    One version per commit, newest first (123 commits, 2026-06-19 to 2026-10-21):
+    .
+    2.79 (2026-10-21): agentPlans for MSR - with Project Settings on MSR, the
+    trip list (now an interim TSM-zone list) is disaggregated to the region's
+    RPM zones for HyDRA (O/D = MSR network ids, TSM_O/TSM_D kept, region
+    external stations renumbered); the MSR tab became an Outputs tab naming
+    both files, TSM Dir is gone, the SDT resident hourly OD is an ELToD-tab
+    option, and the external-station table shows the MSR ids. Incremental
+    PopSyn removes households from shrinking zones at random, seeded by the
+    zone (incremental_* files, per-zone report). netPrep reads Navteq11 numeric
+    TwoWay codes (two-way roads and connectors were one-way) and keys links on
+    LINK_ID. Run-log windows close before the closing message in every model
+    dialog; Link Consolidation keeps saved output paths; TSM Configuration
+    shows the max processors and defaults engines to 80% of them.
     .
     2.78 (2026-10-20): PopSyn at RPM zones. PopSyn synthesizes in the land
     use's PopSyn_Index zones for MSR, or for Standard TSM with the new Project

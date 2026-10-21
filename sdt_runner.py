@@ -76,7 +76,7 @@ def run_sdt_models(flags):
     telework = settings.get("telework_share") or "15%"
     wfh_share = TELEWORK_TO_SHARE.get(telework, "0.15")
     year = settings.get("scenarioYear") or settings.get("networkYear") or "2024"
-    threads = settings.get("num_processors") or "0"
+    threads = settings.num_processors()
 
     # Shadow prices are SCENARIO STATE, not a plugin asset: each scenario
     # converges its own. Prefer the scenario's own file (written to

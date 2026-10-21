@@ -322,7 +322,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if cfg.get("model_resolution"):
             self.modelResolution.setCurrentText(cfg["model_resolution"].strip())
-        if cfg.get("capacities_file"):
+        # Fields that Save stores in Config: the saved value wins, the last run's
+        # settings file only fills what was never saved (it is rewritten by Run
+        # alone, so letting it win undid every Save made after a run).
+        saved = Config()
+        if cfg.get("capacities_file") and not saved.get("netprep_capacities_file"):
             self.lineEdit_Capacities.setText(cfg["capacities_file"])
 
         if "keep_Counts" in cfg:
@@ -332,14 +336,10 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
 
         if cfg.get("output_dir"):
             self.output_directory.setText(cfg["output_dir"])
-        if cfg.get("TSM_Link_File"):
-            self.lineEdit_TSMLink.setText(cfg["TSM_Link_File"])
-        if cfg.get("TSM_Node_File"):
-            self.lineEdit_TSMNode.setText(cfg["TSM_Node_File"])
-        if cfg.get("MSR_Link_File"):
-            self.lineEdit_MSRLink.setText(cfg["MSR_Link_File"])
-        if cfg.get("MSR_Node_File"):
-            self.lineEdit_MSRNode.setText(cfg["MSR_Node_File"])
+        for key, edit in (("TSM_Link_File", self.lineEdit_TSMLink), ("TSM_Node_File", self.lineEdit_TSMNode),
+                          ("MSR_Link_File", self.lineEdit_MSRLink), ("MSR_Node_File", self.lineEdit_MSRNode)):
+            if cfg.get(key) and not saved.get(key):
+                edit.setText(cfg[key])
 
         self.toggle_msr_fields()
         self.toggle_network_version()
@@ -820,6 +820,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 # The external station ids the MSR network used (TSM outside
                 # the region, RPM inside), e.g. "11501-11554, 50055-50060".
                 settings.set("msr_external_ids", self._msr_external_ids(output_dir))
+                settings.set("msr_externals_file",
+                             os.path.join(output_dir, "msr_externals.csv").replace("\\", "/"))
                 self._show_zone_ids()
 
             if show_message:

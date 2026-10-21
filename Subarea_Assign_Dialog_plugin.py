@@ -559,7 +559,7 @@ class Subarea_AssignDialog(QDialog, Ui_DialogSubAssign):
                     'TRIP_FILE'      : settings.get("sub_triptable_file").replace("/", "\\") ,          
                     'NEW_VOLUME_FILE': settings.get("sub_volume_file").replace("/", "\\"),
                     'MAXIMUM_ITERATIONS' : settings.get("sub_max_iterations"),
-                    'NUMBER_OF_THREADS' : settings.get("num_processors")
+                    'NUMBER_OF_THREADS' : settings.num_processors()
                   }
         
         # Remove all conditional keys if none of the selections are checked

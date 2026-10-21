@@ -60,15 +60,20 @@ def default_outputs(scenario_dir):
 
 
 def write_control(out_path, trip_list, subarea, lookup, msr_out, hourly_out,
-                  settings=None, sizeterms_out=None):
+                  settings=None, sizeterms_out=None, network_od=False, externals=None):
     """Write the `msr disaggregate` control file (TOML): the size-term TOMLs,
     the 26k subzone land use (MSR lookup), the subarea parent-zone list, the
     TSM-resolution trip list, and the MSR outputs. `sizeterms_out` is the optional
-    review CSV path used only by `msr sizeterms` (disaggregate ignores it)."""
+    review CSV path used only by `msr sizeterms` (disaggregate ignores it).
+    network_od writes O/D as MSR network zone ids (TSM_O/TSM_D kept) for HyDRA;
+    externals (netPrep's msr_externals.csv) renumbers the region's external
+    stations; an empty hourly_out skips the hourly OD table."""
     settings = settings or Config()
     tomls = sizeterm_tomls(settings)
     parent_col = settings.get("msr_parent_col") or "TSM_NG"
-    index_col  = settings.get("msr_index_col") or "TAZ_REG"
+    # Subzone id = PopSyn_Index: unique statewide (TAZ_REG repeats across RPMs)
+    # and the id the MSR network's RPM centroids carry.
+    index_col  = settings.get("msr_index_col") or "PopSyn_Index"
     od_res     = settings.get("msr_od_resolution") or "MSR"
 
     def fwd(p):
@@ -97,11 +102,15 @@ def write_control(out_path, trip_list, subarea, lookup, msr_out, hourly_out,
         "[disaggregate]",
         f'od_resolution = "{od_res}"',
         'time_format   = "clock"',
+        f'network_od    = {"true" if network_od else "false"}',
+        "",
+        "[externals]",
+        f'path = "{fwd(externals) if externals else ""}"',
         "",
         "[output]",
         f'sizeterms = "{fwd(sizeterms_out or (os.path.dirname(msr_out) + "/subarea_taz_sizeTerms.csv"))}"',
         f'msr_trips = "{fwd(msr_out)}"',
-        f'hourly_od = "{fwd(hourly_out)}"',
+        f'hourly_od = "{fwd(hourly_out) if hourly_out else ""}"',
         "",
     ]
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -111,7 +120,8 @@ def write_control(out_path, trip_list, subarea, lookup, msr_out, hourly_out,
     return out_path
 
 
-def run(scenario_dir, trip_list, subarea, lookup, settings=None, export_sizeterms=False):
+def run(scenario_dir, trip_list, subarea, lookup, settings=None, export_sizeterms=False,
+        msr_out=None, hourly_out=None, network_od=False, externals=None):
     """Validate inputs, write the control TOML, and run `msr disaggregate`.
     disaggregate always recomputes the size terms from the coefficient TOMLs, so
     no size-term file is cached. `export_sizeterms` additionally runs
@@ -132,12 +142,15 @@ def run(scenario_dir, trip_list, subarea, lookup, settings=None, export_sizeterm
             return False, f"MSR {label} is missing or not set:\n{p or '(empty)'}"
 
     scen = str(scenario_dir).replace("\\", "/")
-    msr_out, hourly_out = default_outputs(scen)
+    d_msr, d_hourly = default_outputs(scen)
+    msr_out = msr_out or d_msr
+    hourly_out = d_hourly if hourly_out is None else hourly_out   # "" = skip
     sizeterms_out = f"{scen}/subarea_taz_sizeTerms.csv"
     control = os.path.join(scenario_dir, "msr_control.toml")
     try:
         write_control(control, trip_list, subarea, lookup, msr_out, hourly_out,
-                      settings, sizeterms_out=sizeterms_out)
+                      settings, sizeterms_out=sizeterms_out,
+                      network_od=network_od, externals=externals)
     except Exception as e:
         return False, f"Error writing MSR control file: {e}"
 
@@ -160,8 +173,9 @@ def run(scenario_dir, trip_list, subarea, lookup, settings=None, export_sizeterm
 
     print(f"MSR disaggregation complete: {msr_out}")
     msg = ("MSR disaggregation complete.\n\n"
-           f"MSR trip list:  {msr_out}\n"
-           f"Hourly MSR OD:  {hourly_out}")
+           f"MSR trip list:  {msr_out}")
+    if hourly_out:
+        msg += f"\nHourly MSR OD:  {hourly_out}"
     if export_sizeterms:
         msg += f"\nSize-terms (QA): {sizeterms_out}"
     return True, msg

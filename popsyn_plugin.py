@@ -206,7 +206,7 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         tsm_location = settings.tsm_root()
         settings.set("tsm_location", tsm_location)
         plugin_dir = settings.get("plugin_dir")
-        threads = settings.get("num_processors") or "0"
+        threads = settings.num_processors()
 
         if not scenario_dir:
             QMessageBox.warning(self, "Warning", "Please set a scenario directory in Project Settings.")
@@ -398,12 +398,12 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
         if not synPer or synPer == "synthetic_per.csv":
             synPer = os.path.join(scenario_dir, "synthetic_per.csv")
 
-        # Incremental combines the delta synthesis to a scratch dir (read by the
-        # append step); non-incremental combines directly to the final outputs.
-        combined_dir = os.path.join(scenario_dir, "Combined")
+        # Incremental combines the delta synthesis into incremental_* files in the
+        # scenario folder (read by the append step; no "Combined" folder);
+        # non-incremental combines directly to the final outputs.
         if incremental:
-            comb_hh = os.path.join(combined_dir, "synthetic_households.csv")
-            comb_per = os.path.join(combined_dir, "synthetic_persons.csv")
+            comb_hh = os.path.join(scenario_dir, "incremental_synthetic_households.csv").replace("\\", "/")
+            comb_per = os.path.join(scenario_dir, "incremental_synthetic_persons.csv").replace("\\", "/")
         else:
             comb_hh, comb_per = synHH, synPer
         try:
@@ -431,7 +431,10 @@ class PopSynDialog(QDialog, Ui_Dialog_PopSyn):
             try:
                 with open(settings_popsim, "w") as f:
                     f.write(f"tsm_location = {tsm_location}\n")
-                    f.write(f"combined_dir = {combined_dir}\n".replace("\\", "/"))
+                    # Shrinking zones are thinned at the run's own zone level.
+                    f.write(f"zone_key = {'PopSyn_Index' if by_index else 'TSM_NG'}\n")
+                    f.write(f"combined_hh = {comb_hh}\n")
+                    f.write(f"combined_per = {comb_per}\n")
                     f.write("str_bool_run_incremental = T\n")
                     f.write(f"str_bool_GQ_in_POP = {gq_flag}\n")
                     f.write(f"landuse_layer_path = {landuse_path}\n")

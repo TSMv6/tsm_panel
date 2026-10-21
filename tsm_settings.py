@@ -56,6 +56,28 @@ class Config:
             self.settings["tsm_location"] = loc  # hydrate only; don't persist a default
         return loc
 
+    @staticmethod
+    def max_processors():
+        """Logical processors on this machine."""
+        try:
+            return max(1, int(os.cpu_count() or 1))
+        except Exception:
+            return 1
+
+    @classmethod
+    def default_processors(cls):
+        """80% of the logical processors: leaves headroom for QGIS and the OS."""
+        return max(1, int(cls.max_processors() * 0.8))
+
+    def num_processors(self):
+        """Threads the model engines get: the General Configuration value
+        (1..max), else the 80% default -- never 0/"all cores" by omission."""
+        try:
+            n = int(str(self.get("num_processors") or "").strip())
+        except ValueError:
+            n = 0
+        return min(n, self.max_processors()) if n > 0 else self.default_processors()
+
     def app_exe(self, rel):
         """Resolve a bundled executable shipped inside the plugin's Apps/ folder.
 

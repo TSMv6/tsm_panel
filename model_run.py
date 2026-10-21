@@ -284,9 +284,25 @@ def closes_run_console(fn):
     dialogs all do."""
     @functools.wraps(fn)
     def _wrap(*args, **kwargs):
+        # A run's closing message (success or failure) is shown from inside the
+        # method, so closing the window only on return left it in front of the
+        # message until the user clicked OK. While the run is active, any message
+        # box first closes the run-log window, then shows.
+        saved = {n: getattr(QMessageBox, n) for n in ("information", "warning", "critical")}
+
+        def _closing(show):
+            def _box(*a, **k):
+                end_run_console()
+                return show(*a, **k)
+            return staticmethod(_box)
+
+        for n, show in saved.items():
+            setattr(QMessageBox, n, _closing(show))
         try:
             return fn(*args, **kwargs)
         finally:
+            for n, show in saved.items():
+                setattr(QMessageBox, n, staticmethod(show))
             end_run_console()
     return _wrap
 

@@ -30,14 +30,13 @@ class GeneralConfigDialog(QDialog, Ui_Dialog_GenPrjSetting):
         # Plugins path (this plugin's folder)
         self.lineEdit_PluginsPath.setText(plugin_dir)
 
-        # Number of processors (default to detected CPU count)
-        num_cores = settings.get("num_processors")
-        if not num_cores:
-            try:
-                num_cores = str(os.cpu_count())
-            except Exception:
-                num_cores = "0"
-        self.lineEdit_NumProcessors.setText(str(num_cores))
+        # Number of processors: 1..max, default 80% of the machine's processors
+        # (Config.num_processors applies the same default wherever it is read).
+        max_proc = Config.max_processors()
+        self.spinBox_NumProcessors.setRange(1, max_proc)
+        self.spinBox_NumProcessors.setValue(settings.num_processors())
+        self.label_MaxProcessors.setText(f"Max available processors: {max_proc}  "
+                                         f"(default {Config.default_processors()})")
 
         # TSM authentication token (per-user, stored in the QGIS profile and
         # ~/.tsm/token.txt; used to authorize the Black Box model steps).
@@ -105,8 +104,7 @@ class GeneralConfigDialog(QDialog, Ui_Dialog_GenPrjSetting):
             settings.set("tsm_location", self.lineEdit_ModelPath.text())
         if self.lineEdit_PluginsPath.text():
             settings.set("plugin_dir", self.lineEdit_PluginsPath.text())
-        if self.lineEdit_NumProcessors.text():
-            settings.set("num_processors", self.lineEdit_NumProcessors.text())
+        settings.set("num_processors", str(self.spinBox_NumProcessors.value()))
         # Persist the TSM token per-user (NOT into the shared scenario JSON).
         token_edit = getattr(self, "lineEdit_TSMToken", None)
         if token_edit is not None:

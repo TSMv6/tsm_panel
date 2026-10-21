@@ -111,7 +111,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Threads default from General Configuration (num_processors) but stay editable
         # for a one-off run. Not persisted as a HyDRA setting -- it re-seeds from
         # General Configuration each time the dialog opens.
-        self.lineEdit_Threads.setText(str(settings.get("num_processors") or "0"))
+        self.lineEdit_Threads.setText(str(settings.num_processors()))
         self.lineEdit_Threads.setToolTip("Defaults from General Configuration (number of "
                                          "processors). Edit for this run only; not saved.")
 

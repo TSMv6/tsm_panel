@@ -6,7 +6,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt import uic  # For loading .ui dynamically
 from .tsm_settings import Config
-from .model_run import begin_run_console, closes_run_console
+from .model_run import begin_run_console, closes_run_console, end_run_console
 from . import msr_run
 # from .helper_functions import HelperFun
 
@@ -61,7 +61,6 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         uic.loadUi(ui_file, self)
  
         # Connect the buttons to the functions
-        self.pushButton_ModelDir.clicked.connect(lambda: self.select_directory(self.lineEdit_TSMLoc))
         self.browse_TripTable.clicked.connect(lambda: self.select_file(self.lineEdit_triptable, "save"))
 
         self.pushButton_RunTT.clicked.connect(lambda: self.run_trip_table(show_message=True))
@@ -83,9 +82,9 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         # bool_FLOS = self.checkBox_FLOS.isChecked()
 
         # Update Settings ("Main Panel -> Load Settings -> Config()")
+        # No TSM Dir field: the catalog root comes from General Configuration
+        # (Config.tsm_root) and the inputs from the scenario settings / plugin.
         settings = Config()
-        if settings.get("tsm_location"):
-            self.lineEdit_TSMLoc.setText(settings.get("tsm_location"))
         if settings.get("feedback"):
             self.comboBox_Feedback.setCurrentText(settings.get("feedback"))
         if settings.get("output_resolution"):
@@ -104,16 +103,20 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         self._populate_help()
         self._build_input_rows()
 
-        # MSR disaggregation (folded into agentPlans). msr.exe is a future
-        # component; the run is guarded until it exists.
-        self.browse_MSRSubarea.clicked.connect(lambda: self.select_file(self.lineEdit_MSRSubarea, "open"))
-        self.browse_MSRLookup.clicked.connect(lambda: self.select_file(self.lineEdit_MSRLookup, "open"))
-        if settings.get("msr_subarea"):
-            self.lineEdit_MSRSubarea.setText(settings.get("msr_subarea"))
-        if settings.get("msr_lookup"):
-            self.lineEdit_MSRLookup.setText(settings.get("msr_lookup"))
-        if settings.get("run_msr"):
-            self.groupBox_MSR.setChecked(settings.get("run_msr") is True)
+        # Outputs tab. MSR is not chosen here: Project Settings > Model
+        # Resolution decides it, and an MSR run always disaggregates the trip
+        # list to the region's RPM zones for HyDRA.
+        self._auto_trip = self._default_trip_out()
+        self.lineEdit_TripListOut.setText(settings.get("triplist_file") or self._auto_trip)
+        self._auto_msr = self._default_msr_out(self.lineEdit_TripListOut.text())
+        self.lineEdit_MSRTripOut.setText(settings.get("msr_triplist_file") or self._auto_msr)
+        self.browse_TripListOut.clicked.connect(lambda: self._browse_out(self.lineEdit_TripListOut))
+        self.browse_MSRTripOut.clicked.connect(lambda: self._browse_out(self.lineEdit_MSRTripOut))
+        self.comboBox_Resolution.currentTextChanged.connect(lambda _t: self._follow_defaults())
+        self.lineEdit_TripListOut.textChanged.connect(lambda _t: self._follow_msr_default())
+        self.checkBox_SDTResHourly.setChecked(
+            str(settings.get("write_sdt_res_hourly")).lower() in ("true", "1", "yes"))
+        self._refresh_msr_status()
 
         # External-station calibration (moved here from the LDT Visitor dialog).
         self._build_ext_calibration()
@@ -132,6 +135,77 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         self.checkBox_ELToD.setChecked(
             str(settings.get("write_hourly_table")).lower() in ("true", "1", "yes"))
         self._force_hourly = False
+
+    # ------------------------------------------------------------------
+    # Outputs / MSR (from Project Settings > Model Resolution)
+    # ------------------------------------------------------------------
+    def _default_trip_out(self):
+        scen = self._scen_dir()
+        res = self.comboBox_Resolution.currentText() or "30"
+        return f"{scen}/tripList_{res}min.csv.gz" if scen else ""
+
+    @staticmethod
+    def _default_msr_out(trip_out):
+        t = (trip_out or "").replace("\\", "/")
+        if not t:
+            return ""
+        base = t[:-len(".csv.gz")] if t.endswith(".csv.gz") else os.path.splitext(t)[0]
+        return base + "_msr.csv.gz"
+
+    def _follow_defaults(self):
+        """Keep untouched default names in step with the resolution."""
+        new = self._default_trip_out()
+        if self.lineEdit_TripListOut.text().strip() in ("", self._auto_trip):
+            self.lineEdit_TripListOut.setText(new)
+        self._auto_trip = new
+
+    def _follow_msr_default(self):
+        new = self._default_msr_out(self.lineEdit_TripListOut.text())
+        if self.lineEdit_MSRTripOut.text().strip() in ("", self._auto_msr):
+            self.lineEdit_MSRTripOut.setText(new)
+        self._auto_msr = new
+
+    def _browse_out(self, edit):
+        start = edit.text().strip()
+        path, _ = QFileDialog.getSaveFileName(self, "Output file", start,
+                                              "Trip list (*.csv.gz *.csv);; All Files (*)")
+        if path:
+            edit.setText(path.replace("\\", "/"))
+
+    @staticmethod
+    def _msr_inputs():
+        """(is_msr, region zones csv, zonal land use, externals csv, summary)."""
+        c = Config()
+        return (c.get("model_structure") == "MSR", (c.get("msr_zones_file") or "").strip(),
+                (c.get("zone_landuse_file") or "").strip(), (c.get("msr_externals_file") or "").strip(),
+                c.get("msr_summary") or "")
+
+    def _refresh_msr_status(self):
+        """MSR (Project Settings > Model Resolution): the TSM trip list is only
+        the interim input of the MSR step, and the MSR trip list row is live."""
+        is_msr = self._msr_inputs()[0]
+        for w in (self.label_MSRTripOut, self.lineEdit_MSRTripOut, self.browse_MSRTripOut):
+            w.setEnabled(is_msr)
+        self.label_TripListOut.setText("Interim trip list (TSM zones)" if is_msr else "Trip list")
+        self.label_TripListOut.setToolTip(
+            "TSM-zone trip list agentPlans writes; MSR disaggregates it into the MSR trip list."
+            if is_msr else "The trip list the assignment reads.")
+
+    @staticmethod
+    def _ext_display_ids():
+        """Ext Zone ID as the network sees it: the TSM id, or the RPM id when an
+        MSR region covers the station (netPrep's msr_externals.csv)."""
+        import csv
+        is_msr, _z, _l, ext, _s = ConvertTripListtoTable._msr_inputs()
+        shown = dict(EXT_ZONE_ID)
+        if is_msr and ext and os.path.exists(ext):
+            try:
+                with open(ext, newline="") as f:
+                    m = {r["TSM_EXT"]: r["ZONE_ID"] for r in csv.DictReader(f)}
+                shown = {k: m.get(v, v) for k, v in EXT_ZONE_ID.items()}
+            except Exception as e:
+                print(f"External ids: cannot read {ext}: {e}")
+        return shown
 
     def _fit_tab_height(self, index):
         """Size the tab frame to the visible page, not to the tallest one.
@@ -158,15 +232,21 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         settings = Config()
         self.table = self.table_ExtStn_Counts
 
+        shown = self._ext_display_ids()
         for row in range(self.table.rowCount()):
             name = self.table.verticalHeaderItem(row).text()
             dc, df = EXT_DEFAULTS.get(name, ("", "1.0%"))
             count = settings.get(f"{name}_Count")
             future = settings.get(f"{name}_Future")
-            zone_item = QTableWidgetItem(EXT_ZONE_ID.get(name, ""))
+            tsm_id = EXT_ZONE_ID.get(name, "")
+            zone_item = QTableWidgetItem(shown.get(name, tsm_id))
             zone_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
-            zone_item.setToolTip("Fixed external-station zone id; must match "
-                                 "ext_station_* in the agentPlans control file.")
+            zone_item.setToolTip(
+                f"MSR network id {shown.get(name)} (TSM {tsm_id}): the MSR region covers this "
+                "station. agentPlans calibrates on the TSM id; the MSR trip list uses this one."
+                if shown.get(name, tsm_id) != tsm_id else
+                "Fixed external-station zone id; must match ext_station_* in the agentPlans "
+                "control file.")
             self.table.setItem(row, 0, zone_item)
             self.table.setItem(row, 1, QTableWidgetItem(count if count else dc))
             self.table.setItem(row, 2, QTableWidgetItem(future if future else df))
@@ -295,7 +375,9 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
         for row in range(self.table.rowCount()):
             name = self.table.verticalHeaderItem(row).text()
             it0, it1, it2 = (self.table.item(row, c) for c in (0, 1, 2))
-            zone = it0.text().strip() if it0 else ""
+            # agentPlans calibrates on the TSM station id; the table may show the
+            # MSR network id, which is applied later by the MSR step.
+            zone = EXT_ZONE_ID.get(name) or (it0.text().strip() if it0 else "")
             count = it1.text().strip() if it1 else ""
             future = it2.text().strip() if it2 else ""
             if not zone:
@@ -595,6 +677,12 @@ segment (<code>marketVot</code>).</li>
 selected resolution (feeds HyDRA): <code>hh_id, person_id, tour_id, trip_id,
 valueOfTime, purpose, depart_time, O, D, marketVot, vehTrips, occupancy, hhIncome,
 market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b></li>
+<li><b>MSR trip list</b> (MSR scenarios, set in Project Settings &gt; Model Resolution)
+&#8211; after agentPlans, msr disaggregates every trip end inside the region to an RPM zone
+(<code>PopSyn_Index</code>, by destination size terms within its TSM zone) and renumbers the
+region's external stations to their RPM ids. O/D are then the MSR network's zone ids
+(HyDRA's input); the TSM zones stay as <code>TSM_O, TSM_D</code>. Name it on the
+<b>Outputs</b> tab.</li>
 <li><b><code>ELTOD_tt_HourClock.csv</code></b> &#8211; the wide <b>ELToD trip table</b>
 (hourly OD by market) for the ELToD (quasi-DTA) assignment. Build it with the
 <b>ELToD &#8594; Build trip table (hourly)</b> button.</li>
@@ -610,16 +698,15 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
 
     def update_settings(self):
         settings = Config()
-        settings.set("tsm_location", self.lineEdit_TSMLoc.text())
         # scenarioDir / scenarioYear belong to Project / Scenario Settings.
         settings.set("feedback", self.comboBox_Feedback.currentText())
         settings.set("output_resolution", self.comboBox_Resolution.currentText())
         # settings.set("ldtIncremental", self.checkBox_LDTIcrement.isChecked())
         # settings.set("FLOS", self.checkBox_FLOS.isChecked())
         settings.set("triptable_file", self.lineEdit_triptable.text())
-        settings.set("msr_subarea", self.lineEdit_MSRSubarea.text())
-        settings.set("msr_lookup", self.lineEdit_MSRLookup.text())
-        settings.set("run_msr", self.groupBox_MSR.isChecked())
+        settings.set("triplist_file", self.lineEdit_TripListOut.text().strip())
+        settings.set("msr_triplist_file", self.lineEdit_MSRTripOut.text().strip())
+        settings.set("write_sdt_res_hourly", self.checkBox_SDTResHourly.isChecked())
         # External-station calibration: the flag, the basis and the station table,
         # so a reopened scenario shows what it will actually run.
         settings.set("ldt_ext_calibrate", self.checkBox_extCalib.isChecked())
@@ -668,24 +755,22 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
                 "ELToD (quasi-DTA) trip table built (hourly):\n"
                 f"{scen}/ELTOD_tt_HourClock.csv")
 
-    def _run_msr_if_enabled(self, scenarioDir, trip_list_path):
-        """MSR multi-spatial-resolution disaggregation, folded into this step.
-        Delegates to the shared msr_run helper (same engine as the standalone MSR
-        editor) so there is one source of truth for the msr.exe control + run.
-        Returns True if OK / skipped."""
-        if not self.groupBox_MSR.isChecked():
-            return True
-        ok, msg = msr_run.run(
-            scenarioDir,
-            trip_list_path,
-            self.lineEdit_MSRSubarea.text().strip(),
-            self.lineEdit_MSRLookup.text().strip(),
-            export_sizeterms=False,
-        )
+    def _run_msr(self, scenarioDir, trip_list_path):
+        """MSR run (Project Settings > Model Resolution = MSR): disaggregate the
+        TSM trip list to the region's RPM zones (subzone id = PopSyn_Index, the
+        MSR network's centroids) and write it with O/D = network zone ids and
+        the TSM zones kept as TSM_O/TSM_D; the region's external stations take
+        their RPM ids. No hourly OD table (ELToD does not run MSR). Returns the
+        MSR trip list path, or None after telling the user."""
+        _msr, zones, lu, ext, _s = self._msr_inputs()
+        out = self.lineEdit_MSRTripOut.text().strip() or self._default_msr_out(trip_list_path)
+        ok, msg = msr_run.run(scenarioDir, trip_list_path, zones, lu, export_sizeterms=False,
+                              msr_out=out, hourly_out="", network_od=True,
+                              externals=ext if ext and os.path.exists(ext) else None)
         if not ok:
             QMessageBox.critical(self, "Error", msg)
-            return False
-        return True
+            return None
+        return out
 
     @staticmethod
     def _generate_control(template_path, out_path, mapping):
@@ -704,7 +789,7 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
     def run_trip_table(self, show_message=False):
         settings = Config()
         settings.set("output_resolution", self.comboBox_Resolution.currentText())
-        modelDir = settings.get("tsm_location").replace("\\", "/")
+        modelDir = settings.tsm_root().replace("\\", "/")
         scenarioDir = settings.get("scenarioDir").replace("\\", "/")
         year = settings.get("scenarioYear")
         feedback_loop = settings.get("feedback")
@@ -760,7 +845,15 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
             return False
 
         # Output is the trip list at the selected resolution (no ELToD branding).
-        trip_out = os.path.join(scenarioDir, f"tripList_{output_resolution}min.csv.gz").replace("\\", "/")
+        trip_out = (self.lineEdit_TripListOut.text().strip() or
+                    os.path.join(scenarioDir, f"tripList_{output_resolution}min.csv.gz")).replace("\\", "/")
+        is_msr, zones, lu, _ext, _s = self._msr_inputs()
+        if is_msr and not (zones and os.path.exists(zones) and lu and os.path.exists(lu)):
+            QMessageBox.critical(self, "Error",
+                                 "This is an MSR scenario but its region files are missing:\n"
+                                 f"{zones or '(region zones not set)'}\n{lu or '(zonal land use not set)'}"
+                                 "\n\nClick 'Create MSR LU' in Project Settings first.")
+            return False
 
         mapping = {
             "catalog_dir": modelDir,
@@ -774,6 +867,7 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
             "write_hourly_table":
                 "true" if (self.checkBox_ELToD.isChecked()
                            or getattr(self, "_force_hourly", False)) else "false",
+            "write_sdt_res_hourly": "true" if self.checkBox_SDTResHourly.isChecked() else "false",
             # External-station target calibration. ext_station_* must match the
             # ext_zone_id values in ldt_external_targets.csv, which the block above
             # just wrote. Read from the checkbox on THIS dialog rather than a
@@ -808,16 +902,20 @@ market</code>. <b>15-min roughly doubles the trip count and memory vs 30-min.</b
 
         if result.returncode == 0:
             print(f"agentPlans trip list created: {trip_out}")
-            # MSR disaggregation runs on the trip list just produced (if enabled).
-            if not self._run_msr_if_enabled(scenarioDir, trip_out):
-                return False
+            settings.set("triplist_file", trip_out)
+            msr_out = None
+            if is_msr:
+                msr_out = self._run_msr(scenarioDir, trip_out)
+                if not msr_out:
+                    return False
+                settings.set("msr_triplist_file", msr_out)
+            # Close the run window first so the message is not left behind it.
+            end_run_console()
             if show_message:
                 msg = (f"Trip list generated successfully (agentPlans).\n\n"
                        f"Trip list ({output_resolution}-min): {trip_out}")
-                if self.groupBox_MSR.isChecked():
-                    msg += (f"\n\nMSR disaggregation:\n"
-                            f"{scenarioDir}/subarea_msr_triplist.csv.gz\n"
-                            f"{scenarioDir}/ELToD_MSR_Hourly_tt.csv")
+                if msr_out:
+                    msg += f"\n\nMSR trip list (HyDRA): {msr_out}"
                 QMessageBox.information(self, "Success", msg)
             return True
         print("agentPlans run failed")
