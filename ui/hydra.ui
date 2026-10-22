@@ -440,7 +440,7 @@
                     <string>0.05</string>
                    </property>
                    <property name="toolTip">
-                    <string>REROUTE_FRACTION_MIN — minimum share of agents rerouted per iteration.</string>
+                    <string>REROUTE_FRACTION_MIN — the floor on how much demand may change path in one iteration. The share allowed is max(2/(n+1), this value): 100% at iteration 0, 67% at 1, 50% at 2 ... down to this floor, given to the route keys with the largest gaps first. Higher = faster but noisier; lower = smoother but slower to correct the last oscillations.</string>
                    </property>
                   </widget>
                  </item>
@@ -457,7 +457,7 @@
                     <string>0.01</string>
                    </property>
                    <property name="toolTip">
-                    <string>REROUTE_THRESHOLD_MIN — minimum travel-time improvement (min) to switch an agent's route.</string>
+                    <string>REROUTE_THRESHOLD_MIN — a route key only adopts its new shortest path when that path beats its current one by more than this many minutes of generalized cost. Keys within the threshold count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
                    </property>
                   </widget>
                  </item>
@@ -575,47 +575,77 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="0" colspan="2">
-                  <widget class="QCheckBox" name="checkBox_Checkpoint">
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_injectRes">
                    <property name="text">
-                    <string>Write checkpoint (enables warm restart)</string>
+                    <string>Loading resolution (min)</string>
                    </property>
-                   <property name="checked">
-                    <bool>true</bool>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QSpinBox" name="spinBox_InjectRes">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>15</number>
+                   </property>
+                   <property name="value">
+                    <number>15</number>
+                   </property>
+                   <property name="suffix">
+                    <string> min</string>
                    </property>
                    <property name="toolTip">
-                    <string>CHECKPOINT_FILE — writes checkpoint.bin in the output directory. Lets a later run resume with RESUME_FROM (2-3 iterations instead of a full cold run) and lets outputs be re-scored by loading the checkpoint without re-assigning.</string>
+                    <string>NODE_INJECT_RES — how finely a departure slot's trips are released onto the network by the node loaders (Node + PointQueue, Node + Spatial/LTM). 15 = one release per 15-min interval; 1 = minute by minute, which smooths the loading and avoids artificial queues at the start of each slot. Travel times still update every 15 minutes. Ignored by the per-link PointQueue mode.</string>
                    </property>
                   </widget>
                  </item>
                  <item row="4" column="2">
-                  <widget class="QLabel" name="label_ckptEvery">
+                  <widget class="QLabel" name="label_departSlot">
                    <property name="text">
-                    <string>Checkpoint every</string>
+                    <string>Departure slots</string>
                    </property>
                   </widget>
                  </item>
                  <item row="4" column="3">
-                  <widget class="QLineEdit" name="lineEdit_CheckpointEvery">
-                   <property name="text">
-                    <string>3</string>
-                   </property>
+                  <widget class="QComboBox" name="comboBox_DepartSlot">
                    <property name="toolTip">
-                    <string>CHECKPOINT_EVERY — write the checkpoint every N iterations.</string>
+                    <string>DEPART_SLOT_MIN — width of the departure slot in the route key (O · D · slot · marketVot) for a trip list with HH:MM:SS departure times. Auto follows the trip list's own grid: a 15-min agentPlans output gets 15-min keys, a 30-min output 30-min keys. A slot finer than the trip list loads each period's trips into its first part, so leave this on Auto unless testing.</string>
                    </property>
+                   <item>
+                    <property name="text">
+                     <string>Auto (match trip list)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>15 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>30 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>60 min</string>
+                    </property>
+                   </item>
                   </widget>
                  </item>
                  <item row="5" column="0" rowspan="1" colspan="1">
                   <widget class="QLabel" name="label_loadRefresh">
                    <property name="text">
-                    <string>Load refresh</string>
+                    <string>Per-link load refresh</string>
                    </property>
                   </widget>
                  </item>
                  <item row="5" column="1" rowspan="1" colspan="1">
                   <widget class="QComboBox" name="comboBox_LoadRefresh">
                    <property name="toolTip">
-                    <string>How the per-link loader refreshes between chunks. Exact rebuilds every agent's arrivals; incremental updates only the keys that re-routed (faster, an approximation). Ignored by the node loaders.</string>
+                    <string>LOAD_REFRESH — PointQueue (legacy per-link) run mode only. How the per-link loader refreshes between route chunks: Exact rebuilds every key's arrivals; Incremental updates only the keys that re-routed (faster, an approximation). This is NOT the node balancer: the node loaders use Node refresh (NODE_SCHEDULE) on the Engine and equilibrium tab.</string>
                    </property>
                    <property name="currentIndex">
                     <number>0</number>
@@ -635,7 +665,7 @@
                  <item row="5" column="2" rowspan="1" colspan="1">
                   <widget class="QLabel" name="label_loadSchedule">
                    <property name="text">
-                    <string>Load schedule</string>
+                    <string>Per-link load schedule</string>
                    </property>
                   </widget>
                  </item>
@@ -645,7 +675,7 @@
                     <string>(blank = every chunk)</string>
                    </property>
                    <property name="toolTip">
-                    <string>Per-link loader refresh stride, e.g. 1-9:iter, 10-15:chunk. Blank keeps the default (refresh after every chunk).</string>
+                    <string>LOAD_SCHEDULE — PointQueue (legacy per-link) run mode only. Refresh stride of the per-link loader, the same syntax as Node refresh: e.g. 1-9:iter, 10-15:chunk. Blank = after every chunk.</string>
                    </property>
                   </widget>
                  </item>
@@ -654,6 +684,176 @@
               </item>
               <item>
                <spacer name="page_DTA_AdvancedSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_DTA_Checkpoint">
+             <attribute name="title">
+              <string>Checkpoint</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_CheckpointLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_CkptWrite">
+                <property name="title">
+                 <string>Write</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_ckptw" columnstretch="0,0,0,1">
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_Checkpoint">
+                   <property name="text">
+                    <string>Write checkpoint (enables warm restart)</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>CHECKPOINT_FILE — writes checkpoint.bin in the output directory: the path set, link travel times. A later run can resume from it instead of starting over.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_CkptEvery">
+                   <property name="text">
+                    <string>Checkpoint every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="lineEdit_CheckpointEvery">
+                   <property name="maximumSize">
+                    <size>
+                     <width>80</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>CHECKPOINT_EVERY — write the checkpoint every N iterations. It is also written on convergence, at the last iteration and on a graceful stop.</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_CkptResume">
+                <property name="title">
+                 <string>Resume</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_ckptr" columnstretch="0,1,0,0">
+                 <item row="0" column="0" colspan="4">
+                  <widget class="QCheckBox" name="checkBox_Resume">
+                   <property name="text">
+                    <string>Resume from a checkpoint</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>RESUME_FROM — load this checkpoint and continue from its iteration + 1 instead of starting from free flow. The network must have the same links and the trip list the same route keys (attribute edits such as capacity or toll changes are fine: the affected trips re-route). Sampling is skipped on resume.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_ResumeFile">
+                   <property name="text">
+                    <string>Checkpoint file</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1" colspan="2">
+                  <widget class="QLineEdit" name="lineEdit_ResumeFile">
+                   <property name="placeholderText">
+                    <string>checkpoint.bin from an earlier run</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QPushButton" name="browse_ResumeFile">
+                   <property name="maximumSize">
+                    <size>
+                     <width>40</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0" colspan="4">
+                  <widget class="QLabel" name="label_ResumeInfo">
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_ResumeMode">
+                   <property name="text">
+                    <string>Then run</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="comboBox_ResumeMode">
+                   <item>
+                    <property name="text">
+                     <string>Up to Max Iterations</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>N more iterations</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Outputs only (no new iterations)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_ResumeMore">
+                   <property name="text">
+                    <string>N</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="lineEdit_ResumeMore">
+                   <property name="maximumSize">
+                    <size>
+                     <width>80</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_DTA_CheckpointSpacer">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
                 </property>
@@ -1289,13 +1489,13 @@ Akcelik - time-dependent queueing form: over-saturated delay grows with how long
             </widget>
             <widget class="QWidget" name="page_STA_Demand">
              <attribute name="title">
-              <string>Demand and checkpoint</string>
+              <string>Demand</string>
              </attribute>
              <layout class="QVBoxLayout" name="page_STA_DemandLayout">
               <item>
                <widget class="QGroupBox" name="groupBox_StaDemand">
                 <property name="title">
-                 <string>Demand and checkpoint</string>
+                 <string>Demand</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_stadem">
                  <item row="0" column="0" rowspan="1" colspan="1">
@@ -1369,7 +1569,36 @@ Akcelik - time-dependent queueing form: over-saturated delay grows with how long
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="0" rowspan="1" colspan="2">
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_STA_DemandSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_STA_Checkpoint">
+             <attribute name="title">
+              <string>Checkpoint</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_STA_CheckpointLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_StaCkptWrite">
+                <property name="title">
+                 <string>Write</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_stackptw" columnstretch="0,0,0,1">
+                 <item row="0" column="0" colspan="2">
                   <widget class="QCheckBox" name="checkBox_StaCheckpoint">
                    <property name="text">
                     <string>Write checkpoint (enables warm restart)</string>
@@ -1377,17 +1606,134 @@ Akcelik - time-dependent queueing form: over-saturated delay grows with how long
                    <property name="checked">
                     <bool>true</bool>
                    </property>
+                   <property name="toolTip">
+                    <string>CHECKPOINT_FILE — writes checkpoint.bin in the output directory: the path set, link travel times and the averaged link flow (the STA state). A later run can resume from it instead of starting over.</string>
+                   </property>
                   </widget>
                  </item>
-                 <item row="2" column="2" rowspan="1" colspan="1">
+                 <item row="0" column="2">
                   <widget class="QLabel" name="label_staCkptEvery">
                    <property name="text">
                     <string>Checkpoint every</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="3" rowspan="1" colspan="1">
+                 <item row="0" column="3">
                   <widget class="QLineEdit" name="lineEdit_StaCheckpointEvery">
+                   <property name="maximumSize">
+                    <size>
+                     <width>80</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>3</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>CHECKPOINT_EVERY — write the checkpoint every N iterations. It is also written on convergence, at the last iteration and on a graceful stop.</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_StaCkptResume">
+                <property name="title">
+                 <string>Resume</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_stackptr" columnstretch="0,1,0,0">
+                 <item row="0" column="0" colspan="4">
+                  <widget class="QCheckBox" name="checkBox_StaResume">
+                   <property name="text">
+                    <string>Resume from a checkpoint</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>RESUME_FROM — load this checkpoint and continue from its iteration + 1 instead of starting from free flow. The network must have the same links and the trip list the same route keys (attribute edits such as capacity or toll changes are fine: the affected trips re-route). Sampling is skipped on resume. STA resumes only from an STA checkpoint (it needs the averaged link flow).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_staResumeFile">
+                   <property name="text">
+                    <string>Checkpoint file</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1" colspan="2">
+                  <widget class="QLineEdit" name="lineEdit_StaResumeFile">
+                   <property name="placeholderText">
+                    <string>checkpoint.bin from an earlier run</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QPushButton" name="browse_StaResumeFile">
+                   <property name="maximumSize">
+                    <size>
+                     <width>40</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0" colspan="4">
+                  <widget class="QLabel" name="label_StaResumeInfo">
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_staResumeMode">
+                   <property name="text">
+                    <string>Then run</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="comboBox_StaResumeMode">
+                   <item>
+                    <property name="text">
+                     <string>Up to Max Iterations</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>N more iterations</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Outputs only (no new iterations)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_staResumeMore">
+                   <property name="text">
+                    <string>N</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="lineEdit_StaResumeMore">
+                   <property name="maximumSize">
+                    <size>
+                     <width>80</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
                    <property name="text">
                     <string>3</string>
                    </property>
@@ -1397,7 +1743,7 @@ Akcelik - time-dependent queueing form: over-saturated delay grows with how long
                </widget>
               </item>
               <item>
-               <spacer name="page_STA_DemandSpacer">
+               <spacer name="page_STA_CheckpointSpacer">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
                 </property>

@@ -1,4 +1,5 @@
 import os
+import struct
 import subprocess
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qgis.core import QgsProject
@@ -80,8 +81,41 @@ def _pair(text, default_a, default_b):
 # VDF aggregation window label -> BPR_PERIOD_MIN.
 BPR_PERIODS = {"15 min": "15", "30 min": "30", "60 min (hourly)": "60"}
 
-# Per-link loader refresh label -> LOAD_REFRESH.
+# Per-link loader refresh label -> LOAD_REFRESH. Read only by the per-link
+# PointQueue run mode; the node loaders are refreshed by NODE_SCHEDULE.
 LOAD_REFRESH = {"Exact (rebuild all)": "exact", "Incremental (delta)": "incremental"}
+
+# Departure-slot label -> DEPART_SLOT_MIN (route-key slot for HH:MM:SS trips).
+DEPART_SLOTS = {"Auto (match trip list)": "AUTO", "15 min": "15", "30 min": "30",
+                "60 min": "60"}
+
+# Checkpoint "Then run" label -> resume plan.
+RESUME_MODES = {"Up to Max Iterations": "max", "N more iterations": "more",
+                "Outputs only (no new iterations)": "outputs"}
+
+
+def read_checkpoint_header(path):
+    """Header of an afdta checkpoint.bin, or a string saying why it is unusable.
+
+    Layout (io/checkpoint.cpp): magic "AFDTACK1", int32 version, n_nodes,
+    n_links, n_keys, iter, int64 path-link count; version 2 adds float slot
+    width [min] and int32 flags (bit 0 = carries the STA averaged link flow).
+    """
+    try:
+        with open(path, "rb") as f:
+            head = f.read(8 + 5 * 4 + 8 + 4 + 4)
+    except OSError as e:
+        return f"cannot read the checkpoint: {e}"
+    if len(head) < 36 or head[:8] != b"AFDTACK1":
+        return "not an afdta checkpoint (bad header)"
+    version, n_nodes, n_links, n_keys, it = struct.unpack_from("<5i", head, 8)
+    info = {"version": version, "n_nodes": n_nodes, "n_links": n_links,
+            "n_keys": n_keys, "iter": it, "slot_min": None, "sta_flow": False}
+    if version >= 2 and len(head) >= 44:
+        slot, flags = struct.unpack_from("<fi", head, 36)
+        info["slot_min"] = slot
+        info["sta_flow"] = bool(flags & 1)
+    return info
 
 # Per-iteration node-DNL refresh stride (NODE_SCHEDULE). Maps the GUI label to the
 # control-file value; "hybrid" is expanded to an iteration ramp at write time
@@ -142,6 +176,19 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.browse_SuppFile.clicked.connect(lambda: self.select_file(self.lineEdit_SuppFile, "Trip list (*.csv *.csv.gz)"))
         self.browse_SuppGrowth.clicked.connect(lambda: self.select_file(self.lineEdit_SuppGrowth, "CSV (*.csv)"))
         self.checkBox_Odme.toggled.connect(self.toggle_odme)
+        # Checkpoint tabs (DTA and STA share the logic; p = widget-name prefix).
+        for p, iters in (("", self.lineEdit_Iters), ("Sta", self.lineEdit_StaIters)):
+            w = self._resume_w(p)
+            w["browse"].clicked.connect(
+                lambda _=False, e=w["file"]: self.select_file(e, "Checkpoint (*.bin *.ckpt)"))
+            refresh = (lambda *_a, p=p: self._refresh_resume(p))
+            w["check"].toggled.connect(refresh)
+            w["file"].textChanged.connect(refresh)
+            w["mode"].currentIndexChanged.connect(refresh)
+            w["more"].textChanged.connect(refresh)
+            w["write"].toggled.connect(refresh)
+            iters.textChanged.connect(refresh)
+        self.comboBox_Macro.currentTextChanged.connect(lambda _: self._sync_loader_controls())
         self.run_Hydra.clicked.connect(lambda: self.run_hydra(show_message=True))
         # Save persists and LEAVES THE DIALOG OPEN (accepted -> update_settings,
         # never accept()), so settings can be saved and then run without
@@ -198,6 +245,13 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                           ("hydra_checkpoint_every", self.lineEdit_CheckpointEvery)):
             if settings.get(key) not in (None, ""):
                 edit.setText(str(settings.get(key)))
+        if settings.get("hydra_inject_res") not in (None, ""):
+            try:
+                self.spinBox_InjectRes.setValue(int(float(settings.get("hydra_inject_res"))))
+            except ValueError:
+                pass
+        if settings.get("hydra_depart_slot"):
+            self._select_combo(self.comboBox_DepartSlot, settings.get("hydra_depart_slot"))
         if settings.get("hydra_sample_mode"):
             self._select_combo(self.comboBox_SampleSchedule, settings.get("hydra_sample_mode"))
         if settings.get("hydra_micro_ftypes"):
@@ -261,6 +315,17 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.checkBox_StaAgentPlans.setChecked(_b_on("hydra_sta_agent_plans"))
         self.checkBox_StaAgentPaths.setChecked(_b("hydra_sta_agent_paths"))
         self.checkBox_StaPathScale.setChecked(_b_on("hydra_sta_path_scale"))
+        # Resume (Checkpoint tabs). Off by default: a resume is a deliberate act.
+        for p, key in (("", "hydra"), ("Sta", "hydra_sta")):
+            w = self._resume_w(p)
+            if settings.get(f"{key}_resume_file"):
+                w["file"].setText(settings.get(f"{key}_resume_file"))
+            if settings.get(f"{key}_resume_mode"):
+                self._select_combo(w["mode"], settings.get(f"{key}_resume_mode"))
+            if settings.get(f"{key}_resume_more") not in (None, ""):
+                w["more"].setText(str(settings.get(f"{key}_resume_more")))
+            w["check"].setChecked(_b(f"{key}_resume"))
+            self._refresh_resume(p)
         if settings.get("hydra_load_refresh"):
             self._select_combo(self.comboBox_LoadRefresh, settings.get("hydra_load_refresh"))
         if settings.get("hydra_load_schedule"):
@@ -272,6 +337,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if settings.get("hydra_meso_ftypes"):
             self.lineEdit_MesoFtypes.setText(settings.get("hydra_meso_ftypes"))
         self.toggle_micro(self.checkBox_Micro.isChecked())
+        self._sync_loader_controls()
 
         # Reopen on whichever engine tab was saved; Run re-enables only once the
         # tab's mode is set (a saved scenario carries that, a fresh one does not).
@@ -480,6 +546,129 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         for attr, _ in ODME_FIELDS:
             getattr(self, attr).setEnabled(on)
 
+    def _is_per_link_loader(self):
+        """True for the per-link PointQueue run mode (no node model)."""
+        model = MACRO_PRESETS.get(self.comboBox_Macro.currentText(), _DEFAULT_PRESET)[0]
+        return model == "DTA_PointQueue"
+
+    def _sync_loader_controls(self):
+        """Grey out the loading controls the chosen run mode does not read:
+        Loading resolution is a node-loader setting; Per-link load refresh and
+        schedule belong to the per-link PointQueue mode only."""
+        per_link = self._is_per_link_loader()
+        for w in (self.label_injectRes, self.spinBox_InjectRes):
+            w.setEnabled(not per_link)
+        for w in (self.label_loadRefresh, self.comboBox_LoadRefresh,
+                  self.label_loadSchedule, self.lineEdit_LoadSchedule):
+            w.setEnabled(per_link)
+
+    # ---- checkpoint / resume -------------------------------------------
+    def _resume_w(self, p):
+        """The Checkpoint-tab widgets of one engine (p = "" DTA, "Sta" STA)."""
+        lo = p.lower()
+        return {"check": getattr(self, f"checkBox_{p}Resume"),
+                "file": getattr(self, f"lineEdit_{p}ResumeFile"),
+                "browse": getattr(self, f"browse_{p}ResumeFile"),
+                "info": getattr(self, f"label_{p}ResumeInfo"),
+                "mode": getattr(self, f"comboBox_{p}ResumeMode"),
+                "more": getattr(self, f"lineEdit_{p}ResumeMore"),
+                "more_label": getattr(self, f"label_{lo}ResumeMore"),
+                "iters": self.lineEdit_StaIters if p else self.lineEdit_Iters,
+                "write": self.checkBox_StaCheckpoint if p else self.checkBox_Checkpoint}
+
+    def _resume_plan(self, p):
+        """(checkpoint header, MAX_ITERATIONS to write, error) for a resume of
+        engine p, or (None, None, None) when resume is off.
+
+        "Up to Max Iterations" keeps the Max Iterations field; "N more" runs
+        N past the checkpoint; "Outputs only" sets MAX_ITERATIONS to the
+        checkpoint's own iteration, which afdta treats as load-and-post-process.
+        """
+        w = self._resume_w(p)
+        if not w["check"].isChecked():
+            return None, None, None
+        path = w["file"].text().strip()
+        if not path:
+            return None, None, "Pick the checkpoint file to resume from."
+        if not os.path.exists(path):
+            return None, None, f"Checkpoint not found: {path}"
+        hdr = read_checkpoint_header(path)
+        if isinstance(hdr, str):
+            return None, None, hdr[0].upper() + hdr[1:] + "."
+        if p and not hdr["sta_flow"]:
+            return hdr, None, ("This checkpoint holds no STA link flow (written by a DTA run "
+                               "or an older afdta), so STA cannot resume from it.")
+        mode = RESUME_MODES.get(w["mode"].currentText(), "max")
+        try:
+            if mode == "more":
+                n = max(int(float(w["more"].text().strip() or "0")), 0)
+                return hdr, hdr["iter"] + n, None
+            if mode == "outputs":
+                return hdr, hdr["iter"], None
+            return hdr, int(float(w["iters"].text().strip() or "10")), None
+        except ValueError:
+            return hdr, None, "The iteration count is not a number."
+
+    def _refresh_resume(self, p):
+        """Enable the resume widgets with the checkbox and describe the chosen
+        checkpoint: its iteration, size, slot width and engine, and what the
+        run will then do."""
+        w = self._resume_w(p)
+        on = w["check"].isChecked()
+        for k in ("file", "browse", "mode", "info"):
+            w[k].setEnabled(on)
+        more = RESUME_MODES.get(w["mode"].currentText()) == "more"
+        w["more"].setEnabled(on and more)
+        w["more_label"].setEnabled(on and more)
+        if not on:
+            w["info"].setText("")
+            return
+        hdr, max_iter, err = self._resume_plan(p)
+        if hdr is None:
+            w["info"].setText(err or "")
+            return
+        slot = ("%.0f-min slots" % hdr["slot_min"]) if hdr["slot_min"] else \
+            "slot width not recorded (older afdta)"
+        kind = "STA" if hdr["sta_flow"] else ("DTA" if hdr["version"] >= 2 else "version-1")
+        text = "Iteration %d · %s route keys · %s links · %s · %s checkpoint." % (
+            hdr["iter"], f"{hdr['n_keys']:,}", f"{hdr['n_links']:,}", slot, kind)
+        if err:
+            text += "\n" + err
+        elif max_iter <= hdr["iter"]:
+            text += "\nNo new iterations: outputs are written from the loaded state."
+        else:
+            text += "\nRuns iterations %d to %d." % (hdr["iter"] + 1, max_iter)
+        out_ckpt = os.path.join(self._out_dir_for_check(), "checkpoint.bin")
+        if w["write"].isChecked() and os.path.normcase(os.path.abspath(out_ckpt)) == \
+                os.path.normcase(os.path.abspath(w["file"].text().strip())):
+            text += " This run writes its own checkpoint over this file."
+        w["info"].setText(text)
+
+    def _out_dir_for_check(self):
+        """Output directory as typed (blank = scenario directory), without
+        creating it -- for display only."""
+        return (self.lineEdit_OutDir.text().strip() or self._out_dir or "").replace("\\", "/")
+
+    def _write_resume_ctl(self, f, p, pad):
+        """RESUME_FROM for engine p. Returns False (after telling the user)
+        when the resume cannot run."""
+        hdr, _max_iter, err = self._resume_plan(p)
+        if err:
+            QMessageBox.critical(self, "Cannot resume", err)
+            return False
+        if hdr is not None:
+            path = self._resume_w(p)["file"].text().strip().replace("\\", "/")
+            f.write(f"RESUME_FROM{' ' * pad}{path}\n")
+        return True
+
+    def _max_iters_value(self, p):
+        """MAX_ITERATIONS for engine p: the resume plan's when resuming."""
+        _hdr, max_iter, err = self._resume_plan(p)
+        if max_iter is not None and not err:
+            return str(max_iter)
+        edit = self.lineEdit_StaIters if p else self.lineEdit_Iters
+        return edit.text().strip() or ("15" if p else "10")
+
     def _write_odme_ctl(self, f):
         """Counts, ODME and supplemental-demand keys. Every ODME key is written
         explicitly when ODME is on, so the control file documents the run."""
@@ -638,6 +827,14 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_sample_schedule", self.lineEdit_SampleSchedule.text())
         settings.set("hydra_checkpoint", self.checkBox_Checkpoint.isChecked())
         settings.set("hydra_checkpoint_every", self.lineEdit_CheckpointEvery.text())
+        settings.set("hydra_inject_res", str(self.spinBox_InjectRes.value()))
+        settings.set("hydra_depart_slot", self.comboBox_DepartSlot.currentText())
+        for p, key in (("", "hydra"), ("Sta", "hydra_sta")):
+            w = self._resume_w(p)
+            settings.set(f"{key}_resume", w["check"].isChecked())
+            settings.set(f"{key}_resume_file", w["file"].text().strip())
+            settings.set(f"{key}_resume_mode", w["mode"].currentText())
+            settings.set(f"{key}_resume_more", w["more"].text().strip())
         # Output toggles
         settings.set("hydra_agent_plans", self.checkBox_AgentPlans.isChecked())
         settings.set("hydra_agent_paths", self.checkBox_AgentPaths.isChecked())
@@ -705,7 +902,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # nothing is picked) chain off the Link Consolidator outputs.
         sel_link = self.get_layer_path(link_layer) if link_layer else ""
         sel_node = self.get_layer_path(node_layer) if node_layer else ""
-        link_path, node_path = settings.resolve_network_paths(sel_link, sel_node)
+        link_path, node_path = settings.resolve_network_paths(sel_link, sel_node, assignment=True)
         trip_file = self.lineEdit_TripFile.text().strip()
         out_dir = self._resolve_out_dir(settings)
         if not (link_path and node_path and trip_file and out_dir):
@@ -762,15 +959,33 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write(f"NODE_FILE              {node_csv}\n")
                 f.write(f"LINK_FILE              {link_csv}\n")
                 f.write(f"TRIP_FILE             {trip_file}\n")
+                # The MSR trip list carries TSM_O/TSM_D, which afdta's AUTO
+                # takes for a cut-out subarea and switches county-scope
+                # masking off; the MSR network is statewide, so keep it on.
+                msr_file = settings.get("MSR_Link_File") or ""
+                if settings.is_msr() and msr_file and \
+                        os.path.normcase(os.path.abspath(link_path)) == os.path.normcase(os.path.abspath(msr_file)):
+                    f.write("SCOPE_MASKING         YES\n")
                 f.write(f"OUTPUT_DIRECTORY      {out_dir}\n")
                 f.write(f"MACRO_MODEL           {macro_model}\n")
-                f.write(f"MAX_ITERATIONS        {self.lineEdit_Iters.text().strip() or '10'}\n")
+                f.write(f"MAX_ITERATIONS        {self._max_iters_value('')}\n")
                 f.write(f"RELATIVE_GAP          {self.lineEdit_Gap.text().strip() or '0.01'}\n")
                 f.write(f"ROUTE_CHUNKS          {self.lineEdit_Chunks.text().strip() or '10'}\n")
                 # Node-DNL refresh stride (per_iter / per_chunk / hybrid ramp).
                 # Only the DTA_Node* loaders run the node sim, but the key is
                 # harmless for the others.
                 f.write(f"NODE_SCHEDULE         {self._node_schedule_value()}\n")
+                # Within-slot loading resolution of the node loaders, and the
+                # route-key departure slot (AUTO follows the trip list's grid).
+                f.write(f"NODE_INJECT_RES       {self.spinBox_InjectRes.value()}\n")
+                f.write(f"DEPART_SLOT_MIN       {DEPART_SLOTS.get(self.comboBox_DepartSlot.currentText(), 'AUTO')}\n")
+                # The per-link PointQueue loader's refresh (the node loaders
+                # use NODE_SCHEDULE above and ignore these).
+                if macro_model == "DTA_PointQueue":
+                    f.write(f"LOAD_REFRESH          {LOAD_REFRESH.get(self.comboBox_LoadRefresh.currentText(), 'exact')}\n")
+                    load_sched = self.lineEdit_LoadSchedule.text().strip()
+                    if load_sched:
+                        f.write(f"LOAD_SCHEDULE         {load_sched}\n")
                 f.write(f"THREADS               {self.lineEdit_Threads.text().strip() or '0'}\n")
                 # Per-purpose volume columns in every link_performance_
                 # <Macro|Meso|Micro>DTA.csv (vol_<purpose> sums to volume).
@@ -851,6 +1066,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     ckpt = os.path.join(out_dir, "checkpoint.bin").replace("\\", "/")
                     f.write(f"CHECKPOINT_FILE       {ckpt}\n")
                     f.write(f"CHECKPOINT_EVERY      {self.lineEdit_CheckpointEvery.text().strip() or '3'}\n")
+                if not self._write_resume_ctl(f, "", 11):
+                    return False
                 if self.checkBox_Micro.isChecked():
                     micro_ft = self.lineEdit_MicroFtypes.text().strip()
                     f.write("MICRO_CORRIDOR        YES\n")
@@ -941,7 +1158,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 elif self.checkBox_BprOverCap.isChecked():
                     f.write("BPR_OVERCAP_BETA_MULT  %s\n"
                             % (self.lineEdit_BprBetaMult.text().strip() or "1.5"))
-                f.write(f"MAX_ITERATIONS         {self.lineEdit_StaIters.text().strip() or '15'}\n")
+                f.write(f"MAX_ITERATIONS         {self._max_iters_value('Sta')}\n")
                 f.write(f"RELATIVE_GAP           {self.lineEdit_StaGap.text().strip() or '0.01'}\n")
                 f.write(f"THREADS                {self.lineEdit_StaThreads.text().strip() or '0'}\n")
                 f.write("LINK_VOLUME_BREAKDOWN  Purpose\n")
@@ -962,6 +1179,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     ckpt = os.path.join(out_dir, "checkpoint.bin").replace("\\", "/")
                     f.write(f"CHECKPOINT_FILE        {ckpt}\n")
                     f.write(f"CHECKPOINT_EVERY       {self.lineEdit_StaCheckpointEvery.text().strip() or '3'}\n")
+                if not self._write_resume_ctl(f, "Sta", 12):
+                    return False
                 f.write(f"WRITE_AGENT_PLANS      {'YES' if self.checkBox_StaAgentPlans.isChecked() else 'NO'}\n")
                 f.write(f"WRITE_AGENT_PATHS      {'YES' if self.checkBox_StaAgentPaths.isChecked() else 'NO'}\n")
                 if not self.checkBox_StaPathScale.isChecked():

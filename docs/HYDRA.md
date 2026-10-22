@@ -44,6 +44,39 @@ an equilibrium iteration, trading speed for tightness:
 batch of routing groups, not a VOT class. Node refresh applies to the node loaders;
 it is harmless for the point-queue / LTM engines.)
 
+**Node refresh is the node balancer.** *Per-link load refresh* and *Per-link load
+schedule* on the Advanced tab (`LOAD_REFRESH` / `LOAD_SCHEDULE`) are a different
+thing: they control the per-link **PointQueue** run mode only, which has no node
+model, and are greyed out for the node run modes.
+
+### Advanced tab: rerouting and loading
+
+- **Reroute fraction (min)** (`REROUTE_FRACTION_MIN`, 0.05) — the floor on how much
+  demand may change path in one iteration. The share allowed is
+  max(2/(n+1), floor): 100% at iteration 0, 67%, 50%, 40% … down to the floor, given
+  to the route keys with the largest gaps first. Higher converges faster but noisier.
+- **Reroute threshold (min)** (`REROUTE_THRESHOLD_MIN`, 0.01) — a route key adopts a
+  new path only if it beats its current path by more than this many minutes of
+  generalized cost. Keys within it count as *stable* in the log.
+- **Loading resolution (min)** (`NODE_INJECT_RES`, 1–15, default 15) — how finely a
+  departure slot's trips are released by the node loaders. 1 = minute by minute,
+  which smooths the loading; travel times still update every 15 minutes.
+- **Departure slots** (`DEPART_SLOT_MIN`, default Auto) — the slot in the route key
+  (O · D · slot · `marketVot`). Auto follows the trip list: a 15-min agentPlans
+  output gets 15-min keys, a 30-min output 30-min keys.
+
+### Checkpoint tab (DTA and STA)
+
+- **Write checkpoint** — `checkpoint.bin` in the output directory, every N
+  iterations and at the end.
+- **Resume from a checkpoint** — browse to a `checkpoint.bin`; the tab shows its
+  iteration, route keys, links, slot width and engine. **Then run**: *Up to Max
+  Iterations*, *N more iterations*, or *Outputs only* (no new iterations: volumes,
+  agent outputs, select link and subarea from the loaded state). The network must
+  have the same links and the trip list the same route keys; capacity or toll edits
+  are fine (the affected trips re-route). Sampling is skipped on resume. STA resumes
+  only from an STA checkpoint.
+
 ### Activating meso / micro per link
 
 A link runs meso or micro when **either**:
