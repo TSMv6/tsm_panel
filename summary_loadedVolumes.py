@@ -74,8 +74,15 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         """Apply the current Config() to the widgets. Called from __init__ and
         again after Load, so a loaded file is reflected in the open dialog."""
         settings = Config()
-        if settings.get("link_layer_name") != "":
-            link_layer_name = settings.get("link_layer_name")
+        # The loaded network is the one HyDRA assigned on: its own setting
+        # (summary_link_layer_name), else HyDRA's layer, else the scenario's
+        # assignment network (MSR outputs for an MSR scenario). Never the shared
+        # link_layer_name Skimmy reads -- saving here must not move skims.
+        link_layer_name = (settings.get("summary_link_layer_name")
+                           or settings.get("hydra_link_layer_name")
+                           or settings.assignment_network()[2]
+                           or settings.get("link_layer_name") or "")
+        if link_layer_name:
             if link_layer_name in [self.comboBox_linkLayer.itemText(i)
                                    for i in range(self.comboBox_linkLayer.count())]:
                 self.comboBox_linkLayer.setCurrentText(link_layer_name)
@@ -221,7 +228,7 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         settings = Config()
         if self.comboBox_linkLayer.currentData():
             link_layer = self.comboBox_linkLayer.currentData()
-            settings.set("link_layer_name", link_layer.name())  
+            settings.set("summary_link_layer_name", link_layer.name())
         if self.lineEdit_volume.text():
             settings.set("volume_file", self.lineEdit_volume.text())
         if self.lineEdit_loadedOut.text():

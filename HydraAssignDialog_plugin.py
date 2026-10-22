@@ -123,10 +123,13 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Default output location; the Output directory field (blank = scenario
         # directory) overrides it at run time via _resolve_out_dir.
         self._out_dir = (settings.get("scenarioDir") or "").replace("\\", "/")
-        if settings.get("link_layer_name"):
-            self._select_combo(self.comboBox_LinkLayer, settings.get("link_layer_name"))
-        if settings.get("node_layer_name"):
-            self._select_combo(self.comboBox_NodeLayer, settings.get("node_layer_name"))
+        # HyDRA's network is its own setting (hydra_*_layer_name), NOT the
+        # shared link/node_layer_name Skimmy reads: an MSR scenario assigns on
+        # the Link Consolidator's MSR network while skims stay on TSM. Default
+        # = the assignment network of the scenario (MSR or TSM); a saved TSM
+        # pick is not carried into an MSR scenario.
+        self._select_combo(self.comboBox_LinkLayer, self._hydra_layer(settings, "link"))
+        self._select_combo(self.comboBox_NodeLayer, self._hydra_layer(settings, "node"))
 
         # Connections
         self.browse_TripFile.clicked.connect(lambda: self.select_file(self.lineEdit_TripFile, "Trip list (*.csv.gz *.csv)"))
@@ -175,8 +178,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self.lineEdit_Chunks.setText(str(settings.get("hydra_chunks")))
         if settings.get("hydra_node_schedule"):
             self._select_node_schedule(settings.get("hydra_node_schedule"))
-        if settings.get("hydra_trip_file"):
-            self.lineEdit_TripFile.setText(settings.get("hydra_trip_file"))
+        trip = self._hydra_trip_file(settings)
+        if trip:
+            self.lineEdit_TripFile.setText(trip)
         if settings.get("hydra_out_dir"):
             self.lineEdit_OutDir.setText(settings.get("hydra_out_dir"))
         if settings.get("hydra_toll_policy"):
@@ -520,6 +524,37 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if path:
             self.lineEdit_OutDir.setText(path)
 
+    @staticmethod
+    def _hydra_layer(settings, kind):
+        """HyDRA's link/node layer name: the saved HyDRA pick, else the
+        scenario's assignment network (MSR outputs for an MSR scenario)."""
+        _lf, _nf, d_link, d_node = settings.assignment_network()
+        default = d_link if kind == "link" else d_node
+        saved = settings.get(f"hydra_{kind}_layer_name") or ""
+        tsm = settings.get(f"{kind}_layer_name") or ""
+        msr = settings.get(f"msr_{kind}_layer_name") or ""
+        if settings.is_msr() and saved and saved == tsm and default and default != tsm:
+            return default          # a TSM pick from before the scenario went MSR
+        if not settings.is_msr() and saved and msr and saved == msr:
+            return default          # an MSR pick from before the scenario went TSM
+        return saved or default
+
+    @staticmethod
+    def _hydra_trip_file(settings):
+        """HyDRA's trip list: the saved one, else the MSR trip list for an MSR
+        scenario or the agentPlans trip list -- never the interim TSM list in
+        an MSR scenario."""
+        msr = settings.get("msr_triplist_file") or ""
+        tsm = settings.get("triplist_file") or ""
+        saved = settings.get("hydra_trip_file") or ""
+        if settings.is_msr():
+            if (not saved or saved == tsm) and msr:
+                return msr
+            return saved
+        if saved and saved == msr:
+            return tsm or saved     # the MSR list belongs to an MSR scenario
+        return saved or tsm
+
     def _resolve_out_dir(self, settings):
         """User's output directory, defaulting to the scenario directory when
         blank (the panel-wide convention). Created if it does not exist."""
@@ -582,8 +617,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Inputs / outputs (blank output dir = scenario directory at run time)
         settings.set("hydra_trip_file", self.lineEdit_TripFile.text())
         settings.set("hydra_out_dir", self.lineEdit_OutDir.text().strip())
-        settings.set("link_layer_name", self.comboBox_LinkLayer.currentText())
-        settings.set("node_layer_name", self.comboBox_NodeLayer.currentText())
+        settings.set("hydra_link_layer_name", self.comboBox_LinkLayer.currentText())
+        settings.set("hydra_node_layer_name", self.comboBox_NodeLayer.currentText())
         # Meso / Micro
         settings.set("hydra_meso_ftypes", self.lineEdit_MesoFtypes.text())
         settings.set("hydra_micro_enabled", self.checkBox_Micro.isChecked())

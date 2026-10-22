@@ -244,6 +244,16 @@ def _add_layer(path, name):
 
 def _log(msg):
     tsm_history.log_action(msg, "agentAnalysis")
+    # While a one-window run is open (begin_run_console), the steps done inside
+    # QGIS show in it too, between the exes' own output.
+    try:
+        from . import model_run as _mr
+        if getattr(_mr, "_RUN_LOG", None):
+            import time as _t
+            with open(_mr._RUN_LOG, "a", encoding="utf-8", errors="replace") as f:
+                f.write("[%s] %s\n" % (_t.strftime("%H:%M:%S"), msg))
+    except Exception:
+        pass
 
 
 def _exe():
@@ -525,6 +535,43 @@ def _subarea_external_nodes(trips_path, inside_ids):
     return ext
 
 
+def _msr_subarea_defaults():
+    """MSR scenario (Project Settings > Model Resolution): the subarea inputs
+    default to the MSR region and network -- {config key: layer name or path}.
+    Boundary / zonal land use are loaded into the project when they are not, so
+    the dropdowns can show them. Empty for a Standard TSM scenario."""
+    from qgis.core import QgsProject, QgsVectorLayer
+    cfg = Config()
+    if not cfg.is_msr():
+        return {}
+    plugin_dir = cfg.get("plugin_dir") or os.path.dirname(__file__)
+
+    def layer_for(path, style=None):
+        if not (path and os.path.exists(path)):
+            return ""
+        want = os.path.normcase(os.path.abspath(path))
+        for lyr in QgsProject.instance().mapLayers().values():
+            src = lyr.source().split("|")[0] if hasattr(lyr, "source") else ""
+            if src and os.path.normcase(os.path.abspath(src)) == want:
+                return lyr.name()
+        lyr = QgsVectorLayer(path, os.path.splitext(os.path.basename(path))[0], "ogr")
+        if not lyr.isValid():
+            return ""
+        if style and os.path.exists(style):
+            lyr.loadNamedStyle(style)
+        QgsProject.instance().addMapLayer(lyr)
+        return lyr.name()
+
+    return {
+        "aa_sub_boundary_lyr": layer_for(cfg.get("msr_boundary_file")),
+        "aa_sub_zones_lyr": layer_for(cfg.get("zone_landuse_file"), os.path.join(
+            plugin_dir, "qgis_styles", "TSM_and_RPM_model_zones_landuse.qml")),
+        "aa_sub_nodes_lyr": cfg.get("msr_node_layer_name") or "",
+        "aa_sub_links_lyr": cfg.get("msr_link_layer_name") or "",
+        "aa_trips": cfg.get("msr_triplist_file") or "",
+    }
+
+
 def _tab_subarea(dlg):
     """Boundary and land use come from LOADED GPKG LAYERS (dropdowns); the
     interior-node CSV the CLI needs (network nodes + zone centroids inside the
@@ -532,11 +579,19 @@ def _tab_subarea(dlg):
     + the subarea trip list."""
     w = QWidget()
     v = QVBoxLayout(w)
+    # MSR scenario: default to the MSR region / zonal land use / network / trip
+    # list wherever nothing was saved (a saved pick wins -- a subarea can differ
+    # from the MSR region).
+    msr_defaults = _msr_subarea_defaults()
 
     def combo_row(label, geom, key):
         lay = QHBoxLayout()
         lab = QLabel(label, w); lab.setMinimumWidth(150)
         cb = _layer_combo(w, geom, key)
+        if not Config().get(key) and msr_defaults.get(key):
+            i = cb.findText(msr_defaults[key])
+            if i >= 0:
+                cb.setCurrentIndex(i)
         lay.addWidget(lab); lay.addWidget(cb, 1)
         return lay, cb
 
@@ -548,6 +603,8 @@ def _tab_subarea(dlg):
         v.addLayout(lay)
     tl_lay, w.trips = _browse_row(w, "trip list (csv/gz)",
                                   filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
+    if not w.trips.text().strip() and msr_defaults.get("aa_trips"):
+        w.trips.setText(msr_defaults["aa_trips"])
     v.addLayout(tl_lay)
     _align_labels((b_lay, z_lay, n_lay, l_lay, tl_lay))
     # Opt-in, because it is the expensive half of the extraction: every EI/EE
@@ -645,17 +702,44 @@ def _tab_subarea(dlg):
                                 "Boundary, zones, node & link layers, the common agentPaths "
                                 "duckdb, trip list and trip-list output are required.")
             return
+        # One live run-log window for the whole extraction (agentAnalysis, the
+        # in-QGIS steps, subarea finalize), beside the subarea trip list.
+        from .model_run import begin_run_console
+        begin_run_console(os.path.join(os.path.dirname(os.path.abspath(w.out_trips.text())),
+                                       "Subarea.log"), "Subarea - run log")
+        _log("Subarea extraction: boundary '%s', zones '%s', nodes '%s', links '%s'"
+             % (boundary.name(), zones.name(), nodes_lyr.name(), links_lyr.name()))
         try:
             # 1) network nodes inside the boundary
             sel_nodes = processing.run("native:extractbylocation",
                 {"INPUT": nodes_lyr, "PREDICATE": [0], "INTERSECT": boundary,
                  "OUTPUT": "memory:sub_nodes"})["OUTPUT"]
-            # 2) zone centroids inside (TAZ ids double as centroid node ids)
+            # 2) zone centroids inside (zone ids double as centroid node ids).
+            #    The id is TAZ (TSM land use), ZONE (Project Settings' zonal
+            #    land use: TSM ids outside, PopSyn_Index inside an MSR region)
+            #    or TSM_NG. A zone is inside when a point INSIDE it lies in the
+            #    boundary: "intersects" also took every zone that only shares
+            #    an edge with the boundary -- all of an MSR region's neighbours.
             sel_zones = processing.run("native:extractbylocation",
                 {"INPUT": zones, "PREDICATE": [0], "INTERSECT": boundary,
                  "OUTPUT": "memory:sub_zones"})["OUTPUT"]
             zfields = [f.name().upper() for f in sel_zones.fields()]
-            zi = zfields.index("TAZ") if "TAZ" in zfields else 0
+            zi = next((zfields.index(c) for c in ("TAZ", "ZONE", "TSM_NG") if c in zfields), -1)
+            if zi < 0:
+                QMessageBox.warning(dlg, "Subarea",
+                                    "The land use zones layer needs a zone id field: TAZ, ZONE "
+                                    "or TSM_NG.")
+                return
+            from qgis.core import QgsGeometry, QgsCoordinateTransform
+            bgeoms = []
+            xf = QgsCoordinateTransform(boundary.crs(), sel_zones.crs(), QgsProject.instance())
+            for bf in boundary.getFeatures():
+                g = QgsGeometry(bf.geometry())
+                g.transform(xf)
+                bgeoms.append(g)
+            bpoly = QgsGeometry.unaryUnion(bgeoms)
+            inside_zones = [feat for feat in sel_zones.getFeatures()
+                            if bpoly.contains(feat.geometry().pointOnSurface())]
             nfields = [f.name().upper() for f in sel_nodes.fields()]
             ni = nfields.index("N") if "N" in nfields else 0
             nodes_csv = os.path.join(tempfile.gettempdir(), "subarea_nodes_ui.csv")
@@ -663,10 +747,12 @@ def _tab_subarea(dlg):
                 cw = _csv.writer(f); cw.writerow(["node"])
                 for feat in sel_nodes.getFeatures():
                     cw.writerow([int(feat[ni])])
-                for feat in sel_zones.getFeatures():
+                for feat in inside_zones:
                     cw.writerow([int(feat[zi])])
-            _log("Subarea: %d nodes + %d zone centroids inside boundary -> %s"
-                 % (sel_nodes.featureCount(), sel_zones.featureCount(), nodes_csv))
+            _log("Subarea: %d nodes + %d zone centroids inside boundary (zone id %s; %d "
+                 "edge-only neighbours skipped) -> %s"
+                 % (sel_nodes.featureCount(), len(inside_zones), sel_zones.fields()[zi].name(),
+                    sel_zones.featureCount() - len(inside_zones), nodes_csv))
             # 3) subarea links. Two different rules, because a centroid
             #    connector is an abstraction rather than a road:
             #      real links  -- keep the WHOLE link if it touches the boundary
@@ -767,7 +853,7 @@ def _tab_subarea(dlg):
                 for feat in sel_nodes.getFeatures():
                     inside_ids.add(int(feat[ni]))
                 zone_ids = set()
-                for feat in sel_zones.getFeatures():
+                for feat in inside_zones:
                     try:
                         zone_ids.add(int(feat[zi]))
                     except (TypeError, ValueError):
@@ -814,7 +900,10 @@ def _tab_subarea(dlg):
                 w.out_links.text() or "(links skipped)",
                 w.out_nodes.text() or "(nodes skipped)", n_ext,
                 w.out_trips.text(), "".join("\n" + p for p in fin)))
-    run.clicked.connect(go)
+    # closes_run_console: the run-log window closes before any message box.
+    from .model_run import closes_run_console
+    go = closes_run_console(go)
+    run.clicked.connect(lambda: go())
     return w
 
 

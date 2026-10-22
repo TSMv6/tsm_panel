@@ -243,18 +243,37 @@ class Config:
     def full_run_active(cls):
         return Config._full_run_active
 
-    def resolve_network_paths(self, link_sel="", node_sel=""):
+    def is_msr(self):
+        """Project Settings > Model Resolution is MSR (TSM outside + RPM inside)."""
+        return self.get("model_structure") == "MSR"
+
+    def assignment_network(self):
+        """(link_file, node_file, link_layer_name, node_layer_name) the
+        ASSIGNMENT reads: the Link Consolidator's MSR network for an MSR
+        scenario, else the TSM network. Skims and Skimmy always use TSM."""
+        if self.is_msr() and self.get("MSR_Link_File"):
+            return (self.get("MSR_Link_File") or "", self.get("MSR_Node_File") or "",
+                    self.get("msr_link_layer_name") or "", self.get("msr_node_layer_name") or "")
+        return (self.get("TSM_Link_File") or "", self.get("TSM_Node_File") or "",
+                self.get("link_layer_name") or "", self.get("node_layer_name") or "")
+
+    def resolve_network_paths(self, link_sel="", node_sel="", assignment=False):
         """Resolve (link_path, node_path) for a downstream step. A standalone run
         uses the dialog's picked layer paths (link_sel/node_sel); in a full run,
         or when a selection is empty, fall back to the Link Consolidator outputs
-        (TSM_Link_File / TSM_Node_File) so the chain works even with no layers
-        loaded. Returns file paths (possibly empty strings)."""
+        so the chain works even with no layers loaded: TSM_Link_File /
+        TSM_Node_File, or -- assignment=True in an MSR scenario -- MSR_Link_File /
+        MSR_Node_File. Returns file paths (possibly empty strings)."""
         link = (link_sel or "").strip()
         node = (node_sel or "").strip()
+        if assignment:
+            d_link, d_node = self.assignment_network()[:2]
+        else:
+            d_link, d_node = self.get("TSM_Link_File"), self.get("TSM_Node_File")
         if Config._full_run_active or not link:
-            link = (self.get("TSM_Link_File") or link or "").strip()
+            link = (d_link or link or "").strip()
         if Config._full_run_active or not node:
-            node = (self.get("TSM_Node_File") or node or "").strip()
+            node = (d_node or node or "").strip()
         return link, node
 
     def save_to_file(self, file_path):

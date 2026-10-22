@@ -68,6 +68,26 @@ def regional_models(landuse):
     return sorted(v for v in vals if v.lower() != "non-mpo")
 
 
+def solid_boundary(geom, close_m=None):
+    """The region's zones dissolved into one SOLID outline. The land use has
+    no polygon under interchanges, roads and water, so the plain union is full
+    of holes and inlets (CFRPM: 29 pieces, 186 holes) and a subarea cut along
+    it makes every road through a gap an external station. Holes are filled,
+    inlets narrower than 2 x close_m are closed (buffer out, buffer back), and
+    holes the closing left are filled again. close_m defaults to the Config
+    msr_boundary_close_m, else 250 m (CFRPM: 2 pieces, 0 holes, area +1.9%)."""
+    if close_m is None:
+        try:
+            from .tsm_settings import Config
+            close_m = float(Config().get("msr_boundary_close_m") or 250)
+        except (ImportError, ValueError):
+            close_m = 250.0
+    g = geom.removeInteriorRings()
+    if close_m > 0:
+        g = g.buffer(close_m, 8).buffer(-close_m, 8).removeInteriorRings()
+    return g if not g.isEmpty() else geom
+
+
 def output_paths(landuse_out):
     """(zonal land use, MSR boundary, MSR zones csv) named from the zonal land
     use: <dir>/<name>.gpkg -> <name>_msr_boundary.gpkg, <name>_msr_zones.csv."""
@@ -239,7 +259,7 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print,
                      ("rpm_zones", QMetaType.Type.Int)):
             bf.append(QgsField(n, t))
         feat = QgsFeature(bf)
-        feat.setGeometry(QgsGeometry.unaryUnion([f.geometry() for f in rpm_rows]))
+        feat.setGeometry(solid_boundary(QgsGeometry.unaryUnion([f.geometry() for f in rpm_rows])))
         feat.setAttributes([", ".join(sorted({str(f["Model"]) for f in rpm_rows})),
                             len(region), len(rpm_rows)])
         _write_gpkg(boundary_gpkg, "msr_region_boundary", bf, QgsWkbTypes.Type.MultiPolygon,

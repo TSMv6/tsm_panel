@@ -854,12 +854,7 @@ class TsmPanelPlugin():
                 grid.setColumnMinimumWidth(1, STATUS_WIDTH)
         # Give every status label the same fixed footprint so text changes
         # don't resize the column.
-        status_labels = [
-            "label_Many2One", "label_PopSIM", "label_Skimmy", "label_SDTRes",
-            "label_SDTVis", "label_LDTRes", "label_LDTVis", "label_Truck",
-            "label_TripList", "label_TSMAssign", "label_SubAssign", "label_Hydra",
-        ]
-        for name in status_labels:
+        for name in self.STATUS_LABELS:
             lbl = getattr(self.ui, name, None)
             if not isinstance(lbl, _QLabel):
                 continue
@@ -957,13 +952,19 @@ class TsmPanelPlugin():
         label.setStyleSheet("background-color: yellow; color: black; padding: 4px; border-radius: 4px;")
         self.log_message(f"{self._step_name(label)}: running…")
 
+    # Every step's status label, in panel order. One list for sizing and for
+    # Clear Status, so a new step cannot be left out of either (HyDRA was).
+    STATUS_LABELS = (
+        "label_Many2One", "label_PopSIM", "label_Skimmy", "label_SDTRes",
+        "label_SDTVis", "label_LDTRes", "label_LDTVis", "label_Truck",
+        "label_TripList", "label_TSMAssign", "label_SubAssign", "label_Hydra",
+    )
+
     def reset_all_step_labels(self):
-        for label in [
-            self.ui.label_Many2One, self.ui.label_PopSIM,
-            self.ui.label_LDTRes, self.ui.label_LDTVis,
-            self.ui.label_SDTRes, self.ui.label_SDTVis, self.ui.label_Skimmy,
-            self.ui.label_TripList, self.ui.label_TSMAssign, self.ui.label_SubAssign
-        ]:
+        for name in self.STATUS_LABELS:
+            label = getattr(self.ui, name, None)
+            if label is None:
+                continue
             label.setText("")
             label.setStyleSheet("")
         # The Messages log is a persistent history, so it is intentionally NOT
