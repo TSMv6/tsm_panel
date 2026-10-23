@@ -1533,6 +1533,235 @@ PCE.</p>
     return tb
 
 
+# ---------------------------------------------------- link performance tab --
+# Breakdown label -> (engine link_volume_by_<kind> stem or "" for the inline
+# purpose columns, agentAnalysis linkvol --by value). None = no breakdown.
+_LP_BY = [("None - totals only", None, None),
+          ("Purpose", "", "purpose"),
+          ("Market", "market", "market"),
+          ("Market x VOT (marketVot)", "segment", "marketvot"),
+          ("VOT bins ($/hr)", "votbin", "votbin")]
+
+
+def _combo_saved(parent, items, key, default=0):
+    """Combo of `items` (labels) persisted by label under `key`."""
+    c = QComboBox(parent)
+    c.addItems(items)
+    saved = Config().get(key)
+    c.setCurrentIndex(items.index(saved) if saved in items else default)
+    c.currentTextChanged.connect(lambda t: Config().set(key, t))
+    return c
+
+
+def _labeled(parent, text, widget):
+    lay = QHBoxLayout()
+    lab = QLabel(text, parent)
+    lab.setMinimumWidth(150)
+    lay.addWidget(lab)
+    lay.addWidget(widget, 1)
+    return lay
+
+
+def _selected_links_csv(dlg):
+    """A,B of the features selected on the dialog's link layer, as a temp CSV
+    (the link filter of summarize linkperf / agentAnalysis linkvol)."""
+    lyr = dlg.comboBox_linkLayer.currentData()
+    if lyr is None:
+        return None, "Pick the Link layer at the top of the dialog."
+    names = [f.name() for f in lyr.fields()]
+    up = [n.upper() for n in names]
+    if "A" not in up or "B" not in up:
+        return None, "The link layer needs A and B fields."
+    fa, fb = names[up.index("A")], names[up.index("B")]
+    feats = list(lyr.selectedFeatures())
+    if not feats:
+        return None, "No links are selected on %s." % lyr.name()
+    path = os.path.join(tempfile.gettempdir(), "linkperf_links.csv")
+    with open(path, "w", newline="") as f:
+        wr = csv.writer(f)
+        wr.writerow(["A", "B"])
+        for ft in feats:
+            wr.writerow([ft[fa], ft[fb]])
+    return path.replace("\\", "/"), "%d selected links" % len(feats)
+
+
+def _tab_linkperf(dlg):
+    """Link performance by link x time period, from the run's link_performance
+    files (loaded volumes, speed, queue, VMT, VHT) or from agentPaths.duckdb
+    (routed demand by departure time), with an optional breakdown."""
+    w = QWidget()
+    v = QVBoxLayout(w)
+
+    src_box = QGroupBox("Source", w)
+    sl = QVBoxLayout(src_box)
+    w.rb_loaded = QRadioButton("Loaded network: the link performance files above "
+                               "(volume, speed, queue, VMT, VHT, toll)", src_box)
+    w.rb_routed = QRadioButton("Routed demand: agentPaths duckdb above "
+                               "(volume by departure time; no speed or queue)", src_box)
+    w.rb_routed.setToolTip(
+        "Every agent's vehicles on every link of its path, in the period it DEPARTS, "
+        "before network loading -- higher than the loaded volumes wherever the "
+        "network could not serve all demand. Use it for breakdowns the run did not write.")
+    sl.addWidget(w.rb_loaded)
+    sl.addWidget(w.rb_routed)
+    v.addWidget(src_box)
+    routed0 = Config().get("lp_source") == "routed"
+    w.rb_routed.setChecked(routed0)
+    w.rb_loaded.setChecked(not routed0)
+
+    w.by = _combo_saved(w, [b[0] for b in _LP_BY], "lp_by")
+    v.addLayout(_labeled(w, "break volumes down by", w.by))
+    w.res = _combo_saved(w, ["15 min", "30 min", "60 min"], "lp_res", default=2)
+    v.addLayout(_labeled(w, "time period", w.res))
+
+    bd_lay, w.bd_file = _browse_row(w, "breakdown file (loaded)",
+                                    filt="CSV (*.csv);;All Files (*)", key="lp_bd_file")
+    w.bd_file.setPlaceholderText("auto: link_volume_by_<kind>.csv beside the macro file")
+    w.bd_file.setToolTip(
+        "Written by HyDRA when the breakdown is ticked in its Outputs (Market, "
+        "Market x VOT, VOT bins). Purpose needs no file: it is in the link "
+        "performance files.")
+    v.addLayout(bd_lay)
+    tl_lay, w.trips = _browse_row(w, "trip list (routed, market)",
+                                  filt="Trip list (*.csv *.gz);;All Files (*)", key="aa_trips")
+    w.trips.setToolTip("The tripList that produced this agentPaths.duckdb -- needed for "
+                       "Market / Market x VOT from the duckdb (joined by row number).")
+    v.addLayout(tl_lay)
+    w.vot_edges = QLineEdit(Config().get("lp_vot_edges") or "10,20,40,80", w)
+    w.vot_edges.setToolTip("VOT bin edges in $/hr for routed demand (the loaded "
+                           "breakdown uses the run's VOT_BIN_EDGES).")
+    w.vot_edges.editingFinished.connect(lambda: Config().set("lp_vot_edges", w.vot_edges.text()))
+    v.addLayout(_labeled(w, "VOT bin edges (routed)", w.vot_edges))
+
+    w.cb_sel = _check(w, "Only the links selected on the link layer (recommended "
+                         "statewide at 15 min)", "lp_selected")
+    v.addWidget(w.cb_sel)
+    out_lay, w.out = _browse_row(w, "output (csv)", mode="save",
+                                 filt="CSV (*.csv)", key="lp_out")
+    v.addLayout(out_lay)
+    w.cb_gpkg = _check(w, "Also write a GeoPackage layer (one feature per link and "
+                          "period, for the Temporal Controller; loaded source)", "lp_gpkg")
+    v.addWidget(w.cb_gpkg)
+    run = QPushButton("Build Link Performance", w)
+    v.addWidget(run)
+    v.addStretch(1)
+
+    def sync():
+        routed = w.rb_routed.isChecked()
+        Config().set("lp_source", "routed" if routed else "loaded")
+        _set_row_enabled(bd_lay, not routed)
+        _set_row_enabled(tl_lay, routed)
+        w.vot_edges.setEnabled(routed)
+        w.cb_gpkg.setEnabled(not routed)
+    w.rb_routed.toggled.connect(lambda _: sync())
+    sync()
+
+    def go():
+        label, stem, by_aa = _LP_BY[w.by.currentIndex()]
+        res = w.res.currentText().split()[0]
+        out = w.out.text().strip()
+        if not out:
+            QMessageBox.warning(dlg, "Link Performance", "Pick the output CSV.")
+            return
+        out = _ensure_ext(out, ".csv")
+        w.out.setText(out)
+        link_csv = None
+        if w.cb_sel.isChecked():
+            link_csv, msg = _selected_links_csv(dlg)
+            if not link_csv:
+                QMessageBox.warning(dlg, "Link Performance", msg)
+                return
+            _log("Link Performance: " + msg)
+
+        if w.rb_routed.isChecked():
+            db = _db(dlg)
+            if not db or not os.path.exists(db):
+                QMessageBox.warning(dlg, "Link Performance", "Set the agentPaths duckdb above.")
+                return
+            args = ["linkvol", "--db", db, "--out", out, "--time-res", res, "--mem", "32GB"]
+            if by_aa:
+                args += ["--by", by_aa]
+                if by_aa == "votbin":
+                    args += ["--vot-edges", w.vot_edges.text().strip() or "10,20,40,80"]
+                if by_aa in ("market", "marketvot"):
+                    if not w.trips.text().strip():
+                        QMessageBox.warning(dlg, "Link Performance",
+                                            "Market breakdowns from the duckdb need the trip list "
+                                            "that produced it.")
+                        return
+                    args += ["--trips", w.trips.text().strip()]
+            if link_csv:
+                args += ["--link-list", link_csv]
+            r = _run(args, "agentAnalysis_linkvol.log")
+            if r.returncode != 0:
+                QMessageBox.critical(dlg, "Link Performance", "agentAnalysis linkvol failed - see History log.")
+                return
+            QMessageBox.information(dlg, "Link Performance",
+                                    "Routed demand by %s-min departure period written:\n%s" % (res, out))
+            return
+
+        tiers = _link_performance_files(dlg)
+        if not tiers:
+            QMessageBox.warning(dlg, "Link Performance",
+                                "Set the macroDTA link performance file above (meso / micro optional).")
+            return
+        kind = "none" if by_aa is None else ("purpose" if stem == "" else stem)
+        bd = ""
+        if stem:
+            bd = w.bd_file.text().strip() or os.path.join(
+                os.path.dirname(tiers[0]), "link_volume_by_%s.csv" % stem).replace("\\", "/")
+            if not os.path.exists(bd):
+                QMessageBox.warning(
+                    dlg, "Link Performance",
+                    "%s needs %s.\n\nTick it under HyDRA > Outputs > Extra volume breakdowns "
+                    "and re-run (or resume with Outputs only), or use Routed demand." %
+                    (label, os.path.basename(bd)))
+                return
+        lines = ['name = "link_performance"', 'mode = "linkperf"', 'group_by = ["A", "B"]',
+                 "time_res = %s" % res, 'breakdown = "%s"' % kind]
+        for sec, p in zip(("input", "input2", "input3"), tiers):
+            lines += ["[%s]" % sec, 'path = "%s"' % p]
+        if bd:
+            lines += ["[breakdown]", 'path = "%s"' % bd]
+        if link_csv:
+            lines += ["[filter]", 'links = "%s"' % link_csv]
+        gpkg = ""
+        if w.cb_gpkg.isChecked():
+            lyr = dlg.comboBox_linkLayer.currentData()
+            if lyr is None:
+                QMessageBox.warning(dlg, "Link Performance", "The GeoPackage needs the Link layer above.")
+                return
+            gpkg = os.path.splitext(out)[0] + ".gpkg"
+            _drop_layers_for(gpkg)
+            lines += ["[join]", 'path = "%s"' % _layer_path(lyr).replace("\\", "/")]
+        lines += ["[output]", 'csv = "%s"' % out.replace("\\", "/")]
+        if gpkg:
+            lines += ['gpkg = "%s"' % gpkg.replace("\\", "/")]
+        ctl = os.path.splitext(out)[0] + "_linkperf.toml"
+        with open(ctl, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        settings = Config()
+        exe = settings.app_exe("utilities/summarize.exe")
+        _log("Link Performance: summarize " + ctl)
+        r = settings.run_app([exe, ctl], log_path=os.path.splitext(ctl)[0] + ".log", console=True)
+        if r.returncode != 0:
+            QMessageBox.critical(dlg, "Link Performance", "summarize linkperf failed - see %s.log" %
+                                 os.path.splitext(ctl)[0])
+            return
+        note = ""
+        if gpkg and os.path.exists(gpkg):
+            _add_layer(gpkg, "Link Performance (%s min)" % res)
+            note = "\nGeoPackage added to the map: %s" % gpkg
+        QMessageBox.information(dlg, "Link Performance",
+                                "Link performance by %s-min period written:\n%s%s" % (res, out, note))
+    run.clicked.connect(go)
+    return w
+
+
+def _ensure_ext(path, ext):
+    return path if path.lower().endswith(ext) else path + ext
+
+
 def add_agent_analysis_tabs(dlg):
     """Append the agentAnalysis QTabWidget under the Summarization controls
     (bottom of the dialog, SubareaAssignment-style)."""
@@ -1544,6 +1773,8 @@ def add_agent_analysis_tabs(dlg):
     dlg._aa_subarea = _tab_subarea(dlg)
     dlg._aa_selectlink = _tab_selectlink(dlg)
     dlg._aa_turns = _tab_turns(dlg)
+    dlg._aa_linkperf = _tab_linkperf(dlg)
+    tabs.addTab(dlg._aa_linkperf, "Link Performance")
     tabs.addTab(dlg._aa_trace, "Path Trace")
     tabs.addTab(dlg._aa_subarea, "Subarea")
     tabs.addTab(dlg._aa_selectlink, "Select Link")

@@ -91,6 +91,11 @@ link's `NSignals` -- the count of signalized nodes along it, from netPrep (the
 GeoMaster node layer's `Signal` field). Saturation flow, cycle, g/C and per-FTYPE
 g/C are set here; there are no per-intersection timing plans yet.
 
+**Extra volume breakdowns** (Outputs): Purpose is always in the link performance
+files; Market, Market x VOT and VOT bins (edges in $/hr) each write a
+`link_volume_by_<kind>.csv` for Summarization > Link Performance. Each is about the
+size of a link performance file.
+
 **Build visualizer layers after the run** (Outputs) adds Meso Segments (needs the
 Segment log) and Micro Lanes (needs a micro corridor) to the map.
 

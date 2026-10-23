@@ -1747,6 +1747,57 @@
                </property>
               </widget>
              </item>
+             <item row="2" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="hLayout_breakdowns">
+               <item>
+                <widget class="QLabel" name="label_breakdowns">
+                 <property name="text">
+                  <string>Extra volume breakdowns:</string>
+                 </property>
+                 <property name="toolTip">
+                  <string>Purpose is always in the link performance files. Each ticked breakdown is written to its own link_volume_by_&lt;kind&gt;.csv (one row per link x 15 min, columns sum to the volume) for the Summarization Link Performance tab. Each adds a file about the size of the link performance file.</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_BdMarket">
+                 <property name="text">
+                  <string>Market</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_BdSegment">
+                 <property name="text">
+                  <string>Market x VOT</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_BdVotBin">
+                 <property name="text">
+                  <string>VOT bins</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_VotEdges">
+                 <property name="text">
+                  <string>10,20,40,80</string>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>110</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string>VOT_BIN_EDGES - bin edges in $/hr (&lt;10, 10-20, 20-40, 40-80, 80+).</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
              <item row="1" column="0" colspan="2">
               <widget class="QCheckBox" name="checkBox_BuildViz">
                <property name="text">

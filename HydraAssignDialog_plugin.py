@@ -108,7 +108,11 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("checkBox_MesoSegmentLog", "hydra_meso_segment_log", "check"),
              ("doubleSpinBox_SegLen", "hydra_seg_len", "spin"),
              ("lineEdit_SegFile", "hydra_seg_file", "text"),
-             ("checkBox_BuildViz", "hydra_build_viz", "check"))
+             ("checkBox_BuildViz", "hydra_build_viz", "check"),
+             ("checkBox_BdMarket", "hydra_bd_market", "check"),
+             ("checkBox_BdSegment", "hydra_bd_segment", "check"),
+             ("checkBox_BdVotBin", "hydra_bd_votbin", "check"),
+             ("lineEdit_VotEdges", "hydra_vot_edges", "text"))
 
 # Link tiers and probes sub-tabs: widget key -> (layer kind, field name).
 TAG_TABS = {"Meso": ("link", "dta_meso"), "Micro": ("link", "dta_micro"),
@@ -1206,7 +1210,15 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write(f"THREADS               {self.lineEdit_Threads.text().strip() or '0'}\n")
                 # Per-purpose volume columns in every link_performance_
                 # <Macro|Meso|Micro>DTA.csv (vol_<purpose> sums to volume).
-                f.write("LINK_VOLUME_BREAKDOWN Purpose\n")
+                # Purpose inline in link_performance; each ticked extra goes to
+                # its own link_volume_by_<kind>.csv (Summarization > Link Performance).
+                extra = [k for box, k in ((self.checkBox_BdMarket, "Market"),
+                                          (self.checkBox_BdSegment, "Segment"),
+                                          (self.checkBox_BdVotBin, "VotBin"))
+                         if box.isChecked()]
+                f.write("LINK_VOLUME_BREAKDOWN %s\n" % ", ".join(["Purpose"] + extra))
+                if self.checkBox_BdVotBin.isChecked():
+                    f.write(f"VOT_BIN_EDGES         {self.lineEdit_VotEdges.text().strip() or '10,20,40,80'}\n")
                 if meso:
                     f.write(f"MESO_FTYPE            {meso}\n")
                     # Anti-gridlock breaker -- MESO ONLY, so these keys are
