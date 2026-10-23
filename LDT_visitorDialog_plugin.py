@@ -155,8 +155,12 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             _yr = int(settings.get("scenarioYear") or settings.get("networkYear") or BASE_YEAR)
         except (TypeError, ValueError):
             _yr = BASE_YEAR
+        # Remembered for update_settings: only a future year's box is a user
+        # choice worth saving.
+        self._base_year_run = _yr <= BASE_YEAR
         if _yr <= BASE_YEAR:
             self.checkBox_incremental.setChecked(False)
+            self.checkBox_incremental.setEnabled(False)
             self.checkBox_incremental.setToolTip(
                 f"Base year ({BASE_YEAR}) has no prior-year LDT output to increment from, "
                 "so it always runs absolute (all US HH ≤ scenario year). Locked for the base year.")
@@ -326,11 +330,13 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         settings.set("LDT_visitor_userRef", self.checkBox_userRef.isChecked())
         settings.set("LDT_visitor_userRef_filepath", self.lineEdit_prevOut.text().strip())
         settings.set("LDT_visitor_absolute", not self.checkBox_incremental.isChecked())
-        # Only record a *chosen* absolute/incremental preference. For the base
-        # year the box is forced on and disabled, so writing it would poison the
-        # next future-year scenario that inherits this json.
-        settings.set("LDT_visitor_absolute_future",
-                     not self.checkBox_incremental.isChecked())
+        # Run incremental is saved for a future year, where it is the user's
+        # choice, so reopening -- or re-running -- the scenario keeps it. The base
+        # year's box is forced off and locked; writing it would turn the next
+        # future-year scenario that starts from this json into an absolute run.
+        if not getattr(self, "_base_year_run", False):
+            settings.set("LDT_visitor_absolute_future",
+                         not self.checkBox_incremental.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
         if notify:
             QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
