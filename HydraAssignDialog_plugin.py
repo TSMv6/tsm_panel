@@ -110,11 +110,9 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("lineEdit_SegFile", "hydra_seg_file", "text"),
              ("checkBox_BuildViz", "hydra_build_viz", "check"))
 
-# Tag-field combo label -> (layer kind, field name).
-TAG_FIELDS = {"dta_meso (links)": ("link", "dta_meso"),
-              "dta_micro (links)": ("link", "dta_micro"),
-              "probe (links)": ("link", "probe"),
-              "probe (nodes)": ("node", "probe")}
+# Link tiers and probes sub-tabs: widget key -> (layer kind, field name).
+TAG_TABS = {"Meso": ("link", "dta_meso"), "Micro": ("link", "dta_micro"),
+            "Probe": ("link", "probe"), "NodeProbe": ("node", "probe")}
 
 
 def read_checkpoint_header(path):
@@ -214,13 +212,14 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.comboBox_Macro.currentTextChanged.connect(lambda _: self._sync_loader_controls())
         # Meso / Micro tab: tiers and probes from the HyDRA layers, segment file,
         # outer loops (twoway_full only).
-        self.btn_TagMeso.clicked.connect(lambda: self._tag_selected("link", "dta_meso"))
-        self.btn_TagMicro.clicked.connect(lambda: self._tag_selected("link", "dta_micro"))
-        self.btn_TagProbe.clicked.connect(lambda: self._tag_selected("link", "probe"))
-        self.btn_TagNodeProbe.clicked.connect(lambda: self._tag_selected("node", "probe"))
-        self.btn_TagExpr.clicked.connect(self._tag_by_expression)
-        self.btn_TagClear.clicked.connect(self._tag_clear)
-        self.btn_TagRefresh.clicked.connect(self._refresh_tag_counts)
+        for key, (kind, field) in TAG_TABS.items():
+            getattr(self, f"btn_Tag{key}Sel").clicked.connect(
+                lambda _=False, k=kind, f=field: self._tag_selected(k, f))
+            getattr(self, f"btn_Tag{key}Expr").clicked.connect(
+                lambda _=False, k=kind, f=field: self._tag_by_expression(k, f))
+            getattr(self, f"btn_Tag{key}Clear").clicked.connect(
+                lambda _=False, k=kind, f=field: self._tag_clear(k, f))
+        self.tabWidget_Tags.currentChanged.connect(lambda _: self._refresh_tag_counts())
         self.browse_SegFile.clicked.connect(
             lambda: self.select_file(self.lineEdit_SegFile, "Segments (*.csv)"))
         self.comboBox_Coupling.currentTextChanged.connect(self._sync_micro_outer)
@@ -784,8 +783,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         n = self._write_flags(lyr, field, fids, 1)
         self._refresh_tag_counts(note="%s = 1 set on %d %s." % (field, n, "links" if kind == "link" else "nodes"))
 
-    def _tag_by_expression(self):
-        kind, field = TAG_FIELDS[self.comboBox_TagField.currentText()]
+    def _tag_by_expression(self, kind, field):
         lyr = self._tag_layer(kind)
         if lyr is None:
             return
@@ -806,8 +804,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         n = self._write_flags(lyr, field, fids, 1)
         self._refresh_tag_counts(note="%s = 1 set on %d features matching the expression." % (field, n))
 
-    def _tag_clear(self):
-        kind, field = TAG_FIELDS[self.comboBox_TagField.currentText()]
+    def _tag_clear(self, kind, field):
         lyr = self._tag_layer(kind)
         if lyr is None or lyr.fields().indexOf(field) < 0:
             return
@@ -841,9 +838,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             if lyr is None:
                 continue
             n = len(self._flagged_ids(lyr, field))
-            parts.append("%s %s: %d" % ("link" if kind == "link" else "node", field, n))
-        text = " · ".join(parts) if parts else "Pick the HyDRA link and node layers to see the tags."
-        if any(p.startswith("link dta_micro") and not p.endswith(": 0") for p in parts) \
+            parts.append("%s %s: %s" % ("link" if kind == "link" else "node", field, f"{n:,}"))
+        text = ("Tagged: " + " · ".join(parts)) if parts else \
+            "Pick the HyDRA link and node layers to see the tags."
+        if any(x.startswith("link dta_micro") and not x.endswith(": 0") for x in parts) \
                 and not self.checkBox_Micro.isChecked():
             text += "\nMicro corridor is off: dta_micro links run as macro/meso until it is checked."
         self.label_TagCounts.setText(text + ("\n" + note if note else ""))
