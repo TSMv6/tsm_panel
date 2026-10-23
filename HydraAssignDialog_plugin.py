@@ -238,7 +238,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Advanced; Solver/VDF, Equilibrium, Demand). A QTabWidget reserves the
         # height of its TALLEST page, so without this the short tabs would show
         # a band of dead space sized for Advanced.
-        for _t in (self.tabWidget_DTA, self.tabWidget_STA, self.tabWidget_Engine):
+        for _t in (self.tabWidget_Tags, self.tabWidget_MesoMicro, self.tabWidget_DTA,
+                   self.tabWidget_STA, self.tabWidget_Engine):
             _t.currentChanged.connect(self._fit_tabs)
         self._fit_tabs()
         self.comboBox_Macro.currentIndexChanged.connect(self._refresh_run_enabled)
@@ -432,6 +433,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
     def _fit_tabs(self, *_):
         """Re-fit the sub-tabs first, then the engine tabs that contain them --
         the outer frame's height depends on what the inner ones settled at."""
+        self._fit_one_tab(self.tabWidget_Tags)        # innermost first
+        self._fit_one_tab(self.tabWidget_MesoMicro)
         self._fit_one_tab(self.tabWidget_DTA)
         self._fit_one_tab(self.tabWidget_STA)
         self._fit_one_tab(self.tabWidget_Engine)
