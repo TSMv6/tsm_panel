@@ -65,6 +65,35 @@ model, and are greyed out for the node run modes.
   (O · D · slot · `marketVot`). Auto follows the trip list: a 15-min agentPlans
   output gets 15-min keys, a 30-min output 30-min keys.
 
+### Meso / Micro tab: time steps, diagnostics, tiers and probes
+
+- **Meso time step** (`MESO_DT_SEC`, 6 s) and **Micro time step** (`MICRO_DT_SEC`,
+  0.1 / 0.2 / 0.5 s). **Outer loops** (`MICRO_OUTER`) is live only for `twoway_full`
+  coupling: how many times the statewide assignment re-runs against the corridor
+  (1 would equal `twoway_frozen`). **Micro probe every** N steps (`MICRO_PROBE_STRIDE`).
+- **Meso diagnostics**: interval, movement and segment logs (`meso_interval_log.csv`,
+  `meso_movement_log.csv`, `meso_segment_log.csv`), segment length or a segment file.
+- **Link tiers and probes**: the run reads three fields from the HyDRA layers --
+  `dta_meso` and `dta_micro` on links, `probe` on links and nodes (1 = on). Edit them
+  directly (attribute table, Field Calculator), or use the buttons: *Selected links →
+  meso / micro / probe*, *Selected nodes → probe*, *Set by expression…*, *Clear field*.
+  The counts line shows what is tagged. `dta_micro` links simulate only with **Micro
+  corridor** checked. Meso FTYPEs / Micro FTYPEs add whole facility types on top.
+  Probes: a meso link → `meso_probe.csv` (every 6 s), a micro link →
+  `micro_probe.csv` (per lane), a macro link or a node → `node_probe.csv` (per
+  inbound link per 60-s node step: offered, sent, held, backlog).
+
+### Engine tab: signals
+
+**Signal delay on signalized links** (`SIGNAL_MODEL`) caps each signalized link's
+discharge at saturation flow × g/C and adds control delay per signal, using the
+link's `NSignals` -- the count of signalized nodes along it, from netPrep (the
+GeoMaster node layer's `Signal` field). Saturation flow, cycle, g/C and per-FTYPE
+g/C are set here; there are no per-intersection timing plans yet.
+
+**Build visualizer layers after the run** (Outputs) adds Meso Segments (needs the
+Segment log) and Micro Lanes (needs a micro corridor) to the map.
+
 ### Checkpoint tab (DTA and STA)
 
 - **Write checkpoint** — `checkpoint.bin` in the output directory, every N

@@ -93,6 +93,29 @@ DEPART_SLOTS = {"Auto (match trip list)": "AUTO", "15 min": "15", "30 min": "30"
 RESUME_MODES = {"Up to Max Iterations": "max", "N more iterations": "more",
                 "Outputs only (no new iterations)": "outputs"}
 
+# Phase-1 DTA controls persisted in the scenario: (widget, settings key, kind).
+P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
+             ("lineEdit_SigSat", "hydra_sig_sat", "text"),
+             ("lineEdit_SigCycle", "hydra_sig_cycle", "text"),
+             ("lineEdit_SigGc", "hydra_sig_gc", "text"),
+             ("lineEdit_SigGcFt", "hydra_sig_gc_ft", "text"),
+             ("spinBox_MesoDt", "hydra_meso_dt", "spin"),
+             ("comboBox_MicroDt", "hydra_micro_dt", "combo"),
+             ("spinBox_MicroOuter", "hydra_micro_outer", "spin"),
+             ("spinBox_ProbeStride", "hydra_probe_stride", "spin"),
+             ("checkBox_MesoIntervalLog", "hydra_meso_interval_log", "check"),
+             ("checkBox_MesoMovementLog", "hydra_meso_movement_log", "check"),
+             ("checkBox_MesoSegmentLog", "hydra_meso_segment_log", "check"),
+             ("doubleSpinBox_SegLen", "hydra_seg_len", "spin"),
+             ("lineEdit_SegFile", "hydra_seg_file", "text"),
+             ("checkBox_BuildViz", "hydra_build_viz", "check"))
+
+# Tag-field combo label -> (layer kind, field name).
+TAG_FIELDS = {"dta_meso (links)": ("link", "dta_meso"),
+              "dta_micro (links)": ("link", "dta_micro"),
+              "probe (links)": ("link", "probe"),
+              "probe (nodes)": ("node", "probe")}
+
 
 def read_checkpoint_header(path):
     """Header of an afdta checkpoint.bin, or a string saying why it is unusable.
@@ -189,6 +212,19 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             w["write"].toggled.connect(refresh)
             iters.textChanged.connect(refresh)
         self.comboBox_Macro.currentTextChanged.connect(lambda _: self._sync_loader_controls())
+        # Meso / Micro tab: tiers and probes from the HyDRA layers, segment file,
+        # outer loops (twoway_full only).
+        self.btn_TagMeso.clicked.connect(lambda: self._tag_selected("link", "dta_meso"))
+        self.btn_TagMicro.clicked.connect(lambda: self._tag_selected("link", "dta_micro"))
+        self.btn_TagProbe.clicked.connect(lambda: self._tag_selected("link", "probe"))
+        self.btn_TagNodeProbe.clicked.connect(lambda: self._tag_selected("node", "probe"))
+        self.btn_TagExpr.clicked.connect(self._tag_by_expression)
+        self.btn_TagClear.clicked.connect(self._tag_clear)
+        self.btn_TagRefresh.clicked.connect(self._refresh_tag_counts)
+        self.browse_SegFile.clicked.connect(
+            lambda: self.select_file(self.lineEdit_SegFile, "Segments (*.csv)"))
+        self.comboBox_Coupling.currentTextChanged.connect(self._sync_micro_outer)
+        self.checkBox_Micro.toggled.connect(self._sync_micro_outer)
         self.run_Hydra.clicked.connect(lambda: self.run_hydra(show_message=True))
         # Save persists and LEAVES THE DIALOG OPEN (accepted -> update_settings,
         # never accept()), so settings can be saved and then run without
@@ -338,6 +374,24 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self.lineEdit_MesoFtypes.setText(settings.get("hydra_meso_ftypes"))
         self.toggle_micro(self.checkBox_Micro.isChecked())
         self._sync_loader_controls()
+        for attr, key, kind in P1_FIELDS:
+            v = settings.get(key)
+            if v in (None, ""):
+                continue
+            w = getattr(self, attr)
+            try:
+                if kind == "check":
+                    w.setChecked(str(v).lower() in ("true", "1", "yes"))
+                elif kind == "text":
+                    w.setText(str(v))
+                elif kind == "combo":
+                    self._select_combo(w, str(v))
+                else:
+                    w.setValue(type(w.value())(float(v)))
+            except (ValueError, TypeError):
+                pass
+        self._sync_micro_outer()
+        self._refresh_tag_counts()
 
         # Reopen on whichever engine tab was saved; Run re-enables only once the
         # tab's mode is set (a saved scenario carries that, a fresh one does not).
@@ -669,6 +723,163 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         edit = self.lineEdit_StaIters if p else self.lineEdit_Iters
         return edit.text().strip() or ("15" if p else "10")
 
+    # ---- link tiers and probes (Meso / Micro tab) ----------------------
+    def _tag_layer(self, kind):
+        """The HyDRA link or node layer picked at the top of the dialog."""
+        combo = self.comboBox_LinkLayer if kind == "link" else self.comboBox_NodeLayer
+        lyr = combo.currentData()
+        if lyr is None:
+            QMessageBox.warning(self, "Link tiers and probes",
+                                "Pick the HyDRA %s layer at the top of the dialog first." % kind)
+        return lyr
+
+    @staticmethod
+    def _ensure_flag_field(lyr, field):
+        """Index of an integer flag field on the layer, adding it when missing."""
+        idx = lyr.fields().indexOf(field)
+        if idx >= 0:
+            return idx
+        from qgis.core import QgsField
+        try:
+            from qgis.PyQt.QtCore import QMetaType
+            fld = QgsField(field, QMetaType.Type.Int)
+        except (ImportError, AttributeError, TypeError):
+            from qgis.PyQt.QtCore import QVariant
+            fld = QgsField(field, QVariant.Int)
+        if lyr.isEditable():
+            lyr.addAttribute(fld)
+        else:
+            lyr.dataProvider().addAttributes([fld])
+        lyr.updateFields()
+        return lyr.fields().indexOf(field)
+
+    def _write_flags(self, lyr, field, fids, value):
+        """Set `field` = value on the features fids. In the layer's edit buffer
+        when the user is editing it (they commit), else straight to the data
+        source."""
+        idx = self._ensure_flag_field(lyr, field)
+        if idx < 0:
+            QMessageBox.critical(self, "Link tiers and probes",
+                                 "Could not add the field %s to %s." % (field, lyr.name()))
+            return 0
+        fids = list(fids)
+        if lyr.isEditable():
+            for fid in fids:
+                lyr.changeAttributeValue(fid, idx, value)
+        else:
+            lyr.dataProvider().changeAttributeValues({fid: {idx: value} for fid in fids})
+            lyr.reload()
+        lyr.triggerRepaint()
+        return len(fids)
+
+    def _tag_selected(self, kind, field):
+        lyr = self._tag_layer(kind)
+        if lyr is None:
+            return
+        fids = lyr.selectedFeatureIds()
+        if not fids:
+            QMessageBox.information(self, "Link tiers and probes",
+                                    "Select features on %s first (the dialog stays open)." % lyr.name())
+            return
+        n = self._write_flags(lyr, field, fids, 1)
+        self._refresh_tag_counts(note="%s = 1 set on %d %s." % (field, n, "links" if kind == "link" else "nodes"))
+
+    def _tag_by_expression(self):
+        kind, field = TAG_FIELDS[self.comboBox_TagField.currentText()]
+        lyr = self._tag_layer(kind)
+        if lyr is None:
+            return
+        from qgis.gui import QgsExpressionBuilderDialog
+        from qgis.core import QgsExpression, QgsFeatureRequest
+        dlg = QgsExpressionBuilderDialog(lyr, "", self)
+        dlg.setWindowTitle("Set %s = 1 where..." % field)
+        if not dlg.exec():
+            return
+        expr = QgsExpression(dlg.expressionText())
+        if expr.hasParserError():
+            QMessageBox.critical(self, "Link tiers and probes", expr.parserErrorString())
+            return
+        req = QgsFeatureRequest(expr)
+        req.setFlags(QgsFeatureRequest.Flag.NoGeometry)
+        req.setNoAttributes()
+        fids = [f.id() for f in lyr.getFeatures(req)]
+        n = self._write_flags(lyr, field, fids, 1)
+        self._refresh_tag_counts(note="%s = 1 set on %d features matching the expression." % (field, n))
+
+    def _tag_clear(self):
+        kind, field = TAG_FIELDS[self.comboBox_TagField.currentText()]
+        lyr = self._tag_layer(kind)
+        if lyr is None or lyr.fields().indexOf(field) < 0:
+            return
+        fids = self._flagged_ids(lyr, field)
+        if not fids:
+            return
+        if QMessageBox.question(self, "Clear field",
+                                "Set %s = 0 on the %d flagged features of %s?"
+                                % (field, len(fids), lyr.name())) != QMessageBox.StandardButton.Yes:
+            return
+        self._write_flags(lyr, field, fids, 0)
+        self._refresh_tag_counts(note="%s cleared on %d features." % (field, len(fids)))
+
+    @staticmethod
+    def _flagged_ids(lyr, field):
+        from qgis.core import QgsFeatureRequest
+        if lyr.fields().indexOf(field) < 0:
+            return []
+        req = QgsFeatureRequest().setFilterExpression('"%s" = 1' % field)
+        req.setFlags(QgsFeatureRequest.Flag.NoGeometry)
+        req.setNoAttributes()
+        return [f.id() for f in lyr.getFeatures(req)]
+
+    def _refresh_tag_counts(self, *_a, note=""):
+        """Show how many links / nodes carry each flag on the HyDRA layers."""
+        parts = []
+        for kind, field in (("link", "dta_meso"), ("link", "dta_micro"),
+                            ("link", "probe"), ("node", "probe")):
+            combo = self.comboBox_LinkLayer if kind == "link" else self.comboBox_NodeLayer
+            lyr = combo.currentData()
+            if lyr is None:
+                continue
+            n = len(self._flagged_ids(lyr, field))
+            parts.append("%s %s: %d" % ("link" if kind == "link" else "node", field, n))
+        text = " · ".join(parts) if parts else "Pick the HyDRA link and node layers to see the tags."
+        if any(p.startswith("link dta_micro") and not p.endswith(": 0") for p in parts) \
+                and not self.checkBox_Micro.isChecked():
+            text += "\nMicro corridor is off: dta_micro links run as macro/meso until it is checked."
+        self.label_TagCounts.setText(text + ("\n" + note if note else ""))
+
+    def _sync_micro_outer(self, *_a):
+        """Outer loops only matter for twoway_full coupling."""
+        on = self.checkBox_Micro.isChecked() and self.comboBox_Coupling.currentText() == "twoway_full"
+        self.spinBox_MicroOuter.setEnabled(on)
+        self.label_microOuter.setEnabled(on)
+
+    def _build_visualizer(self, out_dir, link_path):
+        """Visualizer layers for this run (Meso Segments / Micro Lanes), added
+        to the map. Returns a note for the completion message."""
+        import importlib.util
+        path = os.path.join(os.path.dirname(__file__), "Apps", "Visualizer",
+                            "build_resolution_gpkg.py")
+        spec = importlib.util.spec_from_file_location("tsm_visualizer_builder", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        do_meso = os.path.exists(os.path.join(out_dir, "meso_segment_log.csv"))
+        do_micro = os.path.exists(os.path.join(out_dir, "micro_lane_performance.csv"))
+        if not (do_meso or do_micro):
+            return "\nVisualizer: nothing to build (turn on the Segment log or a micro corridor)."
+        res = mod.build(link_path, out_dir, out_dir=os.path.join(out_dir, "visualizer"),
+                        hours="8,17,18", do_meso=do_meso, do_micro=do_micro)
+        from qgis.core import QgsVectorLayer
+        added = []
+        for name, key in (("Meso Segments", "meso"), ("Micro Lanes", "micro")):
+            p = (res or {}).get(key)
+            if p and os.path.exists(p):
+                lyr = QgsVectorLayer(p, name, "ogr")
+                if lyr.isValid():
+                    QgsProject.instance().addMapLayer(lyr)
+                    added.append(name)
+        return "\nVisualizer layers: %s" % (", ".join(added) or "none built")
+
     def _write_odme_ctl(self, f):
         """Counts, ODME and supplemental-demand keys. Every ODME key is written
         explicitly when ODME is on, so the control file documents the run."""
@@ -828,6 +1039,11 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_checkpoint", self.checkBox_Checkpoint.isChecked())
         settings.set("hydra_checkpoint_every", self.lineEdit_CheckpointEvery.text())
         settings.set("hydra_inject_res", str(self.spinBox_InjectRes.value()))
+        for attr, key, kind in P1_FIELDS:
+            w = getattr(self, attr)
+            settings.set(key, w.isChecked() if kind == "check" else
+                         w.text().strip() if kind == "text" else
+                         w.currentText() if kind == "combo" else str(w.value()))
         settings.set("hydra_depart_slot", self.comboBox_DepartSlot.currentText())
         for p, key in (("", "hydra"), ("Sta", "hydra_sta")):
             w = self._resume_w(p)
@@ -1019,8 +1235,28 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                         f.write(f"MESO_BREAKER_RATE     {brk}\n")
                     if spb.lower() != "off":
                         f.write(f"MESO_MAX_SPILLBACK_MIN {spb}\n")
-                if signals:
+                if signals or self.checkBox_Signals.isChecked():
                     f.write("SIGNAL_MODEL          YES\n")
+                    f.write(f"SIGNAL_SAT_FLOW       {self.lineEdit_SigSat.text().strip() or '1800'}\n")
+                    f.write(f"SIGNAL_CYCLE          {self.lineEdit_SigCycle.text().strip() or '120'}\n")
+                    f.write(f"SIGNAL_GC             {self.lineEdit_SigGc.text().strip() or '0.45'}\n")
+                    for pair in self.lineEdit_SigGcFt.text().split(","):
+                        ft, _, gc = pair.partition(":")
+                        if ft.strip() and gc.strip():
+                            f.write(f"SIGNAL_GC_{ft.strip():<12}{gc.strip()}\n")
+                # Meso time step and diagnostics (read only where meso runs).
+                f.write(f"MESO_DT_SEC           {self.spinBox_MesoDt.value()}\n")
+                for box, key in ((self.checkBox_MesoIntervalLog, "MESO_INTERVAL_LOG"),
+                                 (self.checkBox_MesoMovementLog, "MESO_MOVEMENT_LOG"),
+                                 (self.checkBox_MesoSegmentLog, "MESO_SEGMENT_LOG")):
+                    if box.isChecked():
+                        f.write(f"{key:<22}YES\n")
+                if self.checkBox_MesoSegmentLog.isChecked():
+                    seg_file = self.lineEdit_SegFile.text().strip()
+                    if seg_file:
+                        f.write(f"MESO_SEGMENT_FILE     {seg_file}\n")
+                    else:
+                        f.write(f"MESO_SEGMENT_LEN      {self.doubleSpinBox_SegLen.value():g}\n")
                 if toll_policy:
                     f.write(f"TOLL_POLICY_FILE      {toll_policy}\n")
                 # Generalized-cost segment params (beta_time/beta_cost/distance per
@@ -1074,6 +1310,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     if micro_ft:
                         f.write(f"MICRO_FTYPE           {micro_ft}\n")
                     f.write(f"MICRO_COUPLING        {self.comboBox_Coupling.currentText()}\n")
+                    if self.comboBox_Coupling.currentText() == "twoway_full":
+                        f.write(f"MICRO_OUTER           {self.spinBox_MicroOuter.value()}\n")
+                    f.write(f"MICRO_DT_SEC          {self.comboBox_MicroDt.currentText().split()[0]}\n")
+                    f.write(f"MICRO_PROBE_STRIDE    {self.spinBox_ProbeStride.value()}\n")
                     # EL/GP choice inside the micro corridor: meso logit vs micro
                     # time-differential converted by each agent's VOT.
                     if self.comboBox_MicroChoice.currentText().startswith("Meso"):
@@ -1218,6 +1458,11 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                           "\n(loaded-network summary failed - see summarize_hydra_run.log)"
         except Exception as e:
             loaded_note = f"\n(loaded-network summary failed: {e})"
+        if self.checkBox_BuildViz.isChecked():
+            try:
+                loaded_note += self._build_visualizer(out_dir, link_path)
+            except Exception as e:
+                loaded_note += f"\n(visualizer layers failed: {e})"
         # Every step that streams into the run log has finished -- close the
         # live-tail window now, not after the user dismisses the box below.
         end_run_console()

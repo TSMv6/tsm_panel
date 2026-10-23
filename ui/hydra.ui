@@ -286,6 +286,93 @@
                </widget>
               </item>
               <item>
+               <widget class="QGroupBox" name="groupBox_Signals">
+                <property name="title">
+                 <string>Signals (macro and meso)</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_sig">
+                 <item row="0" column="0" colspan="4">
+                  <widget class="QCheckBox" name="checkBox_Signals">
+                   <property name="text">
+                    <string>Signal delay on signalized links</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SIGNAL_MODEL — caps a signalized link's discharge at saturation flow x g/C and adds control delay per signal, using the link's NSignals: the count of signalized nodes along it, from netPrep (the GeoMaster node layer's Signal field). Macro and meso links only; no timing plans (a timing file comes with the GMNS signal layers).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_sigSat">
+                   <property name="text">
+                    <string>Saturation flow (vphpl)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_SigSat">
+                   <property name="text">
+                    <string>1800</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SIGNAL_SAT_FLOW — saturation flow per lane.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_sigCycle">
+                   <property name="text">
+                    <string>Cycle (s)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SigCycle">
+                   <property name="text">
+                    <string>120</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SIGNAL_CYCLE — cycle length C in seconds.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_sigGc">
+                   <property name="text">
+                    <string>Green ratio g/C</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="lineEdit_SigGc">
+                   <property name="text">
+                    <string>0.45</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SIGNAL_GC — default through green ratio.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="label_sigGcFt">
+                   <property name="text">
+                    <string>g/C by FTYPE</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SigGcFt">
+                   <property name="placeholderText">
+                    <string>21:0.50, 22:0.45</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SIGNAL_GC_&lt;ftype&gt; — per facility type g/C, e.g. 21:0.50, 22:0.45. Blank = the default g/C for all.</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
                <spacer name="page_DTA_EngineSpacer">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -396,6 +483,328 @@
                      <string>Micro time-differential (VOT)</string>
                     </property>
                    </item>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_mesoDt">
+                   <property name="text">
+                    <string>Meso time step</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QSpinBox" name="spinBox_MesoDt">
+                   <property name="minimum">
+                    <number>2</number>
+                   </property>
+                   <property name="maximum">
+                    <number>10</number>
+                   </property>
+                   <property name="value">
+                    <number>6</number>
+                   </property>
+                   <property name="suffix">
+                    <string> s</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MESO_DT_SEC — meso packet-sim step (default 6 s). Smaller = finer queue timing, slower run; it also shifts packet discharge and the anti-gridlock release timing, so change it deliberately.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_microDt">
+                   <property name="text">
+                    <string>Micro time step</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QComboBox" name="comboBox_MicroDt">
+                   <property name="toolTip">
+                    <string>MICRO_DT_SEC — car-following / lane-change step. 0.5 s (default) is fine for freeway corridors; 0.1-0.2 s for detailed merges and weaving (2.5-5x the run time).</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>0.1 s</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>0.2 s</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>0.5 s</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_microOuter">
+                   <property name="text">
+                    <string>Outer loops</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QSpinBox" name="spinBox_MicroOuter">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>5</number>
+                   </property>
+                   <property name="value">
+                    <number>2</number>
+                   </property>
+                   <property name="toolTip">
+                    <string>MICRO_OUTER — twoway_full only: how many times the statewide assignment is re-run against the micro corridor's travel times. 1 = no re-assignment (same as twoway_frozen).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="label_probeStride">
+                   <property name="text">
+                    <string>Micro probe every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QSpinBox" name="spinBox_ProbeStride">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>1200</number>
+                   </property>
+                   <property name="value">
+                    <number>10</number>
+                   </property>
+                   <property name="suffix">
+                    <string> steps</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MICRO_PROBE_STRIDE — one micro_probe.csv row per lane every N micro steps (10 steps x 0.5 s = every 5 s).</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_MesoLogs">
+                <property name="title">
+                 <string>Meso diagnostics</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_mesologs" columnstretch="0,1,1,0">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_MesoIntervalLog">
+                   <property name="text">
+                    <string>Interval log</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MESO_INTERVAL_LOG — meso_interval_log.csv: per meso link x 15 min, vehicles entered / discharged / on the link vs storage (queue build and clear).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="checkBox_MesoMovementLog">
+                   <property name="text">
+                    <string>Movement log</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MESO_MOVEMENT_LOG — meso_movement_log.csv: per turn x 15 min, mean and peak queue and the share of time the movement was blocked.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QCheckBox" name="checkBox_MesoSegmentLog">
+                   <property name="text">
+                    <string>Segment log</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MESO_SEGMENT_LOG — meso_segment_log.csv: per sub-link segment x 15 min, where along the link the queue tail sits. Feeds the Meso Segments visualizer layer.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_segLen">
+                   <property name="text">
+                    <string>Segment length (mi)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_SegLen">
+                   <property name="decimals">
+                    <number>2</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0.05</double>
+                   </property>
+                   <property name="maximum">
+                    <double>2.0</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>0.05</double>
+                   </property>
+                   <property name="value">
+                    <double>0.25</double>
+                   </property>
+                   <property name="toolTip">
+                    <string>MESO_SEGMENT_LEN — uniform segment length for the segment log when no segment file covers a link.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_segFile">
+                   <property name="text">
+                    <string>Segment file (optional)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1" colspan="2">
+                  <widget class="QLineEdit" name="lineEdit_SegFile">
+                   <property name="toolTip">
+                    <string>MESO_SEGMENT_FILE — sub-link segment boundaries, CSV a_node,b_node,end_mi (e.g. from the GMNS segments). Blank = uniform segments.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QPushButton" name="browse_SegFile">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Pick a segment CSV.</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_Tags">
+                <property name="title">
+                 <string>Link tiers and probes (from the HyDRA layers)</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_tags">
+                 <item row="0" column="0" colspan="4">
+                  <widget class="QLabel" name="label_TagCounts">
+                   <property name="text">
+                    <string></string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QPushButton" name="btn_TagMeso">
+                   <property name="text">
+                    <string>Selected links → meso</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Set dta_meso = 1 on the links selected in the HyDRA link layer.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QPushButton" name="btn_TagMicro">
+                   <property name="text">
+                    <string>Selected links → micro</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Set dta_micro = 1 on the selected links (one contiguous corridor per run).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QPushButton" name="btn_TagProbe">
+                   <property name="text">
+                    <string>Selected links → probe</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Set probe = 1 on the selected links: each is probed at its tier (meso 6 s, micro per lane, macro through its downstream node).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QPushButton" name="btn_TagNodeProbe">
+                   <property name="text">
+                    <string>Selected nodes → probe</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Set probe = 1 on the nodes selected in the HyDRA node layer: node_probe.csv, one row per inbound link per node-loader step.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QComboBox" name="comboBox_TagField">
+                   <property name="toolTip">
+                    <string>Field for Set by expression / Clear.</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>dta_meso (links)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>dta_micro (links)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>probe (links)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>probe (nodes)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QPushButton" name="btn_TagExpr">
+                   <property name="text">
+                    <string>Set by expression…</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Set the field to 1 on every feature matching a QGIS expression, e.g. "FTYPE" IN (11, 12) AND "from_county" = 'Orange'.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QPushButton" name="btn_TagClear">
+                   <property name="text">
+                    <string>Clear field</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Set the field to 0 on every feature.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QPushButton" name="btn_TagRefresh">
+                   <property name="text">
+                    <string>Refresh counts</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Recount the tagged features.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="4">
+                  <widget class="QLabel" name="label_TagNote">
+                   <property name="text">
+                    <string>These fill the dta_meso / dta_micro / probe fields of the HyDRA link and node layers (a field is added if missing). You can also edit those fields yourself in the attribute table or the Field Calculator - the run reads them as they are. Meso FTYPEs and Micro FTYPEs above add whole facility types on top.</string>
+                   </property>
                   </widget>
                  </item>
                 </layout>
@@ -1195,6 +1604,16 @@
                </property>
                <property name="checked">
                 <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkBox_BuildViz">
+               <property name="text">
+                <string>Build visualizer layers after the run (meso segments, micro lanes)</string>
+               </property>
+               <property name="toolTip">
+                <string>Runs the Visualizer builder on this run: Meso Segments (needs the Segment log) and Micro Lanes (needs a micro corridor), AM + PM peak hours at 15 min, added to the map.</string>
                </property>
               </widget>
              </item>
