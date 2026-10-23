@@ -50,10 +50,16 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         self.browse_OutputDir.clicked.connect(lambda: self.select_directory(self.lineEdit_OutDir))
         # self.pushButton_nHH.clicked.connect(self.check_nHH)
         self.checkBox_userRef.stateChanged.connect(self.check_userRef)
+        # The reference-file browse button is wired ONCE here. check_userRef()
+        # used to disconnect/reconnect it on every toggle and, whenever the
+        # disconnect succeeded, blanked the saved Reference Tour File -- so the
+        # path (and with it the reference run) was lost every time the dialog
+        # opened.
+        self.pushButton.clicked.connect(lambda: self.select_file(self.lineEdit_prevOut, "open"))
         self.check_userRef()
         
         # Connect the "save" button to the corresponding function
-        self.button_SaveCancel.accepted.connect(self.update_settings)
+        self.button_SaveCancel.accepted.connect(lambda: self.update_settings(notify=True))
         self.button_SaveCancel.rejected.connect(self.cancel_action)
         self.run_LDTOS.clicked.connect(lambda: self.run_LDT_visitor(show_message=True))
         self.lineEdit_NumHH.setText("enter number of households")
@@ -196,13 +202,15 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         #     self.lineEdit_LDTRefYear.setText(settings.get("LDTExtCountYear"))
         if settings.get("LDT_visitor_nHH"):
             self.lineEdit_NumHH.setText(str(settings.get("LDT_visitor_nHH")))
+        # Reference run: restore the saved year and tour file whether or not the
+        # box was ticked, so unticking and re-ticking does not lose them.
+        if settings.get("LDTExtCountYear"):
+            self.lineEdit_LDTRefYear.setText(str(settings.get("LDTExtCountYear")))
+        _saved_path = (settings.get("LDT_visitor_userRef_filepath") or "").strip()
+        if _saved_path.lower() not in ("", "none", "null"):
+            self.lineEdit_prevOut.setText(_saved_path)
         if settings.get("LDT_visitor_userRef"):
-            self.checkBox_userRef.setChecked(settings.get("LDT_visitor_userRef"))
-            self.pushButton.setEnabled(settings.get("LDT_visitor_userRef"))
-            self.lineEdit_LDTRefYear.setText(settings.get("LDTExtCountYear"))
-            # self.pushButton.clicked.connect(lambda: self.select_file(self.lineEdit_prevOut, "open"))
-            self.lineEdit_prevOut.setEnabled(settings.get("LDT_visitor_userRef"))
-            settings.set("LDT_visitor_userRef_filepath",  self.lineEdit_prevOut.text())
+            self.checkBox_userRef.setChecked(True)
 
         # Base year (and prior) always runs absolute, so the reference-file
         # calibration block (User Reference File / Reference Year / Reference Tour
@@ -226,8 +234,6 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             # increment is appended to.
             if self.checkBox_incremental.isChecked():
                 self.checkBox_userRef.setChecked(True)
-            # check_userRef() repopulates the reference-file field from settings,
-            # so it has to run BEFORE the prefill or it overwrites it.
             self.check_userRef()
             # The .ui ships "2023" as placeholder text in the year field, so an
             # "is it empty" test never fires. Prefer a saved value; otherwise use
@@ -247,10 +253,9 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         # the first click.
         self._sync_runmode()
 
-        # Suggest the reference tour file LAST. check_userRef() clears the stored
-        # path on its second call, so a prefill written earlier does not survive
-        # the sync above. Future-year scenarios sit as a subfolder of the run they
-        # increment from, so the parent's tour output is the natural reference.
+        # Suggest a reference tour file only when none is saved: future-year
+        # scenarios sit as a subfolder of the run they increment from, so the
+        # parent's tour output is the natural reference.
         if _yr > BASE_YEAR and self.checkBox_incremental.isChecked():
             _cur = (self.lineEdit_prevOut.text() or "").strip().lower()
             if _cur in ("", "none", "null"):
@@ -260,27 +265,14 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
                 if os.path.exists(_pref):
                     _pref = _pref.replace(chr(92), "/")
                     self.lineEdit_prevOut.setText(_pref)
-                    settings.set("LDT_visitor_userRef_filepath", _pref)
 
-    def check_userRef(self):
-        settings = Config()
-        """Enable or disable the previous output directory based on the checkbox state."""
-        if self.checkBox_userRef.isChecked():
-            self.lineEdit_LDTRefYear.setEnabled(True)
-            self.pushButton.setEnabled(True)
-            self.lineEdit_prevOut.setEnabled(True)
-            try:
-                self.pushButton.clicked.disconnect()
-                self.lineEdit_prevOut.setText("none")
-                settings.set("LDT_visitor_userRef_filepath", None)
-            except TypeError:
-                pass
-            self.pushButton.clicked.connect(lambda: self.select_file(self.lineEdit_prevOut, "open"))
-            self.lineEdit_prevOut.setText(settings.get("LDT_visitor_userRef_filepath"))
-        else:
-            self.lineEdit_LDTRefYear.setEnabled(False)
-            self.pushButton.setEnabled(False)
-            self.lineEdit_prevOut.setEnabled(False)
+    def check_userRef(self, *_):
+        """Enable the reference year / tour file with the checkbox. Only the
+        enabled state changes: the fields keep what was typed or restored."""
+        on = self.checkBox_userRef.isChecked()
+        self.lineEdit_LDTRefYear.setEnabled(on)
+        self.pushButton.setEnabled(on)
+        self.lineEdit_prevOut.setEnabled(on)
 
     def populate_layer_combobox(self, combobox, geom_type):
         """Populate the dropdown with layers of the specified geometry type."""
@@ -307,7 +299,9 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         else:
             self.textBrowser.setPlainText(md)
 
-    def update_settings(self):
+    def update_settings(self, notify=True):
+        """Persist the dialog. notify=False is used by Run, which saves first so
+        the run reads exactly what is on screen."""
         settings = Config()
         settings.set("LDT_resident_InputDir", self.lineEdit_InputDir.text())
         settings.set("LDT_resident_RoadSkim", self.lineEdit_RoadSkim.text())
@@ -315,7 +309,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         settings.set("LDT_resident_AirSkim", self.lineEdit_AirSkim.text())
         # settings.set("LDT_visitor_Landuse", self.lineEdit_LanduseDAT.text())
         landuse_layer = self.comboBox_LU.currentData()
-        settings.set("landuse_layer", landuse_layer.name())  
+        if landuse_layer is not None:
+            settings.set("landuse_layer", landuse_layer.name())  
         settings.set("LDT_visitor_SynHH", self.lineEdit_LDTSynHH.text())
         settings.set("scenarioDir", self.lineEdit_OutDir.text())
 
@@ -324,14 +319,12 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
 
         if settings.get("LDT_visitor_nHH") != self.lineEdit_NumHH.text():
             settings.set("LDT_visitor_nHH", self.lineEdit_NumHH.text())
-        if self.checkBox_userRef.isChecked():
-            settings.set("LDTExtCountYear", self.lineEdit_LDTRefYear.text())
-            settings.set("LDT_visitor_userRef", True)
-            settings.set("LDT_visitor_userRef_filepath", self.lineEdit_prevOut.text())
-        else:
-            settings.set("LDTExtCountYear", None)
-            settings.set("LDT_visitor_userRef", False)
-            settings.set("LDT_visitor_userRef_filepath", None)
+        # The reference year and tour file are kept even with the box unticked
+        # (they used to be wiped to None, so re-ticking lost them); whether they
+        # are USED is the checkbox, saved separately.
+        settings.set("LDTExtCountYear", self.lineEdit_LDTRefYear.text().strip())
+        settings.set("LDT_visitor_userRef", self.checkBox_userRef.isChecked())
+        settings.set("LDT_visitor_userRef_filepath", self.lineEdit_prevOut.text().strip())
         settings.set("LDT_visitor_absolute", not self.checkBox_incremental.isChecked())
         # Only record a *chosen* absolute/incremental preference. For the base
         # year the box is forced on and disabled, so writing it would poison the
@@ -339,7 +332,8 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
         settings.set("LDT_visitor_absolute_future",
                      not self.checkBox_incremental.isChecked())
         settings.check_and_save_to_file("scenario_settings_file")
-        QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
+        if notify:
+            QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
             
     def cancel_action(self):
         print("Action canceled. Closing dialog.")
@@ -424,6 +418,10 @@ class LDTVisitorModel(QDialog, Ui_Dialog_LDTos):
             QMessageBox.critical(self, "Error", "Please select an output directory.")
             return False
 
+        # Save what is on screen first: the run reads the reference year and
+        # tour file from the settings, so edits made without pressing Save were
+        # ignored (and lost).
+        self.update_settings(notify=False)
         settings = Config()
         # One live-tail window for the whole LDT-visitor run (no per-step black windows).
         begin_run_console(os.path.join(settings.get("scenarioDir"), "LDT_visitor.log"),
