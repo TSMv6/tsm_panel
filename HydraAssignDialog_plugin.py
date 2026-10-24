@@ -23,6 +23,9 @@ MESO_LIMITED_ACCESS = "11,12,71,72,75,76,79,91,92,93,94,96,97,98"
 # below capacity, point queue above -- that the engine removed: MACRO_MODEL is
 # one global choice and a static VDF is not mixed into the queue. The underlying
 # DTA_PointQueue loader is still valid and is now offered on its own.
+# Coupling combo rows -> MICRO_COUPLING (labels in hydra.ui, same order).
+COUPLINGS = ("oneway", "twoway_frozen", "twoway_full")
+
 MACRO_PRESETS = {
     "PointQueue (legacy per-link)":  ("DTA_PointQueue", "", False),
     "Node + PointQueue (nodeDNL)":   ("DTA_NodePQ", MESO_LIMITED_ACCESS, False),
@@ -116,6 +119,7 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("lineEdit_GmnsFile", "hydra_gmns_file", "text"),
              ("checkBox_UseGmns", "hydra_use_gmns", "check"),
              ("comboBox_MicroModel", "hydra_micro_model", "combo"),
+             ("lineEdit_MicroPkg", "hydra_micro_pkg", "text"),
              ("checkBox_MicroCross", "hydra_micro_cross", "check"))
 
 # Link tiers and probes sub-tabs: widget key -> (layer kind, field name).
@@ -241,6 +245,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.btn_GmnsValidate.clicked.connect(self._gmns_validate)
         self.btn_GmnsSignals.clicked.connect(self._gmns_signals)
         self.btn_GmnsImport.clicked.connect(self._gmns_import)
+        # Micro package: rerun the micro area alone (frozen traffic, edited GMNS).
+        self.browse_MicroPkg.clicked.connect(self._micro_pkg_browse)
+        self.btn_MicroPkgOpen.clicked.connect(self._micro_pkg_open)
+        self.btn_MicroPkgRun.clicked.connect(self._micro_pkg_run)
         self._gmns_windows = []
         # Network micro: the micro area polygon layer (refreshed as layers come
         # and go) and the model choice.
@@ -318,7 +326,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if settings.get("hydra_micro_ftypes"):
             self.lineEdit_MicroFtypes.setText(settings.get("hydra_micro_ftypes"))
         if settings.get("hydra_coupling"):
-            self._select_combo(self.comboBox_Coupling, settings.get("hydra_coupling"))
+            v = settings.get("hydra_coupling")
+            if v in COUPLINGS:
+                self.comboBox_Coupling.setCurrentIndex(COUPLINGS.index(v))
         if settings.get("hydra_micro_choice"):
             self._select_combo(self.comboBox_MicroChoice, settings.get("hydra_micro_choice"))
         self.checkBox_Micro.setChecked(_b("hydra_micro_enabled"))
@@ -635,6 +645,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                   self.label_sigGc, self.lineEdit_SigGc, self.label_sigGcFt, self.lineEdit_SigGcFt):
             w.setEnabled(on)
 
+    def _coupling(self):
+        """MICRO_COUPLING value of the coupling combo (its labels are descriptive)."""
+        return COUPLINGS[max(0, self.comboBox_Coupling.currentIndex())]
+
     def _micro_network(self):
         return self.comboBox_MicroModel.currentText().startswith("Network")
 
@@ -835,11 +849,127 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
 
     # ---- GMNS sub-tab
     def _gmns_path(self):
+        """The file the GMNS tools work on: the statewide package, or the open
+        micro package's micro_gmns.gpkg."""
+        from . import gmns_tools
+        if self.comboBox_GmnsTarget.currentIndex() == 1:
+            path = gmns_tools.package_gpkg(self.lineEdit_MicroPkg.text().strip())
+            if not os.path.exists(path):
+                QMessageBox.warning(self, "GMNS", "Open a micro package for editing first (Micro package > "
+                                    "Open for editing).")
+                return None
+            return path
         path = self.lineEdit_GmnsFile.text().strip()
         if not path or not os.path.exists(path):
             QMessageBox.warning(self, "GMNS", "Pick the GMNS package (gmns_network.gpkg from netPrep) first.")
             return None
         return path
+
+    # ---- Micro package
+    def _micro_pkg_dir(self):
+        from . import gmns_tools
+        d = self.lineEdit_MicroPkg.text().strip()
+        if not gmns_tools.is_package(d):
+            QMessageBox.warning(self, "Micro package", "Pick a micro package folder (<output>/micro_package of a "
+                                "network micro run; it holds micro_package.ctl).")
+            return None
+        return d
+
+    def _micro_pkg_browse(self):
+        from qgis.PyQt.QtWidgets import QFileDialog
+        d = QFileDialog.getExistingDirectory(self, "Micro package folder", self.lineEdit_MicroPkg.text().strip())
+        if d:
+            self.lineEdit_MicroPkg.setText(d.replace("\\", "/"))
+
+    def _micro_pkg_open(self):
+        """Cut micro_gmns.gpkg from the statewide GMNS package (once; ask before
+        replacing edits), load its layers and point the GMNS tools at it."""
+        from . import gmns_tools
+        d = self._micro_pkg_dir()
+        if not d:
+            return
+        gp = gmns_tools.package_gpkg(d)
+        build = not os.path.exists(gp)
+        if not build and QMessageBox.question(
+                self, "Micro package", "micro_gmns.gpkg exists (it may hold your edits).\n\nKeep it? "
+                "No cuts it again from the GMNS package.") == QMessageBox.StandardButton.No:
+            build = True
+        if build:
+            src = self.lineEdit_GmnsFile.text().strip()
+            if not src or not os.path.exists(src):
+                QMessageBox.warning(self, "Micro package", "Pick the statewide GMNS package above first: the "
+                                    "editable copy is cut from it.")
+                return
+            try:
+                for lyr in gmns_tools._gmns_layers(gp).values():
+                    QgsProject.instance().removeMapLayer(lyr.id())
+                gp = gmns_tools.build_package_gpkg(src, d)
+            except Exception as e:
+                QMessageBox.critical(self, "Micro package", "Could not build micro_gmns.gpkg: %s" % e)
+                return
+        self.comboBox_GmnsTarget.setCurrentIndex(1)
+        if not gmns_tools._gmns_layers(gp):
+            try:
+                gmns_tools.load_layers(gp)
+            except Exception as e:
+                QMessageBox.critical(self, "Micro package", "Could not load the layers: %s" % e)
+                return
+        QMessageBox.information(self, "Micro package", "Editing %s.\n\nSignal timing, Validate and Import "
+                                "timing pack now work on it; Run uses it." % gp)
+
+    def _micro_pkg_run(self):
+        """Rerun the package: export micro_gmns.gpkg (if any) to gmns/, run
+        afdta MICRO_PACKAGE into <package>/<run name>, add the LOS layers."""
+        import datetime
+        from . import gmns_tools
+        d = self._micro_pkg_dir()
+        if not d:
+            return
+        settings = Config()
+        afdta = settings.app_exe("Hydra/afdta.exe")
+        name = self.lineEdit_MicroPkgRun.text().strip() or datetime.datetime.now().strftime("run_%Y%m%d_%H%M%S")
+        name = "".join(c if c.isalnum() or c in "-_." else "_" for c in name)
+        out = os.path.join(d, name).replace("\\", "/")
+        os.makedirs(out, exist_ok=True)
+        log = os.path.join(out, "Hydra.log")
+        gp = gmns_tools.package_gpkg(d)
+        if os.path.exists(gp):
+            busy = gmns_tools._editing(gp, gmns_tools.EXPORT_TABLES)
+            if busy:
+                QMessageBox.warning(self, "Micro package", "Save or stop editing first: %s" % ", ".join(busy))
+                return
+            try:
+                gmns_tools.export_csv(gp, os.path.join(d, "gmns"), settings.app_exe("utilities/gpkgcsv.exe"),
+                                      lambda args: settings.run_app(args, log_path=log, append=True))
+            except Exception as e:
+                QMessageBox.critical(self, "Micro package", "Could not export micro_gmns.gpkg: %s" % e)
+                return
+        dt = "0.5"
+        with open(os.path.join(d, "micro_package.ctl")) as f:
+            for line in f:
+                if line.startswith("MICRO_DT_SEC"):
+                    dt = line.split()[1]
+        ctl = os.path.join(out, "micro_run.ctl")
+        with open(ctl, "w") as f:
+            f.write("# AgentFlow micro package rerun - generated by the HyDRA dialog\n")
+            f.write("MICRO_PACKAGE         %s\n" % d.replace("\\", "/"))
+            f.write("OUTPUT_DIRECTORY      %s\n" % out)
+            f.write("MICRO_DT_SEC          %s\n" % dt)
+        if not run_gated_model(self, [afdta, "--control", ctl], "HyDRA micro package",
+                               log_path=log, console=True):
+            end_run_console()
+            return
+        end_run_console()
+        summary = ""
+        try:
+            with open(log, errors="replace") as f:
+                summary = "\n".join(l.strip() for l in f if "vehicles left the area" in l)
+        except OSError:
+            pass
+        los = gmns_tools.build_micro_los(gp if os.path.exists(gp) else self.lineEdit_GmnsFile.text().strip(), out)
+        added = gmns_tools.load_micro_los(los, name) if los else []
+        QMessageBox.information(self, "Micro package", "Run %s done.\n\n%s\n\nOutputs in %s%s" % (
+            name, summary, out, ("\nLayers: " + ", ".join(added)) if added else ""))
 
     def _gmns_load(self):
         from . import gmns_tools
@@ -980,7 +1110,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
 
     def _sync_micro_outer(self, *_a):
         """Outer loops only matter for twoway_full coupling."""
-        on = self.checkBox_Micro.isChecked() and self.comboBox_Coupling.currentText() == "twoway_full"
+        on = self.checkBox_Micro.isChecked() and self._coupling() == "twoway_full"
         self.spinBox_MicroOuter.setEnabled(on)
         self.label_microOuter.setEnabled(on)
 
@@ -1161,7 +1291,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_meso_ftypes", self.lineEdit_MesoFtypes.text())
         settings.set("hydra_micro_enabled", self.checkBox_Micro.isChecked())
         settings.set("hydra_micro_ftypes", self.lineEdit_MicroFtypes.text())
-        settings.set("hydra_coupling", self.comboBox_Coupling.currentText())
+        settings.set("hydra_coupling", self._coupling())
         settings.set("hydra_micro_choice", self.comboBox_MicroChoice.currentText())
         settings.set("hydra_toll_policy", self.lineEdit_TollPolicy.text())
         # Generalized cost + advanced (afdta) tuning
@@ -1477,7 +1607,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     f.write("MICRO_CORRIDOR        YES\n")
                     if micro_ft:
                         f.write(f"MICRO_FTYPE           {micro_ft}\n")
-                    f.write(f"MICRO_COUPLING        {self.comboBox_Coupling.currentText()}\n")
+                    f.write(f"MICRO_COUPLING        {self._coupling()}\n")
                     if self._micro_network():
                         f.write("MICRO_MODEL           network\n")
                         f.write(f"MICRO_CROSS_STREETS   {'YES' if self.checkBox_MicroCross.isChecked() else 'NO'}\n")
@@ -1490,7 +1620,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                             n = gmns_tools.micro_area_links(area, links, area_csv)
                             print(f"micro area: {n} links inside {area.name()}")
                             f.write(f"MICRO_AREA_LINKS      {area_csv}\n")
-                    if self.comboBox_Coupling.currentText() == "twoway_full":
+                    if self._coupling() == "twoway_full":
                         f.write(f"MICRO_OUTER           {self.spinBox_MicroOuter.value()}\n")
                     f.write(f"MICRO_DT_SEC          {self.comboBox_MicroDt.currentText().split()[0]}\n")
                     f.write(f"MICRO_PROBE_STRIDE    {self.spinBox_ProbeStride.value()}\n")
@@ -1632,6 +1762,19 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             end_run_console()
             return False
         loaded_note = ""
+        pkg = os.path.join(out_dir, "micro_package")
+        if os.path.exists(os.path.join(pkg, "micro_package.ctl")):
+            # The editable copy goes in the package now, while the statewide
+            # GMNS package the run used is at hand: the package stands alone.
+            from . import gmns_tools
+            src = self.lineEdit_GmnsFile.text().strip()
+            try:
+                if src and os.path.exists(src):
+                    gmns_tools.build_package_gpkg(src, pkg)
+            except Exception as e:
+                loaded_note += "\n(micro_gmns.gpkg not built: %s)" % e
+            self.lineEdit_MicroPkg.setText(pkg.replace("\\", "/"))
+            loaded_note += "\nMicro package: %s (GMNS > Micro package reruns it alone)" % pkg
         try:
             gp = self._auto_summarize(out_dir, link_path)
             loaded_note = f"\nLoaded network: {gp}" if gp else \

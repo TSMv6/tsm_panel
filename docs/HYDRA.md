@@ -68,9 +68,13 @@ model, and are greyed out for the node run modes.
 ### Meso / Micro tab: time steps, diagnostics, tiers and probes
 
 - **Meso time step** (`MESO_DT_SEC`, 6 s) and **Micro time step** (`MICRO_DT_SEC`,
-  0.1 / 0.2 / 0.5 s). **Outer loops** (`MICRO_OUTER`) is live only for `twoway_full`
-  coupling: how many times the statewide assignment re-runs against the corridor
-  (1 would equal `twoway_frozen`). **Micro probe every** N steps (`MICRO_PROBE_STRIDE`).
+  0.1 / 0.2 / 0.5 s). **Coupling** (`MICRO_COUPLING`):
+  *Macro > meso > micro* (`oneway`) runs micro once on the converged traffic, no
+  feedback; *Micro feedback, demand fixed* (`twoway_frozen`) feeds micro travel
+  times (freeway corridor: also the EL/GP split and tolls) back with the traffic
+  entering the area unchanged -- no re-routing; *Full loop: macro re-routes*
+  (`twoway_full`) re-assigns statewide against the micro travel times, then runs
+  micro again, **Outer loops** (`MICRO_OUTER`) times. **Micro probe every** N steps (`MICRO_PROBE_STRIDE`).
 - **Meso diagnostics**: interval, movement and segment logs (`meso_interval_log.csv`,
   `meso_movement_log.csv`, `meso_segment_log.csv`), segment length or a segment file.
 - **Link tiers and probes**: the run reads three fields from the HyDRA layers --
@@ -167,6 +171,31 @@ dual-ring plan at every GeoMaster signal (netprep/docs/GMNS.md).
   (needs Signal delay on), and lane truck restrictions in the micro corridor.
   It does not run micro anywhere: micro runs only on the micro area, and the
   network micro always exports the package itself.
+
+### Meso / Micro tab: GMNS > Micro package
+
+A network micro run writes `<output>/micro_package` (about 1 MB): the area's
+link and node rows, its GMNS subset, and the traffic through the area with
+each trip's route and entry time from the converged run. Rerunning it needs
+no statewide model -- seconds, and the same vehicles every time, so a timing
+or lane change is the only difference between two runs. Routes are frozen:
+when a change should move traffic onto other roads, rerun the full model or
+a subarea DTA.
+
+- **Package folder** -- filled in after a network micro run, which also puts
+  `micro_gmns.gpkg` (the area's GMNS with geometry, cut from the GMNS package
+  above) in it: the package is self-contained.
+- **Open for editing** -- loads `micro_gmns.gpkg` (cutting it first if it is
+  missing) and sets **GMNS tools edit** to it: Signal timing, Validate and
+  Import timing pack, and the attribute tables, then change the package, not
+  the statewide file.
+- **Back to the statewide package** -- timing: *Export plans...* in Signal
+  timing (a timing pack), then *Import timing pack* with **GMNS tools edit**
+  on the statewide package. Lane / pocket / movement edits stay in the package.
+- **Run** -- exports `micro_gmns.gpkg` back to the package, reruns micro into
+  `<package>/<run name>` and adds that run's LOS layers (named by the run).
+  Same outputs as a full run's micro.
+- An unedited package reproduces the full run's micro results exactly.
 
 **Extra volume breakdowns** (Outputs): Purpose is always in the link performance
 files; Market, Market x VOT and VOT bins (edges in $/hr) each write a

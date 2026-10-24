@@ -445,19 +445,22 @@
                        <property name="enabled">
                         <bool>false</bool>
                        </property>
+                       <property name="toolTip">
+                        <string>MICRO_COUPLING. Macro > meso > micro (oneway): micro runs once on the converged traffic, no feedback. Micro feedback, demand fixed (twoway_frozen): micro travel times (freeway corridor: also the EL/GP split and tolls) feed back, traffic entering the area unchanged, no re-routing. Full loop (twoway_full): macro re-assigns statewide against the micro travel times, then micro again (Outer loops times).</string>
+                       </property>
                        <item>
                         <property name="text">
-                         <string>oneway</string>
+                         <string>Macro > meso > micro</string>
                         </property>
                        </item>
                        <item>
                         <property name="text">
-                         <string>twoway_frozen</string>
+                         <string>Micro feedback, demand fixed</string>
                         </property>
                        </item>
                        <item>
                         <property name="text">
-                         <string>twoway_full</string>
+                         <string>Full loop: macro re-routes</string>
                         </property>
                        </item>
                       </widget>
@@ -1050,6 +1053,87 @@
                         <property name="toolTip">
                          <string>GMNS_DIR -- the layers are exported to &lt;output&gt;/gmns at run time. Timing plans set each timed approach's g/C and cycle in the macro / meso signal model, statewide (Signal delay on the Engine tab must be on; never in a static run); lane allowed_uses restrict trucks in the micro corridor. This does not run micro: micro runs only on the micro area (Tiers and probes), and a network micro run always uses the package.</string>
                         </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_MicroPkg">
+                     <property name="title">
+                      <string>Micro package (rerun the micro area alone)</string>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_micropkg">
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="label_MicroPkg">
+                        <property name="text">
+                         <string>Package folder</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1" colspan="2">
+                       <widget class="QLineEdit" name="lineEdit_MicroPkg">
+                        <property name="toolTip">
+                         <string>&lt;output&gt;/micro_package of a network micro run (MICRO_PACKAGE_WRITE).</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="3">
+                       <widget class="QToolButton" name="browse_MicroPkg">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QPushButton" name="btn_MicroPkgOpen">
+                        <property name="text">
+                         <string>Open for editing</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>Cut micro_gmns.gpkg (the area's GMNS, with geometry) from the GMNS package above into the package folder, load it, and point the GMNS tools at it.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QPushButton" name="btn_MicroPkgRun">
+                        <property name="text">
+                         <string>Run</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>Rerun the micro area with the package's frozen traffic and its (edited) GMNS; adds the run's LOS layers.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2" colspan="2">
+                       <widget class="QLineEdit" name="lineEdit_MicroPkgRun">
+                        <property name="placeholderText">
+                         <string>run name (default: date and time)</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="label_GmnsTarget">
+                        <property name="text">
+                         <string>GMNS tools edit</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1" colspan="3">
+                       <widget class="QComboBox" name="comboBox_GmnsTarget">
+                        <property name="toolTip">
+                         <string>Which file Load layers, Signal timing, Validate and Import timing pack work on.</string>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>GMNS package (statewide)</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Micro package (micro_gmns.gpkg)</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                      </layout>

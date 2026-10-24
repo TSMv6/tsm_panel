@@ -483,6 +483,89 @@ def _cluster_of(con, ctl):
     return [ctl] + sorted(r[0] for r in rows if r[0] is not None and r[0] != ctl)
 
 
+# ----------------------------------------------------------- micro package --
+#
+# afdta writes <output>/micro_package after a network micro run: the area's
+# LINK / NODE rows, its GMNS subset as CSVs (gmns/), the frozen traffic
+# (micro_demand.csv, micro_routes.csv) and micro_package.ctl. A rerun
+# (MICRO_PACKAGE) needs no statewide model. micro_gmns.gpkg is the editable
+# copy of gmns/: the same area cut from the statewide GMNS package, with
+# geometry, built by the HyDRA dialog right after the run (or Open for
+# editing); Run exports it back to gmns/ first.
+
+def package_gpkg(pkg_dir):
+    return os.path.join(pkg_dir, "micro_gmns.gpkg").replace("\\", "/")
+
+
+def is_package(pkg_dir):
+    return bool(pkg_dir) and os.path.exists(os.path.join(pkg_dir, "micro_package.ctl"))
+
+
+def build_package_gpkg(gmns_path, pkg_dir):
+    """micro_gmns.gpkg in pkg_dir: every GMNS table of the package's area
+    (its LINK.csv links), cut from the statewide package with geometry. The
+    same selection afdta's package uses: the area's nodes, links, lanes and
+    pockets, movements with both links in the area, and every timing plan
+    that serves one of them or sits on an area node (all its phases; phase
+    movements only those in the area).
+    Returns the path."""
+    import csv
+    from osgeo import gdal
+    gdal.UseExceptions()
+    with open(os.path.join(pkg_dir, "LINK.csv"), newline="", encoding="utf-8-sig") as f:
+        pairs = {(int(r["A"]), int(r["B"])) for r in csv.DictReader(f)}
+    nodes = {n for p in pairs for n in p}
+    nl = ",".join(str(n) for n in sorted(nodes)) or "NULL"
+
+    def ids(sql):
+        return {r[0] for r in con.execute(sql)}
+
+    def inlist(s):
+        return ",".join(str(int(v)) for v in sorted(s)) or "NULL"
+    with _connect(gmns_path) as con:
+        links = {r[0] for r in con.execute("SELECT link_id, from_node_id, to_node_id FROM link "
+                                           "WHERE from_node_id IN (%s)" % nl) if (r[1], r[2]) in pairs}
+        lk = inlist(links)
+        segs = ids("SELECT segment_id FROM segment WHERE link_id IN (%s)" % lk)
+        mvmts = ids("SELECT mvmt_id FROM movement WHERE node_id IN (%s) AND ib_link_id IN (%s) "
+                    "AND ob_link_id IN (%s)" % (nl, lk, lk))
+        phases = ids("SELECT timing_phase_id FROM signal_phase_mvmt WHERE mvmt_id IN (%s)" % inlist(mvmts))
+        plans = ids("SELECT timing_plan_id FROM signal_timing_phase WHERE timing_phase_id IN (%s)"
+                    % inlist(phases))
+        plans |= ids("SELECT timing_plan_id FROM signal_timing_plan WHERE node_id IN (%s)" % nl)
+        ctls = ids("SELECT controller_id FROM signal_timing_plan WHERE timing_plan_id IN (%s)" % inlist(plans))
+        phases = ids("SELECT timing_phase_id FROM signal_timing_phase WHERE timing_plan_id IN (%s)"
+                     % inlist(plans))
+        have = {r[0] for r in con.execute("SELECT table_name FROM gpkg_contents")}
+        have |= {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    where = {
+        "config": None,
+        "node": "node_id IN (%s)" % nl,
+        "link": "link_id IN (%s)" % lk,
+        "lane": "link_id IN (%s)" % lk,
+        "segment": "segment_id IN (%s)" % inlist(segs),
+        "segment_lane": "segment_id IN (%s)" % inlist(segs),
+        "movement": "mvmt_id IN (%s)" % inlist(mvmts),
+        "signal_controller": "controller_id IN (%s)" % inlist(ctls),
+        "signal_timing_plan": "timing_plan_id IN (%s)" % inlist(plans),
+        "signal_timing_phase": "timing_plan_id IN (%s)" % inlist(plans),
+        "signal_phase_mvmt": "timing_phase_id IN (%s) AND mvmt_id IN (%s)" % (inlist(phases), inlist(mvmts)),
+        "time_set_definitions": None,
+    }
+    out = package_gpkg(pkg_dir)
+    if os.path.exists(out):
+        os.remove(out)
+    first = True
+    for t, w in where.items():
+        if t not in have:
+            continue
+        opts = gdal.VectorTranslateOptions(format="GPKG", layers=[t], layerName=t, where=w,
+                                           accessMode=None if first else "update")
+        gdal.VectorTranslate(out, gmns_path, options=opts)
+        first = False
+    return out
+
+
 # ---------------------------------------------------------- micro area / LOS --
 
 def micro_area_links(poly_layer, link_layer, out_csv):
@@ -603,13 +686,14 @@ def build_micro_los(gmns_path, out_dir):
     return path
 
 
-def load_micro_los(path):
+def load_micro_los(path, label=""):
     """Add the whole-day LOS layers of micro_los.gpkg, coloured by LOS. The
     15-min tables (movement_los / intersection_los) carry a `time` field for
-    the Temporal Controller."""
+    the Temporal Controller. `label` (a run name) goes into the layer names."""
     added = []
-    for table, name in (("movement_los_day", "Micro movement LOS (day)"),
-                        ("intersection_los_day", "Micro intersection LOS (day)")):
+    tag = " - %s" % label if label else ""
+    for table, name in (("movement_los_day", "Micro movement LOS (day)%s" % tag),
+                        ("intersection_los_day", "Micro intersection LOS (day)%s" % tag)):
         lyr = QgsVectorLayer("%s|layername=%s" % (path, table), name, "ogr")
         if not lyr.isValid():
             continue
