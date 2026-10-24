@@ -1,0 +1,9 @@
+timing_plan_id,controller_id,timeday_id,cycle_length,offset,name
+1,43118626,09:00-15:30,120,0,W Colonial Dr @ N Hiawassee Rd - midday
+2,43118626,06:30-09:00,150,0,W Colonial Dr @ N Hiawassee Rd - am peak
+3,43118626,15:30-19:00,150,0,W Colonial Dr @ N Hiawassee Rd - pm peak
+4,43118626,19:00-06:30,90,0,W Colonial Dr @ N Hiawassee Rd - night
+5,43129002,,120,18,W Colonial Dr @ N Pine Hills Rd - all day
+6,43129307,,120,61,W Colonial Dr mid-block crossing - all day
+7,43129371,,120,91,W Colonial Dr @ Fairvilla Rd - all day
+8,43129377,,120,86,W Colonial Dr @ Mercy Dr - all day

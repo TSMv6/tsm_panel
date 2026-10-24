@@ -112,7 +112,11 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("checkBox_BdMarket", "hydra_bd_market", "check"),
              ("checkBox_BdSegment", "hydra_bd_segment", "check"),
              ("checkBox_BdVotBin", "hydra_bd_votbin", "check"),
-             ("lineEdit_VotEdges", "hydra_vot_edges", "text"))
+             ("lineEdit_VotEdges", "hydra_vot_edges", "text"),
+             ("lineEdit_GmnsFile", "hydra_gmns_file", "text"),
+             ("checkBox_UseGmns", "hydra_use_gmns", "check"),
+             ("comboBox_MicroModel", "hydra_micro_model", "combo"),
+             ("checkBox_MicroCross", "hydra_micro_cross", "check"))
 
 # Link tiers and probes sub-tabs: widget key -> (layer kind, field name).
 TAG_TABS = {"Meso": ("link", "dta_meso"), "Micro": ("link", "dta_micro"),
@@ -197,6 +201,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.browse_SegParams.clicked.connect(lambda: self.select_file(self.lineEdit_SegParams, "CSV (*.csv)"))
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
+        self.checkBox_Signals.toggled.connect(self._toggle_signals)
         self.browse_CountFile.clicked.connect(lambda: self.select_file(self.lineEdit_CountFile, "Counts (*.csv)"))
         self.browse_SuppFile.clicked.connect(lambda: self.select_file(self.lineEdit_SuppFile, "Trip list (*.csv *.csv.gz)"))
         self.browse_SuppGrowth.clicked.connect(lambda: self.select_file(self.lineEdit_SuppGrowth, "CSV (*.csv)"))
@@ -228,6 +233,22 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             lambda: self.select_file(self.lineEdit_SegFile, "Segments (*.csv)"))
         self.comboBox_Coupling.currentTextChanged.connect(self._sync_micro_outer)
         self.checkBox_Micro.toggled.connect(self._sync_micro_outer)
+        # GMNS sub-tab: the netPrep GMNS package (lanes, pockets, movements,
+        # signal timing) -- load / validate / edit timing; GMNS_DIR at run time.
+        self.browse_GmnsFile.clicked.connect(
+            lambda: self.select_file(self.lineEdit_GmnsFile, "GMNS package (*.gpkg)"))
+        self.btn_GmnsLoad.clicked.connect(self._gmns_load)
+        self.btn_GmnsValidate.clicked.connect(self._gmns_validate)
+        self.btn_GmnsSignals.clicked.connect(self._gmns_signals)
+        self.btn_GmnsImport.clicked.connect(self._gmns_import)
+        self._gmns_windows = []
+        # Network micro: the micro area polygon layer (refreshed as layers come
+        # and go) and the model choice.
+        self._fill_micro_area(Config().get("hydra_micro_area") or "")
+        QgsProject.instance().layersAdded.connect(lambda *_: self._fill_micro_area())
+        QgsProject.instance().layersRemoved.connect(lambda *_: self._fill_micro_area())
+        self.comboBox_MicroModel.currentIndexChanged.connect(
+            lambda _: self.toggle_micro(self.checkBox_Micro.isChecked()))
         self.run_Hydra.clicked.connect(lambda: self.run_hydra(show_message=True))
         # Save persists and LEAVES THE DIALOG OPEN (accepted -> update_settings,
         # never accept()), so settings can be saved and then run without
@@ -377,7 +398,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if settings.get("hydra_meso_ftypes"):
             self.lineEdit_MesoFtypes.setText(settings.get("hydra_meso_ftypes"))
         self.toggle_micro(self.checkBox_Micro.isChecked())
+        self._toggle_signals(self.checkBox_Signals.isChecked())
         self._sync_loader_controls()
+        from . import gmns_tools
+        self.lineEdit_GmnsFile.setText(gmns_tools.default_path(settings))
         for attr, key, kind in P1_FIELDS:
             v = settings.get(key)
             if v in (None, ""):
@@ -595,9 +619,40 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 else self.checkBox_AgentPaths).isChecked()
 
     def toggle_micro(self, on):
+        network = self._micro_network()
         self.lineEdit_MicroFtypes.setEnabled(on)
         self.comboBox_Coupling.setEnabled(on)
-        self.comboBox_MicroChoice.setEnabled(on)
+        self.comboBox_MicroModel.setEnabled(on)
+        # EL/GP choice is a freeway-corridor setting; area + cross streets are network ones.
+        self.comboBox_MicroChoice.setEnabled(on and not network)
+        for w in (self.label_MicroArea, self.comboBox_MicroArea, self.checkBox_MicroCross):
+            w.setEnabled(on and network)
+
+    def _toggle_signals(self, on):
+        # Unchecked, no SIGNAL_MODEL is written: no capacity cap, no control
+        # delay, and these values are not read.
+        for w in (self.label_sigSat, self.lineEdit_SigSat, self.label_sigCycle, self.lineEdit_SigCycle,
+                  self.label_sigGc, self.lineEdit_SigGc, self.label_sigGcFt, self.lineEdit_SigGcFt):
+            w.setEnabled(on)
+
+    def _micro_network(self):
+        return self.comboBox_MicroModel.currentText().startswith("Network")
+
+    def _fill_micro_area(self, keep=None):
+        """Polygon layers for the network micro area ("(none)" first)."""
+        from qgis.core import QgsMapLayerType, QgsWkbTypes
+        combo = self.comboBox_MicroArea
+        keep = combo.currentText() if keep is None else keep
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("(none)", None)
+        for lyr in QgsProject.instance().mapLayers().values():
+            if lyr.type() == QgsMapLayerType.VectorLayer and \
+                    lyr.geometryType() == QgsWkbTypes.GeometryType.PolygonGeometry:
+                combo.addItem(lyr.name(), lyr.id())
+        i = combo.findText(keep)
+        combo.setCurrentIndex(i if i >= 0 else 0)
+        combo.blockSignals(False)
 
     def toggle_odme(self, on):
         """ODME tuning only matters when ODME runs; the count file and the
@@ -778,6 +833,76 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         lyr.triggerRepaint()
         return len(fids)
 
+    # ---- GMNS sub-tab
+    def _gmns_path(self):
+        path = self.lineEdit_GmnsFile.text().strip()
+        if not path or not os.path.exists(path):
+            QMessageBox.warning(self, "GMNS", "Pick the GMNS package (gmns_network.gpkg from netPrep) first.")
+            return None
+        return path
+
+    def _gmns_load(self):
+        from . import gmns_tools
+        path = self._gmns_path()
+        if not path:
+            return
+        try:
+            lyrs = gmns_tools.load_layers(path)
+        except Exception as e:
+            QMessageBox.critical(self, "GMNS", "Could not load the GMNS layers: %s" % e)
+            return
+        QMessageBox.information(self, "GMNS", "Added %d GMNS layers. Lanes, pockets and movements draw "
+                                "when zoomed in (1:10,000 and closer)." % len(lyrs))
+
+    def _gmns_show(self, dlg):
+        self._gmns_windows = [w for w in self._gmns_windows if w.isVisible()] + [dlg]
+        dlg.show()
+
+    def _gmns_validate(self):
+        from . import gmns_tools
+        from qgis.utils import iface
+        path = self._gmns_path()
+        if path:
+            self._gmns_show(gmns_tools.ValidateDialog(path, iface, self))
+
+    def _gmns_signals(self):
+        from . import gmns_tools
+        from qgis.utils import iface
+        path = self._gmns_path()
+        if path:
+            dlg = gmns_tools.SignalTimingDialog(path, iface, self)
+            self._gmns_show(dlg)
+            lyr = iface.activeLayer() if iface else None
+            if lyr is not None and hasattr(lyr, "selectedFeatureCount") and lyr.selectedFeatureCount():
+                dlg.from_selection()
+
+    def _gmns_import(self):
+        """Load a timing pack (config/gmns/samples has demonstration packs)."""
+        from . import gmns_tools
+        from qgis.PyQt.QtWidgets import QFileDialog
+        path = self._gmns_path()
+        if not path:
+            return
+        busy = gmns_tools._editing(path, ("node", "movement") + gmns_tools.SIGNAL_TABLES)
+        if busy:
+            QMessageBox.warning(self, "GMNS", "Save or stop editing first: %s" % ", ".join(busy))
+            return
+        start = os.path.join(os.path.dirname(__file__), "config", "gmns", "samples")
+        d = QFileDialog.getExistingDirectory(self, "Timing pack folder", start)
+        if not d:
+            return
+        try:
+            st = gmns_tools.import_timing(path, d)
+        except Exception as e:
+            QMessageBox.critical(self, "GMNS", "Timing pack not loaded: %s" % e)
+            return
+        msg = ("Loaded %d controllers: %d plans, %d phases, %d phase movements."
+               % (st["controllers"], st["plans"], st["phases"], st["movements"]))
+        if st["unmatched"]:
+            msg += ("\n\n%d pack movements are not in this package (skipped):\n%s"
+                    % (len(st["unmatched"]), "\n".join(st["unmatched"][:15])))
+        QMessageBox.information(self, "GMNS", msg)
+
     def _tag_selected(self, kind, field):
         lyr = self._tag_layer(kind)
         if lyr is None:
@@ -870,8 +995,16 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         spec.loader.exec_module(mod)
         do_meso = os.path.exists(os.path.join(out_dir, "meso_segment_log.csv"))
         do_micro = os.path.exists(os.path.join(out_dir, "micro_lane_performance.csv"))
+        # Network micro: movement / intersection LOS on the GMNS geometry.
+        los_note = ""
+        if os.path.exists(os.path.join(out_dir, "micro_movement_performance.csv")):
+            from . import gmns_tools
+            gp = gmns_tools.build_micro_los(self.lineEdit_GmnsFile.text().strip(), out_dir)
+            if gp:
+                los_note = ", " + ", ".join(gmns_tools.load_micro_los(gp))
         if not (do_meso or do_micro):
-            return "\nVisualizer: nothing to build (turn on the Segment log or a micro corridor)."
+            return ("\nVisualizer layers: " + los_note[2:]) if los_note else \
+                "\nVisualizer: nothing to build (turn on the Segment log or a micro corridor)."
         res = mod.build(link_path, out_dir, out_dir=os.path.join(out_dir, "visualizer"),
                         hours="8,17,18", do_meso=do_meso, do_micro=do_micro)
         from qgis.core import QgsVectorLayer
@@ -883,7 +1016,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 if lyr.isValid():
                     QgsProject.instance().addMapLayer(lyr)
                     added.append(name)
-        return "\nVisualizer layers: %s" % (", ".join(added) or "none built")
+        return "\nVisualizer layers: %s%s" % (", ".join(added) or "none built", los_note)
 
     def _write_odme_ctl(self, f):
         """Counts, ODME and supplemental-demand keys. Every ODME key is written
@@ -1050,6 +1183,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                          w.text().strip() if kind == "text" else
                          w.currentText() if kind == "combo" else str(w.value()))
         settings.set("hydra_depart_slot", self.comboBox_DepartSlot.currentText())
+        area = self.comboBox_MicroArea.currentText()
+        settings.set("hydra_micro_area", "" if area == "(none)" else area)
         for p, key in (("", "hydra"), ("Sta", "hydra_sta")):
             w = self._resume_w(p)
             settings.set(f"{key}_resume", w["check"].isChecked())
@@ -1167,6 +1302,24 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             QMessageBox.critical(self, "Error", f"Error converting layers to CSV: {e}")
             return False
 
+        # GMNS package -> <output>/gmns/gmns_<table>.csv for afdta (GMNS_DIR);
+        # always for the network micro, which is built from it.
+        self._gmns_dir = None
+        net_micro = self.checkBox_Micro.isChecked() and self._micro_network()
+        if not sta and (self.checkBox_UseGmns.isChecked() or net_micro):
+            from . import gmns_tools
+            gmns = self.lineEdit_GmnsFile.text().strip()
+            if not gmns or not os.path.exists(gmns):
+                QMessageBox.critical(self, "Error", f"GMNS package not found: {gmns}")
+                return False
+            try:
+                self._gmns_dir = gmns_tools.export_csv(
+                    gmns, os.path.join(out_dir, "gmns"), gpkgcsv,
+                    lambda args: Config().run_app(args, log_path=convert_log, console=True, append=True))
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Could not export the GMNS package: {e}")
+                return False
+
         ctl = os.path.join(out_dir, "hydra_run.ctl")
         if sta:
             if not self._write_sta_ctl(ctl, node_csv, link_csv, trip_file, out_dir,
@@ -1257,6 +1410,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                         ft, _, gc = pair.partition(":")
                         if ft.strip() and gc.strip():
                             f.write(f"SIGNAL_GC_{ft.strip():<12}{gc.strip()}\n")
+                if self._gmns_dir:
+                    f.write(f"GMNS_DIR              {self._gmns_dir}\n")
                 # Meso time step and diagnostics (read only where meso runs).
                 f.write(f"MESO_DT_SEC           {self.spinBox_MesoDt.value()}\n")
                 for box, key in ((self.checkBox_MesoIntervalLog, "MESO_INTERVAL_LOG"),
@@ -1323,6 +1478,18 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     if micro_ft:
                         f.write(f"MICRO_FTYPE           {micro_ft}\n")
                     f.write(f"MICRO_COUPLING        {self.comboBox_Coupling.currentText()}\n")
+                    if self._micro_network():
+                        f.write("MICRO_MODEL           network\n")
+                        f.write(f"MICRO_CROSS_STREETS   {'YES' if self.checkBox_MicroCross.isChecked() else 'NO'}\n")
+                        area_id = self.comboBox_MicroArea.currentData()
+                        area = QgsProject.instance().mapLayer(area_id) if area_id else None
+                        links = self.comboBox_LinkLayer.currentData()
+                        if area is not None and links is not None:
+                            from . import gmns_tools
+                            area_csv = os.path.join(out_dir, "micro_area_links.csv").replace("\\", "/")
+                            n = gmns_tools.micro_area_links(area, links, area_csv)
+                            print(f"micro area: {n} links inside {area.name()}")
+                            f.write(f"MICRO_AREA_LINKS      {area_csv}\n")
                     if self.comboBox_Coupling.currentText() == "twoway_full":
                         f.write(f"MICRO_OUTER           {self.spinBox_MicroOuter.value()}\n")
                     f.write(f"MICRO_DT_SEC          {self.comboBox_MicroDt.currentText().split()[0]}\n")

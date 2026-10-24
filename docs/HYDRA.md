@@ -77,19 +77,96 @@ model, and are greyed out for the node run modes.
   `dta_meso` and `dta_micro` on links, `probe` on links and nodes (1 = on). Edit them
   directly (attribute table, Field Calculator), or use the buttons: *Selected links →
   meso / micro / probe*, *Selected nodes → probe*, *Set by expression…*, *Clear field*.
-  The counts line shows what is tagged. `dta_micro` links simulate only with **Micro
-  corridor** checked. Meso FTYPEs / Micro FTYPEs add whole facility types on top.
+  The buttons write the fields of the HyDRA link and node layers (added if missing);
+  the run reads them as they are. The counts line shows what is tagged.
+  - *Meso*: these links run as meso (packets, queues per movement); Meso FTYPEs
+    add whole facility types on top.
+  - *Micro*: `dta_micro` links simulate only with **Micro corridor** checked;
+    Micro FTYPEs add whole facility types. Freeway corridor: one contiguous
+    corridor. Network: these links, the links inside the **Micro area
+    (polygon)** and, ticked, the approaches of every intersection they touch.
   Probes: a meso link → `meso_probe.csv` (every 6 s), a micro link →
   `micro_probe.csv` (per lane), a macro link or a node → `node_probe.csv` (per
   inbound link per 60-s node step: offered, sent, held, backlog).
 
+### Micro model: freeway corridor or network
+
+**Micro model** (Meso / Micro tab): *Freeway corridor* is one contiguous
+freeway / express-lane corridor with EL choice and tolls. *Network (GMNS)*
+simulates the micro area with its intersections, from the GMNS package (it is
+exported for the run automatically):
+
+- **The area** (Tiers and probes > Micro): the `dta_micro` links, the links
+  inside the **Micro area (polygon)** layer (selected polygons, else all), and,
+  ticked, **the cross-street approaches of every intersection** they touch. Only
+  this area is simulated.
+- Lanes and turn pockets, movement lanes, signal timing plans (time-of-day plans
+  by clock), stop and yield control come from the GMNS package -- edit them on
+  the GMNS tab.
+- Outputs: `micro_movement_performance.csv` and
+  `micro_intersection_performance.csv` (volume, control delay, HCM LOS, max
+  queue per 15 min and for the day), `agents_in_microDTA.csv`, and micro travel
+  times on the area links in `link_performance_microDTA.csv`. With **Build
+  visualizer layers** the dialog adds *Micro movement LOS* and *Micro
+  intersection LOS* (whole day) from `visualizer/micro_los.gpkg`; its
+  `movement_los` / `intersection_los` tables hold every 15-min interval with a
+  `time` field for the Temporal Controller.
+
 ### Engine tab: signals
+
+Unchecked, nothing about signals reaches the macro / meso loading: no
+discharge cap, no control delay, and saturation flow, cycle and g/C (greyed
+out) are not read. Links run at their discharge rate (capacity x any
+discharge factor). Micro still simulates its intersections from the GMNS
+package.
 
 **Signal delay on signalized links** (`SIGNAL_MODEL`) caps each signalized link's
 discharge at saturation flow × g/C and adds control delay per signal, using the
 link's `NSignals` -- the count of signalized nodes along it, from netPrep (the
 GeoMaster node layer's `Signal` field). Saturation flow, cycle, g/C and per-FTYPE
-g/C are set here; there are no per-intersection timing plans yet.
+g/C are set here; per-intersection timing plans come from the GMNS package
+(below) when *Use GMNS in the run* is ticked. It applies to every signalized
+macro and meso link, statewide; never to a static (STA) run, whose BPR curve
+runs on the planning capacity (afdta ignores `SIGNAL_MODEL` there). The micro
+tier simulates its own signals from the GMNS plans instead.
+
+### Meso / Micro tab: GMNS
+
+netPrep writes `gmns_network.gpkg` (`gmns_network_msr.gpkg` for MSR) beside
+`Link.csv`: node, link, lane, segment (turn pockets), segment_lane and movement
+layers and the GMNS signal tables, seeded from the network -- lanes, a left
+pocket on multi-lane arterial approaches to a signal, movements with lanes and
+types, stop / yield control from the facility hierarchy, and a fixed-time
+dual-ring plan at every GeoMaster signal (netprep/docs/GMNS.md).
+
+- **Load layers** -- a *GMNS* group, styled; lanes, pockets and movements draw
+  from 1:10,000 in. The attribute forms link link -> lanes / pockets, node ->
+  movements, plan -> phases -> movements.
+- **Signal timing...** -- the plans of the controller driving a node: a
+  time-of-day plan list (*New time-of-day plan*; blank time of day = all day,
+  else `HH:MM-HH:MM`; the first plan is the one macro / meso use), cycle,
+  offset, phases (ring, barrier, position, min green, green, clearance, walk),
+  which movements each phase serves (protected / permitted) and the
+  ring-barrier diagram. A divided road's intersection is two to four nodes;
+  one controller drives them all and the dialog lists every node's movements.
+  *Fit greens to cycle*, *Seed plan* (also signalizes an unsignalized node),
+  *Remove signal*, *Export plans...* (a timing pack). Select a node on the map
+  first and it opens on that node.
+- **Import timing pack...** -- loads a timing pack (three CSVs keyed by node,
+  from node and to node, so they survive a netPrep rebuild) and replaces the
+  timing of every node its controllers drive. `config/gmns/samples/colonial_dr`
+  is a demonstration pack for W Colonial Dr, Orange Co.: time-of-day plans,
+  lead-lag lefts, split phasing, a pedestrian phase, two-phase and
+  protected-permitted lefts, coordinated at 120 s (its README).
+- **Validate...** -- timing plans fit the cycle, every signal movement is in a
+  phase, movement lanes and pockets are in range, lane rows match link lanes;
+  *Fill in pocket geometry* draws pockets added in the attribute table.
+- **Use GMNS in the run** -- exports the layers to
+  `<output>/gmns` and writes `GMNS_DIR`: the timing plans set the g/C and
+  cycle of every timed approach in the macro / meso signal model, statewide
+  (needs Signal delay on), and lane truck restrictions in the micro corridor.
+  It does not run micro anywhere: micro runs only on the micro area, and the
+  network micro always exports the package itself.
 
 **Extra volume breakdowns** (Outputs): Purpose is always in the link performance
 files; Market, Market x VOT and VOT bins (edges in $/hr) each write a
