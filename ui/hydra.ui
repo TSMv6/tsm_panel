@@ -1910,10 +1910,10 @@
              <item row="1" column="0" colspan="2">
               <widget class="QCheckBox" name="checkBox_BuildViz">
                <property name="text">
-                <string>Build visualizer layers after the run (meso segments, micro lanes)</string>
+                <string>Build visualizer layers after the run (meso segments, micro lanes, intersection LOS)</string>
                </property>
                <property name="toolTip">
-                <string>Runs the Visualizer builder on this run: Meso Segments (needs the Segment log) and Micro Lanes (needs a micro corridor), AM + PM peak hours at 15 min, added to the map.</string>
+                <string>Runs the Visualizer builder on this run: Meso Segments (needs the Segment log) and Micro Lanes (needs a freeway micro corridor), AM + PM peak hours at 15 min, and for a network micro run Micro movement LOS and Micro intersection LOS on the GMNS geometry (visualizer/micro_los.gpkg), added to the map.</string>
                </property>
               </widget>
              </item>
