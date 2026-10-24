@@ -1056,7 +1056,7 @@ class Ui_DialogHydra(object):
         self.comboBox_NodeSchedule.setItemText(2, _translate("DialogHydra", "Hybrid (per-iter -> per-chunk)"))
         self.groupBox_Signals.setTitle(_translate("DialogHydra", "Signals (macro and meso)"))
         self.checkBox_Signals.setText(_translate("DialogHydra", "Signal delay on signalized links"))
-        self.checkBox_Signals.setToolTip(_translate("DialogHydra", "SIGNAL_MODEL - caps a signalized link's discharge at saturation flow x lanes x g/C and adds the uniform control delay per signal, using the link's NSignals (signalized nodes along it, from netPrep). Applies to macro and meso links. Unchecked: no signal capacity cap or delay at all, and the fields below are not used. Never applied to a static (STA) run. With Use GMNS in the run, a timed approach uses its plan's g/C and cycle. Micro simulates signals from the GMNS plans either way."))
+        self.checkBox_Signals.setToolTip(_translate("DialogHydra", "SIGNAL_MODEL - caps a signalized link's discharge at saturation flow x lanes x g/C and adds the uniform control delay per signal, using the link's NSignals (signalized nodes along it, from netPrep). Applies to macro and meso links. Unchecked: no signal capacity cap or delay at all, and the fields below are not used. With Use GMNS in the run, a timed approach uses its plan's g/C and cycle."))
         self.label_sigSat.setText(_translate("DialogHydra", "Saturation flow (vphpl)"))
         self.lineEdit_SigSat.setText(_translate("DialogHydra", "1800"))
         self.lineEdit_SigSat.setToolTip(_translate("DialogHydra", "SIGNAL_SAT_FLOW — saturation flow per lane."))
