@@ -123,7 +123,8 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("checkBox_MicroCross", "hydra_micro_cross", "check"),
              ("checkBox_Enroute", "hydra_enroute", "check"),
              ("comboBox_ElLogIters", "hydra_el_log_iters", "combo"),
-             ("comboBox_TruckBan", "hydra_truck_ban", "combo"))
+             ("comboBox_TruckBan", "hydra_truck_ban", "combo"),
+             ("lineEdit_LaneSchedule", "hydra_lane_schedule", "text"))
 
 # Enroute Choice tab: line edit -> (control key, default). Written only when
 # the choice is on; the defaults are ELToD's.
@@ -234,6 +235,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.browse_OutDir.clicked.connect(self._browse_out_dir)
         self.browse_TollPolicy.clicked.connect(lambda: self.select_file(self.lineEdit_TollPolicy, "CSV (*.csv)"))
         self.browse_SegParams.clicked.connect(lambda: self.select_file(self.lineEdit_SegParams, "CSV (*.csv)"))
+        self.browse_LaneSchedule.clicked.connect(lambda: self.select_file(self.lineEdit_LaneSchedule, "CSV (*.csv)"))
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
         self.checkBox_Signals.toggled.connect(self._toggle_signals)
@@ -1607,6 +1609,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                         f.write(f"MESO_SEGMENT_LEN      {self.doubleSpinBox_SegLen.value():g}\n")
                 if toll_policy:
                     f.write(f"TOLL_POLICY_FILE      {toll_policy}\n")
+                # Time-of-day lane changes: reversible directions, peak shoulders.
+                lane_sched = self.lineEdit_LaneSchedule.text().strip()
+                if lane_sched:
+                    f.write(f"CAPACITY_FILE         {lane_sched}\n")
                 # Vehicle classes barred from no_trucks = 1 links, and the
                 # en-route express-lane choice (Enroute Choice tab).
                 ban = TRUCK_BANS.get(self.comboBox_TruckBan.currentText(), "MEDIUM_HEAVY")

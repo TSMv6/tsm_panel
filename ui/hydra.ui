@@ -373,6 +373,39 @@
                </widget>
               </item>
               <item>
+               <widget class="QGroupBox" name="groupBox_LaneSchedule">
+                <property name="title">
+                 <string>Lane schedule (reversible / peak shoulder lanes)</string>
+                </property>
+                <layout class="QHBoxLayout" name="hLayout_laneSchedule">
+                 <item>
+                  <widget class="QLabel" name="label_LaneSchedule">
+                   <property name="text">
+                    <string>Schedule file</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="lineEdit_LaneSchedule">
+                   <property name="placeholderText">
+                    <string>optional: A, B, start_time, end_time, added_lanes</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>CAPACITY_FILE: links whose lanes change by time of day. A negative added_lanes closes a reversible direction in that window; a positive one opens shoulder lanes.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="browse_LaneSchedule">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
                <spacer name="page_DTA_EngineSpacer">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>

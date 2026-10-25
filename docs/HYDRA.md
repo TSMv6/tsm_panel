@@ -143,6 +143,28 @@ macro and meso link, statewide; never to a static (STA) run, whose BPR curve
 runs on the planning capacity (afdta ignores `SIGNAL_MODEL` there). The micro
 tier simulates its own signals from the GMNS plans instead.
 
+### Macro DTA tab: lane schedule
+
+*Schedule file* (`CAPACITY_FILE`, optional) changes a link's lanes by time of
+day: reversible facilities (I-595) and peak-hour shoulder lanes. One row per link
+and window:
+
+    A,B,start_time,end_time,added_lanes
+    1039418447,1039417885,00:00,04:00,-1
+    1039418447,1039417885,13:00,24:00,-1
+
+- **Reversible lanes:** code both directions as links, then close each one outside
+  its window with a negative `added_lanes` (−1 for a one-lane facility). Only the
+  schedule keeps the two directions from being open at once. In the example the
+  eastbound direction is closed 00:00–04:00 and 13:00–24:00, so it is open
+  04:00–13:00.
+- **Shoulder lanes:** a positive `added_lanes` adds that many lanes of capacity in
+  its window only. An optional `added_vph` column gives the capacity directly.
+- A link with no capacity left in an interval is **closed**: routing does not
+  enter it then, and the macro, node and meso loaders discharge nothing from it.
+- Times are clock times; past midnight is allowed (`26:00` = 2 AM next day).
+- A static (STA) run does not read the schedule.
+
 ### Meso / Micro tab: GMNS sub-tab
 
 netPrep writes `gmns_network.gpkg` (`gmns_network_msr.gpkg` for MSR) beside
