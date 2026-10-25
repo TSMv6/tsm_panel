@@ -44,12 +44,23 @@ an equilibrium iteration, trading speed for tightness:
 batch of routing groups, not a VOT class. Node refresh applies to the node loaders;
 it is harmless for the point-queue / LTM engines.)
 
-**Node refresh is the node balancer.** *Per-link load refresh* and *Per-link load
-schedule* on the Advanced tab (`LOAD_REFRESH` / `LOAD_SCHEDULE`) are a different
-thing: they control the per-link **PointQueue** run mode only, which has no node
-model, and are greyed out for the node run modes.
+**Node refresh is the node balancer.** The per-link **PointQueue** run mode has no
+node model; it reloads every agent after each chunk (the engine default).
 
-### Advanced tab: rerouting and loading
+Also on the Macro DTA tab:
+
+- **Max trips** (0 = all) and **Sample every** — cut the trip list for a quick test.
+- **Sampling schedule** (`SAMPLE_SCHEDULE`) — the share of trips each iteration runs
+  on, coarse to fine (*Progressive* 25 → 50 → 100%); *Custom schedule* sets the
+  iteration ranges.
+- **Loading resolution (min)** (`NODE_INJECT_RES`, 1–15, default 15) — how finely a
+  departure slot's trips are released by the node loaders. 1 = minute by minute,
+  which smooths the loading; travel times still update every 15 minutes.
+- **Departure slots** (`DEPART_SLOT_MIN`, default Auto) — the slot in the route key
+  (O · D · slot · `marketVot`). Auto follows the trip list: a 15-min agentPlans
+  output gets 15-min keys, a 30-min output 30-min keys.
+
+### Advanced tab: rerouting, LTM and signals
 
 - **Min. reroute share** (`REROUTE_FRACTION_MIN`, 0.05) — the smallest share of
   route keys allowed to switch path in one iteration (0.05 = 5%). Candidates are
@@ -61,12 +72,8 @@ model, and are greyed out for the node run modes.
 - **Reroute threshold (min)** (`REROUTE_THRESHOLD_MIN`, 0.01) — a route key adopts a
   new path only if it beats its current path by more than this many minutes of
   generalized cost. Keys within it count as *stable* in the log.
-- **Loading resolution (min)** (`NODE_INJECT_RES`, 1–15, default 15) — how finely a
-  departure slot's trips are released by the node loaders. 1 = minute by minute,
-  which smooths the loading; travel times still update every 15 minutes.
-- **Departure slots** (`DEPART_SLOT_MIN`, default Auto) — the slot in the route key
-  (O · D · slot · `marketVot`). Auto follows the trip list: a 15-min agentPlans
-  output gets 15-min keys, a 30-min output 30-min keys.
+- **LTM max spillback** and **Jam density** — the spatial-queue (LTM) settings.
+- **Signals (macro and meso)** — see *Advanced tab: signals* below.
 
 ### Meso / Micro tab
 
@@ -125,7 +132,7 @@ exported for the run automatically):
   `movement_los` / `intersection_los` tables hold every 15-min interval with a
   `time` field for the Temporal Controller.
 
-### Macro DTA tab: signals
+### Advanced tab: signals
 
 Unchecked, nothing about signals reaches the macro / meso loading: no
 discharge cap, no control delay, and saturation flow, cycle and g/C (greyed

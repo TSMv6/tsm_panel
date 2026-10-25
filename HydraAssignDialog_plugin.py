@@ -84,10 +84,6 @@ def _pair(text, default_a, default_b):
 # VDF aggregation window label -> BPR_PERIOD_MIN.
 BPR_PERIODS = {"15 min": "15", "30 min": "30", "60 min (hourly)": "60"}
 
-# Per-link loader refresh label -> LOAD_REFRESH. Read only by the per-link
-# PointQueue run mode; the node loaders are refreshed by NODE_SCHEDULE.
-LOAD_REFRESH = {"Exact (rebuild all)": "exact", "Incremental (delta)": "incremental"}
-
 # Departure-slot label -> DEPART_SLOT_MIN (route-key slot for HH:MM:SS trips).
 DEPART_SLOTS = {"Auto (match trip list)": "AUTO", "15 min": "15", "30 min": "30",
                 "60 min": "60"}
@@ -433,10 +429,6 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 w["more"].setText(str(settings.get(f"{key}_resume_more")))
             w["check"].setChecked(_b(f"{key}_resume"))
             self._refresh_resume(p)
-        if settings.get("hydra_load_refresh"):
-            self._select_combo(self.comboBox_LoadRefresh, settings.get("hydra_load_refresh"))
-        if settings.get("hydra_load_schedule"):
-            self.lineEdit_LoadSchedule.setText(settings.get("hydra_load_schedule"))
 
         # apply_macro_preset() overwrites Meso FTYPEs from the preset, so restore the
         # saved override AFTER it; toggle_micro() applies the enable state.
@@ -730,15 +722,11 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         return model == "DTA_PointQueue"
 
     def _sync_loader_controls(self):
-        """Grey out the loading controls the chosen run mode does not read:
-        Loading resolution is a node-loader setting; Per-link load refresh and
-        schedule belong to the per-link PointQueue mode only."""
+        """Grey out Loading resolution, a node-loader setting, for the
+        per-link PointQueue mode, which does not read it."""
         per_link = self._is_per_link_loader()
         for w in (self.label_injectRes, self.spinBox_InjectRes):
             w.setEnabled(not per_link)
-        for w in (self.label_loadRefresh, self.comboBox_LoadRefresh,
-                  self.label_loadSchedule, self.lineEdit_LoadSchedule):
-            w.setEnabled(per_link)
 
     # ---- checkpoint / resume -------------------------------------------
     def _resume_w(self, p):
@@ -1376,8 +1364,6 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Output toggles
         settings.set("hydra_agent_plans", self.checkBox_AgentPlans.isChecked())
         settings.set("hydra_agent_paths", self.checkBox_AgentPaths.isChecked())
-        settings.set("hydra_load_refresh", self.comboBox_LoadRefresh.currentText())
-        settings.set("hydra_load_schedule", self.lineEdit_LoadSchedule.text().strip())
         # Counts / ODME / supplemental demand
         settings.set("hydra_count_file", self.lineEdit_CountFile.text().strip())
         settings.set("hydra_odme", self.checkBox_Odme.isChecked())
@@ -1535,13 +1521,6 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 # route-key departure slot (AUTO follows the trip list's grid).
                 f.write(f"NODE_INJECT_RES       {self.spinBox_InjectRes.value()}\n")
                 f.write(f"DEPART_SLOT_MIN       {DEPART_SLOTS.get(self.comboBox_DepartSlot.currentText(), 'AUTO')}\n")
-                # The per-link PointQueue loader's refresh (the node loaders
-                # use NODE_SCHEDULE above and ignore these).
-                if macro_model == "DTA_PointQueue":
-                    f.write(f"LOAD_REFRESH          {LOAD_REFRESH.get(self.comboBox_LoadRefresh.currentText(), 'exact')}\n")
-                    load_sched = self.lineEdit_LoadSchedule.text().strip()
-                    if load_sched:
-                        f.write(f"LOAD_SCHEDULE         {load_sched}\n")
                 f.write(f"THREADS               {self.lineEdit_Threads.text().strip() or '0'}\n")
                 # Per-purpose volume columns in every link_performance_
                 # <Macro|Meso|Micro>DTA.csv (vol_<purpose> sums to volume).

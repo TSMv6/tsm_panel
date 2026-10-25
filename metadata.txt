@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.81
+version=2.82
 date=2026-10-21
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -59,8 +59,12 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (129 commits, 2026-06-19 to 2026-10-24):
+    One version per commit, newest first (130 commits, 2026-06-19 to 2026-10-24):
     .
+    2.82 (2026-10-24): HyDRA tab layout - Signals moved to the Advanced tab;
+    max trips, sampling schedule, loading resolution and departure slots moved
+    to the Macro DTA tab; the per-link load refresh / schedule row removed
+    (PointQueue runs reload after every chunk, the engine default).
     2.81 (2026-10-24): HyDRA lane schedule - the Macro DTA tab takes a
     time-of-day lane file (CAPACITY_FILE) for reversible facilities and peak
     shoulder lanes; afdta now applies it in the node loaders and closes a

@@ -282,6 +282,276 @@
                    </item>
                   </widget>
                  </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_maxtrips">
+                   <property name="text">
+                    <string>Max trips (0=all)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QLineEdit" name="lineEdit_MaxTrips">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MAX_TRIPS — cap trips loaded (0 = all). Use for quick test runs.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_sample">
+                   <property name="text">
+                    <string>Sample every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SampleEvery">
+                   <property name="text">
+                    <string>1</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SAMPLE_EVERY — load every Nth trip (1 = all).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_sampleSched">
+                   <property name="text">
+                    <string>Sampling schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QComboBox" name="comboBox_SampleSchedule">
+                   <property name="toolTip">
+                    <string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Full sample every iteration</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Custom</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="label_sampleCustom">
+                   <property name="text">
+                    <string>Custom schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SampleSchedule">
+                   <property name="placeholderText">
+                    <string>1-4:25, 5-8:50, 9-15:100</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_injectRes">
+                   <property name="text">
+                    <string>Loading resolution (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QSpinBox" name="spinBox_InjectRes">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>15</number>
+                   </property>
+                   <property name="value">
+                    <number>15</number>
+                   </property>
+                   <property name="suffix">
+                    <string> min</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>NODE_INJECT_RES — how finely a departure slot's trips are released onto the network by the node loaders (Node + PointQueue, Node + Spatial/LTM). 15 = one release per 15-min interval; 1 = minute by minute, which smooths the loading and avoids artificial queues at the start of each slot. Travel times still update every 15 minutes. Ignored by the per-link PointQueue mode.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="2">
+                  <widget class="QLabel" name="label_departSlot">
+                   <property name="text">
+                    <string>Departure slots</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3">
+                  <widget class="QComboBox" name="comboBox_DepartSlot">
+                   <property name="toolTip">
+                    <string>DEPART_SLOT_MIN — width of the departure slot in the route key (O · D · slot · marketVot) for a trip list with HH:MM:SS departure times. Auto follows the trip list's own grid: a 15-min agentPlans output gets 15-min keys, a 30-min output 30-min keys. A slot finer than the trip list loads each period's trips into its first part, so leave this on Auto unless testing.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Auto (match trip list)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>15 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>30 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>60 min</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_LaneSchedule">
+                <property name="title">
+                 <string>Lane schedule (reversible / peak shoulder lanes)</string>
+                </property>
+                <layout class="QHBoxLayout" name="hLayout_laneSchedule">
+                 <item>
+                  <widget class="QLabel" name="label_LaneSchedule">
+                   <property name="text">
+                    <string>Schedule file</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="lineEdit_LaneSchedule">
+                   <property name="placeholderText">
+                    <string>optional: A, B, start_time, end_time, added_lanes</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>CAPACITY_FILE: links whose lanes change by time of day. A negative added_lanes closes a reversible direction in that window; a positive one opens shoulder lanes.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="browse_LaneSchedule">
+                   <property name="text">
+                    <string>...</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_DTA_EngineSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="page_DTA_Advanced">
+             <attribute name="title">
+              <string>Advanced (afdta)</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_AdvancedLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_Advanced">
+                <property name="title">
+                 <string>Rerouting and LTM</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_adv">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_rerouteFrac">
+                   <property name="text">
+                    <string>Min. reroute share</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="lineEdit_RerouteFraction">
+                   <property name="text">
+                    <string>0.05</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_FRACTION_MIN: the smallest share of route keys allowed to switch to their new shortest path in one iteration (0.05 = 5%). Only keys whose new path beats the current one by more than the reroute threshold are candidates, and the share allowed is max(2/(n+1), this value): 100% at iteration 0, 67%, 50%, 40% ... down to this floor, picked at random. A key switches as a whole, all its agents together. Higher converges faster but noisier.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_rerouteThr">
+                   <property name="text">
+                    <string>Reroute threshold (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
+                   <property name="text">
+                    <string>0.01</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_THRESHOLD_MIN — a route key only adopts its new shortest path when that path beats its current one by more than this many minutes of generalized cost. Keys within the threshold count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_spillback">
+                   <property name="text">
+                    <string>LTM max spillback (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_LtmSpillback">
+                   <property name="text">
+                    <string>20</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>LTM_MAX_SPILLBACK_MIN — cap on queue spillback propagation (minutes). LTM macro only.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_jam">
+                   <property name="text">
+                    <string>Jam density</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_JamDensity">
+                   <property name="text">
+                    <string>240</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>JAM_DENSITY — veh/mi/lane at jam (LTM).</string>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </widget>
               </item>
@@ -366,320 +636,6 @@
                    </property>
                    <property name="toolTip">
                     <string>SIGNAL_GC_&lt;ftype&gt; — per facility type g/C, e.g. 21:0.50, 22:0.45. Blank = the default g/C for all.</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_LaneSchedule">
-                <property name="title">
-                 <string>Lane schedule (reversible / peak shoulder lanes)</string>
-                </property>
-                <layout class="QHBoxLayout" name="hLayout_laneSchedule">
-                 <item>
-                  <widget class="QLabel" name="label_LaneSchedule">
-                   <property name="text">
-                    <string>Schedule file</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="lineEdit_LaneSchedule">
-                   <property name="placeholderText">
-                    <string>optional: A, B, start_time, end_time, added_lanes</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>CAPACITY_FILE: links whose lanes change by time of day. A negative added_lanes closes a reversible direction in that window; a positive one opens shoulder lanes.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="browse_LaneSchedule">
-                   <property name="text">
-                    <string>...</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <spacer name="page_DTA_EngineSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-            <widget class="QWidget" name="page_DTA_Advanced">
-             <attribute name="title">
-              <string>Advanced (afdta)</string>
-             </attribute>
-             <layout class="QVBoxLayout" name="page_DTA_AdvancedLayout">
-              <item>
-               <widget class="QGroupBox" name="groupBox_Advanced">
-                <property name="title">
-                 <string>Advanced (afdta) — rerouting, LTM, sampling</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_adv">
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_rerouteFrac">
-                   <property name="text">
-                    <string>Min. reroute share</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="lineEdit_RerouteFraction">
-                   <property name="text">
-                    <string>0.05</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>REROUTE_FRACTION_MIN: the smallest share of route keys allowed to switch to their new shortest path in one iteration (0.05 = 5%). Only keys whose new path beats the current one by more than the reroute threshold are candidates, and the share allowed is max(2/(n+1), this value): 100% at iteration 0, 67%, 50%, 40% ... down to this floor, picked at random. A key switches as a whole, all its agents together. Higher converges faster but noisier.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="2">
-                  <widget class="QLabel" name="label_rerouteThr">
-                   <property name="text">
-                    <string>Reroute threshold (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="3">
-                  <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
-                   <property name="text">
-                    <string>0.01</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>REROUTE_THRESHOLD_MIN — a route key only adopts its new shortest path when that path beats its current one by more than this many minutes of generalized cost. Keys within the threshold count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_spillback">
-                   <property name="text">
-                    <string>LTM max spillback (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="lineEdit_LtmSpillback">
-                   <property name="text">
-                    <string>20</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>LTM_MAX_SPILLBACK_MIN — cap on queue spillback propagation (minutes). LTM macro only.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="2">
-                  <widget class="QLabel" name="label_jam">
-                   <property name="text">
-                    <string>Jam density</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="3">
-                  <widget class="QLineEdit" name="lineEdit_JamDensity">
-                   <property name="text">
-                    <string>240</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>JAM_DENSITY — veh/mi/lane at jam (LTM).</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="label_maxtrips">
-                   <property name="text">
-                    <string>Max trips (0=all)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QLineEdit" name="lineEdit_MaxTrips">
-                   <property name="text">
-                    <string>0</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>MAX_TRIPS — cap trips loaded (0 = all). Use for quick test runs.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="2">
-                  <widget class="QLabel" name="label_sample">
-                   <property name="text">
-                    <string>Sample every</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="3">
-                  <widget class="QLineEdit" name="lineEdit_SampleEvery">
-                   <property name="text">
-                    <string>1</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>SAMPLE_EVERY — load every Nth trip (1 = all).</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="label_sampleSched">
-                   <property name="text">
-                    <string>Sampling schedule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QComboBox" name="comboBox_SampleSchedule">
-                   <property name="toolTip">
-                    <string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Full sample every iteration</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Custom</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="3" column="2">
-                  <widget class="QLabel" name="label_sampleCustom">
-                   <property name="text">
-                    <string>Custom schedule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="3">
-                  <widget class="QLineEdit" name="lineEdit_SampleSchedule">
-                   <property name="placeholderText">
-                    <string>1-4:25, 5-8:50, 9-15:100</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="label_injectRes">
-                   <property name="text">
-                    <string>Loading resolution (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QSpinBox" name="spinBox_InjectRes">
-                   <property name="minimum">
-                    <number>1</number>
-                   </property>
-                   <property name="maximum">
-                    <number>15</number>
-                   </property>
-                   <property name="value">
-                    <number>15</number>
-                   </property>
-                   <property name="suffix">
-                    <string> min</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>NODE_INJECT_RES — how finely a departure slot's trips are released onto the network by the node loaders (Node + PointQueue, Node + Spatial/LTM). 15 = one release per 15-min interval; 1 = minute by minute, which smooths the loading and avoids artificial queues at the start of each slot. Travel times still update every 15 minutes. Ignored by the per-link PointQueue mode.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="2">
-                  <widget class="QLabel" name="label_departSlot">
-                   <property name="text">
-                    <string>Departure slots</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="3">
-                  <widget class="QComboBox" name="comboBox_DepartSlot">
-                   <property name="toolTip">
-                    <string>DEPART_SLOT_MIN — width of the departure slot in the route key (O · D · slot · marketVot) for a trip list with HH:MM:SS departure times. Auto follows the trip list's own grid: a 15-min agentPlans output gets 15-min keys, a 30-min output 30-min keys. A slot finer than the trip list loads each period's trips into its first part, so leave this on Auto unless testing.</string>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>Auto (match trip list)</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>15 min</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>30 min</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>60 min</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="5" column="0" rowspan="1" colspan="1">
-                  <widget class="QLabel" name="label_loadRefresh">
-                   <property name="text">
-                    <string>Per-link load refresh</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="1" rowspan="1" colspan="1">
-                  <widget class="QComboBox" name="comboBox_LoadRefresh">
-                   <property name="toolTip">
-                    <string>LOAD_REFRESH — PointQueue (legacy per-link) run mode only. How the per-link loader refreshes between route chunks: Exact rebuilds every key's arrivals; Incremental updates only the keys that re-routed (faster, an approximation). This is NOT the node balancer: the node loaders use Node refresh (NODE_SCHEDULE) on the Macro DTA tab.</string>
-                   </property>
-                   <property name="currentIndex">
-                    <number>0</number>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>Exact (rebuild all)</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Incremental (delta)</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="5" column="2" rowspan="1" colspan="1">
-                  <widget class="QLabel" name="label_loadSchedule">
-                   <property name="text">
-                    <string>Per-link load schedule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="3" rowspan="1" colspan="1">
-                  <widget class="QLineEdit" name="lineEdit_LoadSchedule">
-                   <property name="placeholderText">
-                    <string>(blank = every chunk)</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>LOAD_SCHEDULE — PointQueue (legacy per-link) run mode only. Refresh stride of the per-link loader, the same syntax as Node refresh: e.g. 1-9:iter, 10-15:chunk. Blank = after every chunk.</string>
                    </property>
                   </widget>
                  </item>
@@ -1242,7 +1198,7 @@
                          <string>Use GMNS in the run</string>
                         </property>
                         <property name="toolTip">
-                         <string>GMNS_DIR -- the layers are exported to &lt;output&gt;/gmns at run time. Timing plans set each timed approach's g/C and cycle in the macro / meso signal model, statewide (Signal delay on the Macro DTA tab must be on); lane allowed_uses restrict trucks in the micro corridor. This does not run micro: micro runs only on the micro area (Tiers &amp; probes), and a network micro run always uses the package.</string>
+                         <string>GMNS_DIR -- the layers are exported to &lt;output&gt;/gmns at run time. Timing plans set each timed approach's g/C and cycle in the macro / meso signal model, statewide (Signal delay on the Advanced tab must be on); lane allowed_uses restrict trucks in the micro corridor. This does not run micro: micro runs only on the micro area (Tiers &amp; probes), and a network micro run always uses the package.</string>
                         </property>
                        </widget>
                       </item>
