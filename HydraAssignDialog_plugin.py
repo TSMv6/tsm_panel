@@ -120,7 +120,38 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("checkBox_UseGmns", "hydra_use_gmns", "check"),
              ("comboBox_MicroModel", "hydra_micro_model", "combo"),
              ("lineEdit_MicroPkg", "hydra_micro_pkg", "text"),
-             ("checkBox_MicroCross", "hydra_micro_cross", "check"))
+             ("checkBox_MicroCross", "hydra_micro_cross", "check"),
+             ("checkBox_Enroute", "hydra_enroute", "check"),
+             ("comboBox_ElLogIters", "hydra_el_log_iters", "combo"),
+             ("comboBox_TruckBan", "hydra_truck_ban", "combo"))
+
+# Enroute Choice tab: line edit -> (control key, default). Written only when
+# the choice is on; the defaults are ELToD's.
+ENROUTE_KEYS = (("lineEdit_ElEntry", "EXPRESS_ENTRY_TYPES", "90"),
+                ("lineEdit_ElExit", "EXPRESS_EXIT_TYPES", "91"),
+                ("lineEdit_ElJoin", "GENERAL_JOIN_TYPES", "94"),
+                ("lineEdit_ElJoinMi", "ENROUTE_JOIN_MAX_MI", "30"),
+                ("lineEdit_ElFtypes", "EXPRESS_FACILITY_TYPES", "96,97,98"),
+                ("lineEdit_ElAccess", "EXPRESS_ACCESS_TYPES", "97,98"),
+                ("lineEdit_ElRelRatio", "MODEL_RELIABILITY_RATIO", "3"),
+                ("lineEdit_ElRelTime", "MODEL_RELIABILITY_TIME", "0.2"),
+                ("lineEdit_ElRelDist", "MODEL_RELIABILITY_DISTANCE", "0.1"),
+                ("lineEdit_ElPercTime", "MODEL_PERCEIVED_TIME", "13.67"),
+                ("lineEdit_ElPercMid", "MODEL_PERCEIVED_MID_VC", "0.693"),
+                ("lineEdit_ElPercMax", "MODEL_PERCEIVED_MAX_VC", "1.65"),
+                ("lineEdit_ElExpWeight", "MODEL_EXPRESS_WEIGHT", "1.28"),
+                ("lineEdit_ElScaleLen", "MODEL_SCALE_LENGTH", "7.2"),
+                ("lineEdit_ElScaleAlpha", "MODEL_SCALE_ALPHA", "0"),
+                ("lineEdit_ElCircuity", "MODEL_MAX_CIRCUITY", "1.5"),
+                ("lineEdit_ElPathTime", "PATH_PERCEIVED_TIME", "13.67"),
+                ("lineEdit_ElPathMid", "PATH_PERCEIVED_MID_VC", "0.693"),
+                ("lineEdit_ElPathMax", "PATH_PERCEIVED_MAX_VC", "1.2"))
+P1_FIELDS += tuple((w, "hydra_" + w.split("_", 1)[1].lower(), "text") for w, _k, _d in ENROUTE_KEYS)
+P1_FIELDS += (("lineEdit_ElConstFile", "hydra_elconstfile", "text"),
+              ("lineEdit_ElLogNodes", "hydra_ellognodes", "text"))
+# TRUCK_BAN value per comboBox_TruckBan entry (no_trucks = 1 links).
+TRUCK_BANS = {"Medium & heavy trucks": "MEDIUM_HEAVY", "Heavy trucks only": "HEAVY",
+              "None": "NONE"}
 
 # Link tiers and probes sub-tabs: widget key -> (layer kind, field name).
 TAG_TABS = {"Meso": ("link", "dta_meso"), "Micro": ("link", "dta_micro"),
@@ -206,6 +237,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
         self.checkBox_Signals.toggled.connect(self._toggle_signals)
+        self.checkBox_Enroute.toggled.connect(self._toggle_enroute)
+        self.btn_ElConstFile.clicked.connect(
+            lambda: self.select_file(self.lineEdit_ElConstFile, "CSV (*.csv)"))
         self.browse_CountFile.clicked.connect(lambda: self.select_file(self.lineEdit_CountFile, "Counts (*.csv)"))
         self.browse_SuppFile.clicked.connect(lambda: self.select_file(self.lineEdit_SuppFile, "Trip list (*.csv *.csv.gz)"))
         self.browse_SuppGrowth.clicked.connect(lambda: self.select_file(self.lineEdit_SuppGrowth, "CSV (*.csv)"))
@@ -271,7 +305,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         # Advanced; Solver/VDF, Equilibrium, Demand). A QTabWidget reserves the
         # height of its TALLEST page, so without this the short tabs would show
         # a band of dead space sized for Advanced.
-        for _t in (self.tabWidget_Tags, self.tabWidget_MesoMicro, self.tabWidget_DTA,
+        for _t in (self.tabWidget_Tags, self.tabWidget_MesoMicro, self.tabWidget_Enroute, self.tabWidget_DTA,
                    self.tabWidget_STA, self.tabWidget_Engine):
             _t.currentChanged.connect(self._fit_tabs)
         self._fit_tabs()
@@ -428,6 +462,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     w.setValue(type(w.value())(float(v)))
             except (ValueError, TypeError):
                 pass
+        self._toggle_enroute(self.checkBox_Enroute.isChecked())
         self._sync_micro_outer()
         self._refresh_tag_counts()
 
@@ -465,14 +500,20 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         page = tabs.currentWidget()
         if page is None:
             return
-        tabs.setMaximumHeight(page.sizeHint().height()
-                              + tabs.tabBar().sizeHint().height() + 12)
+        # A word-wrapped label's height depends on the width, which sizeHint
+        # ignores: ask the layout for the height at the page's actual width.
+        h = page.sizeHint().height()
+        lay = page.layout()
+        if lay is not None and lay.hasHeightForWidth() and page.width() > 0:
+            h = max(h, lay.totalHeightForWidth(page.width()))
+        tabs.setMaximumHeight(h + tabs.tabBar().sizeHint().height() + 16)
 
     def _fit_tabs(self, *_):
         """Re-fit the sub-tabs first, then the engine tabs that contain them --
         the outer frame's height depends on what the inner ones settled at."""
         self._fit_one_tab(self.tabWidget_Tags)        # innermost first
         self._fit_one_tab(self.tabWidget_MesoMicro)
+        self._fit_one_tab(self.tabWidget_Enroute)
         self._fit_one_tab(self.tabWidget_DTA)
         self._fit_one_tab(self.tabWidget_STA)
         self._fit_one_tab(self.tabWidget_Engine)
@@ -645,6 +686,12 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                   self.label_sigGc, self.lineEdit_SigGc, self.label_sigGcFt, self.lineEdit_SigGcFt):
             w.setEnabled(on)
 
+    def _toggle_enroute(self, on):
+        # Unchecked, no ENROUTE_* key is written. The Vehicle use sub-tab stays
+        # live: it applies to no_trucks links whether or not the choice runs.
+        for page in (self.page_El_Types, self.page_El_Utility, self.page_El_Out):
+            page.setEnabled(on)
+
     def _coupling(self):
         """MICRO_COUPLING value of the coupling combo (its labels are descriptive)."""
         return COUPLINGS[max(0, self.comboBox_Coupling.currentIndex())]
@@ -798,7 +845,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         edit = self.lineEdit_StaIters if p else self.lineEdit_Iters
         return edit.text().strip() or ("15" if p else "10")
 
-    # ---- link tiers and probes (Meso / Micro tab) ----------------------
+    # ---- link tiers and probes (Meso / Micro > Tiers & probes) --------
     def _tag_layer(self, kind):
         """The HyDRA link or node layer picked at the top of the dialog."""
         combo = self.comboBox_LinkLayer if kind == "link" else self.comboBox_NodeLayer
@@ -897,7 +944,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         if build:
             src = self.lineEdit_GmnsFile.text().strip()
             if not src or not os.path.exists(src):
-                QMessageBox.warning(self, "Micro package", "Pick the statewide GMNS package above first: the "
+                QMessageBox.warning(self, "Micro package", "Pick the statewide GMNS package on the GMNS tab first: the "
                                     "editable copy is cut from it.")
                 return
             try:
@@ -1107,6 +1154,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 and not self.checkBox_Micro.isChecked():
             text += "\nMicro corridor is off: dta_micro links run as macro/meso until it is checked."
         self.label_TagCounts.setText(text + ("\n" + note if note else ""))
+        # The line's height changed: refit the tab frames once it is laid out.
+        from qgis.PyQt.QtCore import QTimer
+        QTimer.singleShot(0, self._fit_tabs)
 
     def _sync_micro_outer(self, *_a):
         """Outer loops only matter for twoway_full coupling."""
@@ -1557,6 +1607,23 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                         f.write(f"MESO_SEGMENT_LEN      {self.doubleSpinBox_SegLen.value():g}\n")
                 if toll_policy:
                     f.write(f"TOLL_POLICY_FILE      {toll_policy}\n")
+                # Vehicle classes barred from no_trucks = 1 links, and the
+                # en-route express-lane choice (Enroute Choice tab).
+                ban = TRUCK_BANS.get(self.comboBox_TruckBan.currentText(), "MEDIUM_HEAVY")
+                f.write(f"TRUCK_BAN             {ban}\n")
+                if self.checkBox_Enroute.isChecked():
+                    f.write("ENROUTE_CHOICE        YES\n")
+                    for w, key, default in ENROUTE_KEYS:
+                        val = getattr(self, w).text().strip() or default
+                        f.write(f"{key:<26} {val}\n")
+                    const = self.lineEdit_ElConstFile.text().strip()
+                    if const:
+                        f.write(f"ENROUTE_CONSTANT_FILE {const}\n")
+                    nodes = self.lineEdit_ElLogNodes.text().strip()
+                    if nodes:
+                        f.write(f"ENROUTE_LOG_NODES     {nodes}\n")
+                        every = self.comboBox_ElLogIters.currentIndex() == 1
+                        f.write(f"ENROUTE_LOG_ITERATIONS {'ALL' if every else 'LAST'}\n")
                 # Generalized-cost segment params (beta_time/beta_cost/distance per
                 # market segment). Without it afdta falls back to time-only GC.
                 seg_params = self.lineEdit_SegParams.text().strip()
@@ -1626,7 +1693,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     f.write(f"MICRO_PROBE_STRIDE    {self.spinBox_ProbeStride.value()}\n")
                     # EL/GP choice inside the micro corridor: meso logit vs micro
                     # time-differential converted by each agent's VOT.
-                    if self.comboBox_MicroChoice.currentText().startswith("Meso"):
+                    if self.comboBox_MicroChoice.currentText().startswith("Enroute"):
                         f.write("MICRO_CHOICE          MODEA\n")
                     else:
                         f.write("MICRO_CHOICE          ENDOGENOUS\n")
@@ -1774,7 +1841,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             except Exception as e:
                 loaded_note += "\n(micro_gmns.gpkg not built: %s)" % e
             self.lineEdit_MicroPkg.setText(pkg.replace("\\", "/"))
-            loaded_note += "\nMicro package: %s (GMNS > Micro package reruns it alone)" % pkg
+            loaded_note += "\nMicro package: %s (Meso / Micro > Micro reruns it alone)" % pkg
         try:
             gp = self._auto_summarize(out_dir, link_path)
             loaded_note = f"\nLoaded network: {gp}" if gp else \

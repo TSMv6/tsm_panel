@@ -149,7 +149,7 @@
             </property>
             <widget class="QWidget" name="page_DTA_Engine">
              <attribute name="title">
-              <string>Engine and equilibrium</string>
+              <string>Macro DTA</string>
              </attribute>
              <layout class="QVBoxLayout" name="page_DTA_EngineLayout">
               <item>
@@ -387,6 +387,288 @@
               </item>
              </layout>
             </widget>
+            <widget class="QWidget" name="page_DTA_Advanced">
+             <attribute name="title">
+              <string>Advanced (afdta)</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="page_DTA_AdvancedLayout">
+              <item>
+               <widget class="QGroupBox" name="groupBox_Advanced">
+                <property name="title">
+                 <string>Advanced (afdta) — rerouting, LTM, sampling</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_adv">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_rerouteFrac">
+                   <property name="text">
+                    <string>Min. reroute share</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="lineEdit_RerouteFraction">
+                   <property name="text">
+                    <string>0.05</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_FRACTION_MIN: the smallest share of route keys allowed to switch to their new shortest path in one iteration (0.05 = 5%). Only keys whose new path beats the current one by more than the reroute threshold are candidates, and the share allowed is max(2/(n+1), this value): 100% at iteration 0, 67%, 50%, 40% ... down to this floor, picked at random. A key switches as a whole, all its agents together. Higher converges faster but noisier.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_rerouteThr">
+                   <property name="text">
+                    <string>Reroute threshold (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
+                   <property name="text">
+                    <string>0.01</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_THRESHOLD_MIN — a route key only adopts its new shortest path when that path beats its current one by more than this many minutes of generalized cost. Keys within the threshold count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_spillback">
+                   <property name="text">
+                    <string>LTM max spillback (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEdit_LtmSpillback">
+                   <property name="text">
+                    <string>20</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>LTM_MAX_SPILLBACK_MIN — cap on queue spillback propagation (minutes). LTM macro only.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_jam">
+                   <property name="text">
+                    <string>Jam density</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_JamDensity">
+                   <property name="text">
+                    <string>240</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>JAM_DENSITY — veh/mi/lane at jam (LTM).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_maxtrips">
+                   <property name="text">
+                    <string>Max trips (0=all)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="lineEdit_MaxTrips">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>MAX_TRIPS — cap trips loaded (0 = all). Use for quick test runs.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="2">
+                  <widget class="QLabel" name="label_sample">
+                   <property name="text">
+                    <string>Sample every</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SampleEvery">
+                   <property name="text">
+                    <string>1</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>SAMPLE_EVERY — load every Nth trip (1 = all).</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_sampleSched">
+                   <property name="text">
+                    <string>Sampling schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="comboBox_SampleSchedule">
+                   <property name="toolTip">
+                    <string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Full sample every iteration</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Custom</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="3" column="2">
+                  <widget class="QLabel" name="label_sampleCustom">
+                   <property name="text">
+                    <string>Custom schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="3">
+                  <widget class="QLineEdit" name="lineEdit_SampleSchedule">
+                   <property name="placeholderText">
+                    <string>1-4:25, 5-8:50, 9-15:100</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_injectRes">
+                   <property name="text">
+                    <string>Loading resolution (min)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QSpinBox" name="spinBox_InjectRes">
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>15</number>
+                   </property>
+                   <property name="value">
+                    <number>15</number>
+                   </property>
+                   <property name="suffix">
+                    <string> min</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>NODE_INJECT_RES — how finely a departure slot's trips are released onto the network by the node loaders (Node + PointQueue, Node + Spatial/LTM). 15 = one release per 15-min interval; 1 = minute by minute, which smooths the loading and avoids artificial queues at the start of each slot. Travel times still update every 15 minutes. Ignored by the per-link PointQueue mode.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="2">
+                  <widget class="QLabel" name="label_departSlot">
+                   <property name="text">
+                    <string>Departure slots</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="3">
+                  <widget class="QComboBox" name="comboBox_DepartSlot">
+                   <property name="toolTip">
+                    <string>DEPART_SLOT_MIN — width of the departure slot in the route key (O · D · slot · marketVot) for a trip list with HH:MM:SS departure times. Auto follows the trip list's own grid: a 15-min agentPlans output gets 15-min keys, a 30-min output 30-min keys. A slot finer than the trip list loads each period's trips into its first part, so leave this on Auto unless testing.</string>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Auto (match trip list)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>15 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>30 min</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>60 min</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="5" column="0" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_loadRefresh">
+                   <property name="text">
+                    <string>Per-link load refresh</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1" rowspan="1" colspan="1">
+                  <widget class="QComboBox" name="comboBox_LoadRefresh">
+                   <property name="toolTip">
+                    <string>LOAD_REFRESH — PointQueue (legacy per-link) run mode only. How the per-link loader refreshes between route chunks: Exact rebuilds every key's arrivals; Incremental updates only the keys that re-routed (faster, an approximation). This is NOT the node balancer: the node loaders use Node refresh (NODE_SCHEDULE) on the Macro DTA tab.</string>
+                   </property>
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Exact (rebuild all)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Incremental (delta)</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="5" column="2" rowspan="1" colspan="1">
+                  <widget class="QLabel" name="label_loadSchedule">
+                   <property name="text">
+                    <string>Per-link load schedule</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3" rowspan="1" colspan="1">
+                  <widget class="QLineEdit" name="lineEdit_LoadSchedule">
+                   <property name="placeholderText">
+                    <string>(blank = every chunk)</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>LOAD_SCHEDULE — PointQueue (legacy per-link) run mode only. Refresh stride of the per-link loader, the same syntax as Node refresh: e.g. 1-9:iter, 10-15:chunk. Blank = after every chunk.</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="page_DTA_AdvancedSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+<widget class="QWidget" name="page_DTA_Enroute"><attribute name="title"><string>Enroute Choice</string></attribute><layout class="QVBoxLayout" name="page_DTA_EnrouteLayout"><item><widget class="QCheckBox" name="checkBox_Enroute"><property name="text"><string>Express-lane choice at decision nodes (ELToD logit)</string></property><property name="toolTip"><string>ENROUTE_CHOICE: runs only where the node layer has DTA_Type 90 and 94 nodes.</string></property></widget></item><item><widget class="QTabWidget" name="tabWidget_Enroute"><property name="currentIndex"><number>0</number></property><widget class="QWidget" name="page_El_Types"><attribute name="title"><string>Node &amp;&amp; link types</string></attribute><layout class="QGridLayout" name="gridLayout_elTypes"><item row="0" column="0"><widget class="QLabel" name="label_ElEntry"><property name="text"><string>Entry nodes</string></property></widget></item><item row="0" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElEntry"><property name="text"><string>90</string></property><property name="toolTip"><string>EXPRESS_ENTRY_TYPES: node DTA_Type where a trip decides whether to enter the express lanes.</string></property></widget></item><item row="0" column="2"><widget class="QLabel" name="label_ElExit"><property name="text"><string>Exit nodes</string></property></widget></item><item row="0" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElExit"><property name="text"><string>91</string></property><property name="toolTip"><string>EXPRESS_EXIT_TYPES: node DTA_Type on the express lanes where a trip decides to stay or exit.</string></property></widget></item><item row="1" column="0"><widget class="QLabel" name="label_ElJoin"><property name="text"><string>Join nodes</string></property></widget></item><item row="1" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElJoin"><property name="text"><string>94</string></property><property name="toolTip"><string>GENERAL_JOIN_TYPES: node DTA_Type where the express and GP alternatives meet again.</string></property></widget></item><item row="1" column="2"><widget class="QLabel" name="label_ElJoinMi"><property name="text"><string>Join search (mi)</string></property></widget></item><item row="1" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElJoinMi"><property name="text"><string>30</string></property><property name="toolTip"><string>ENROUTE_JOIN_MAX_MI: how far from a decision node to look for its join node.</string></property></widget></item><item row="2" column="0"><widget class="QLabel" name="label_ElFtypes"><property name="text"><string>Express link types</string></property></widget></item><item row="2" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElFtypes"><property name="text"><string>96,97,98</string></property><property name="toolTip"><string>EXPRESS_FACILITY_TYPES: FTYPEs of every express-lane link, mainline and access.</string></property></widget></item><item row="2" column="2"><widget class="QLabel" name="label_ElAccess"><property name="text"><string>Access link types</string></property></widget></item><item row="2" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElAccess"><property name="text"><string>97,98</string></property><property name="toolTip"><string>EXPRESS_ACCESS_TYPES: the ingress/egress FTYPEs among them (the rest is mainline).</string></property></widget></item></layout></widget><widget class="QWidget" name="page_El_Utility"><attribute name="title"><string>Utility</string></attribute><layout class="QGridLayout" name="gridLayout_elUtility"><item row="0" column="0"><widget class="QLabel" name="label_ElRelRatio"><property name="text"><string>Reliability ratio</string></property></widget></item><item row="0" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElRelRatio"><property name="text"><string>3</string></property><property name="toolTip"><string>MODEL_RELIABILITY_RATIO</string></property></widget></item><item row="0" column="2"><widget class="QLabel" name="label_ElRelTime"><property name="text"><string>Reliability time</string></property></widget></item><item row="0" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElRelTime"><property name="text"><string>0.2</string></property><property name="toolTip"><string>MODEL_RELIABILITY_TIME</string></property></widget></item><item row="1" column="0"><widget class="QLabel" name="label_ElRelDist"><property name="text"><string>Reliability distance</string></property></widget></item><item row="1" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElRelDist"><property name="text"><string>0.1</string></property><property name="toolTip"><string>MODEL_RELIABILITY_DISTANCE</string></property></widget></item><item row="1" column="2"><widget class="QLabel" name="label_ElCircuity"><property name="text"><string>Max circuity</string></property></widget></item><item row="1" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElCircuity"><property name="text"><string>1.5</string></property><property name="toolTip"><string>MODEL_MAX_CIRCUITY</string></property></widget></item><item row="2" column="0"><widget class="QLabel" name="label_ElPercTime"><property name="text"><string>Perceived time</string></property></widget></item><item row="2" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElPercTime"><property name="text"><string>13.67</string></property><property name="toolTip"><string>MODEL_PERCEIVED_TIME</string></property></widget></item><item row="2" column="2"><widget class="QLabel" name="label_ElPercMid"><property name="text"><string>Perceived mid V/C</string></property></widget></item><item row="2" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElPercMid"><property name="text"><string>0.693</string></property><property name="toolTip"><string>MODEL_PERCEIVED_MID_VC</string></property></widget></item><item row="3" column="0"><widget class="QLabel" name="label_ElPercMax"><property name="text"><string>Perceived max V/C</string></property></widget></item><item row="3" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElPercMax"><property name="text"><string>1.65</string></property><property name="toolTip"><string>MODEL_PERCEIVED_MAX_VC</string></property></widget></item><item row="3" column="2"><widget class="QLabel" name="label_ElExpWeight"><property name="text"><string>Express weight</string></property></widget></item><item row="3" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElExpWeight"><property name="text"><string>1.28</string></property><property name="toolTip"><string>MODEL_EXPRESS_WEIGHT: read for completeness; ELToD 5 does not use it.</string></property></widget></item><item row="4" column="0"><widget class="QLabel" name="label_ElScaleLen"><property name="text"><string>Scale length</string></property></widget></item><item row="4" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElScaleLen"><property name="text"><string>7.2</string></property><property name="toolTip"><string>MODEL_SCALE_LENGTH</string></property></widget></item><item row="4" column="2"><widget class="QLabel" name="label_ElScaleAlpha"><property name="text"><string>Scale alpha</string></property></widget></item><item row="4" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElScaleAlpha"><property name="text"><string>0</string></property><property name="toolTip"><string>MODEL_SCALE_ALPHA</string></property></widget></item><item row="5" column="0"><widget class="QLabel" name="label_ElPathTime"><property name="text"><string>Path perceived time</string></property></widget></item><item row="5" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElPathTime"><property name="text"><string>13.67</string></property><property name="toolTip"><string>PATH_PERCEIVED_TIME</string></property></widget></item><item row="5" column="2"><widget class="QLabel" name="label_ElPathMid"><property name="text"><string>Path mid V/C</string></property></widget></item><item row="5" column="3" colspan="1"><widget class="QLineEdit" name="lineEdit_ElPathMid"><property name="text"><string>0.693</string></property><property name="toolTip"><string>PATH_PERCEIVED_MID_VC</string></property></widget></item><item row="6" column="0"><widget class="QLabel" name="label_ElPathMax"><property name="text"><string>Path max V/C</string></property></widget></item><item row="6" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElPathMax"><property name="text"><string>1.2</string></property><property name="toolTip"><string>PATH_PERCEIVED_MAX_VC</string></property></widget></item></layout></widget><widget class="QWidget" name="page_El_Out"><attribute name="title"><string>Constants &amp;&amp; logs</string></attribute><layout class="QGridLayout" name="gridLayout_elOut"><item row="0" column="0"><widget class="QLabel" name="label_ElConst"><property name="text"><string>Constants file</string></property></widget></item><item row="0" column="1" colspan="2"><widget class="QLineEdit" name="lineEdit_ElConstFile"><property name="text"><string></string></property><property name="toolTip"><string>ENROUTE_CONSTANT_FILE: NODE_ID, HH:MM, CONSTANT. Optional; without it every constant is 0.</string></property><property name="placeholderText"><string>optional: NODE_ID, HH:MM, CONSTANT</string></property></widget></item><item row="0" column="3"><widget class="QToolButton" name="btn_ElConstFile"><property name="text"><string>...</string></property></widget></item><item row="1" column="0"><widget class="QLabel" name="label_ElLogNodes"><property name="text"><string>Log nodes</string></property></widget></item><item row="1" column="1" colspan="1"><widget class="QLineEdit" name="lineEdit_ElLogNodes"><property name="text"><string></string></property><property name="toolTip"><string>ENROUTE_LOG_NODES: decision node ids whose every choice is written out, or ALL.</string></property><property name="placeholderText"><string>node ids, or ALL</string></property></widget></item><item row="1" column="2"><widget class="QLabel" name="label_ElLogIters"><property name="text"><string>Write</string></property></widget></item><item row="1" column="3"><widget class="QComboBox" name="comboBox_ElLogIters"><property name="toolTip"><string>ENROUTE_LOG_ITERATIONS: keep the final pass only, or append every iteration.</string></property><item><property name="text"><string>Final pass</string></property></item><item><property name="text"><string>Every iteration</string></property></item></widget></item></layout></widget><widget class="QWidget" name="page_El_Vehicle"><attribute name="title"><string>Vehicle use</string></attribute><layout class="QGridLayout" name="gridLayout_elVehicle"><item row="0" column="0"><widget class="QLabel" name="label_TruckBan"><property name="text"><string>Barred classes</string></property></widget></item><item row="0" column="1"><widget class="QComboBox" name="comboBox_TruckBan"><property name="toolTip"><string>TRUCK_BAN: vehicle classes barred from links with no_trucks = 1.</string></property><item><property name="text"><string>Medium &amp; heavy trucks</string></property></item><item><property name="text"><string>Heavy trucks only</string></property></item><item><property name="text"><string>None</string></property></item></widget></item></layout></widget></widget></item><item><spacer name="page_DTA_EnrouteSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>0</height></size></property></spacer></item></layout></widget>
             <widget class="QWidget" name="page_DTA_MesoMicro">
              <attribute name="title">
               <string>Meso / Micro</string>
@@ -394,14 +676,14 @@
              <layout class="QVBoxLayout" name="page_DTA_MesoMicroLayout">
               <item>
                <widget class="QTabWidget" name="tabWidget_MesoMicro">
-                 <widget class="QWidget" name="page_MM_Settings">
-                  <attribute name="title">
-                   <string>Meso / Micro</string>
-                  </attribute>
-                  <layout class="QVBoxLayout" name="page_MM_SettingsLayout">
-                  <item>
-                   <widget class="QGroupBox" name="groupBox_MesoMicro">
-                    <layout class="QGridLayout" name="gridLayout_mm">
+<widget class="QWidget" name="page_MM_Settings">
+<attribute name="title">
+<string>Meso</string>
+</attribute>
+<layout class="QVBoxLayout" name="page_MM_SettingsLayout">
+<item>
+<widget class="QGroupBox" name="groupBox_MesoMicro">
+<layout class="QGridLayout" name="gridLayout_mm">
                      <item row="0" column="0">
                       <widget class="QLabel" name="label_meso">
                        <property name="text">
@@ -417,113 +699,13 @@
                       </widget>
                      </item>
                      <item row="1" column="0">
-                      <widget class="QCheckBox" name="checkBox_Micro">
-                       <property name="text">
-                        <string>Micro corridor</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <widget class="QLineEdit" name="lineEdit_MicroFtypes">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="toolTip">
-                        <string>FTYPEs tagged for the lane-level micro sim.</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="2">
-                      <widget class="QLabel" name="label_coupling">
-                       <property name="text">
-                        <string>Coupling</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="3">
-                      <widget class="QComboBox" name="comboBox_Coupling">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="toolTip">
-                        <string>MICRO_COUPLING. Macro > meso > micro (oneway): micro runs once on the converged traffic, no feedback. Micro feedback, demand fixed (twoway_frozen): micro travel times (freeway corridor: also the EL/GP split and tolls) feed back, traffic entering the area unchanged, no re-routing. Full loop (twoway_full): macro re-assigns statewide against the micro travel times, then micro again (Outer loops times).</string>
-                       </property>
-                       <item>
-                        <property name="text">
-                         <string>Macro > meso > micro</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>Micro feedback, demand fixed</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>Full loop: macro re-routes</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                     <item row="2" column="0">
-                      <widget class="QLabel" name="label_microchoice">
-                       <property name="text">
-                        <string>EL/GP choice</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="1">
-                      <widget class="QComboBox" name="comboBox_MicroChoice">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="toolTip">
-                        <string>How EL vs GP is chosen inside a micro corridor: meso logit, or micro time-differential converted by each agent's VOT.</string>
-                       </property>
-                       <item>
-                        <property name="text">
-                         <string>Meso logit</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>Micro time-differential (VOT)</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                     <item row="2" column="2">
-                      <widget class="QLabel" name="label_MicroModel">
-                       <property name="text">
-                        <string>Micro model</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="3">
-                      <widget class="QComboBox" name="comboBox_MicroModel">
-                       <property name="toolTip">
-                        <string>MICRO_MODEL. Freeway corridor: one contiguous freeway / express-lane corridor with EL choice and tolls. Network: every link of the micro area with its intersections -- lanes, pockets, movements, signal timing and stop / yield control from the GMNS package (GMNS tab).</string>
-                       </property>
-                       <item>
-                        <property name="text">
-                         <string>Freeway corridor</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>Network (GMNS)</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                     <item row="3" column="0">
                       <widget class="QLabel" name="label_mesoDt">
                        <property name="text">
                         <string>Meso time step</string>
                        </property>
                       </widget>
                      </item>
-                     <item row="3" column="1">
+                     <item row="1" column="1">
                       <widget class="QSpinBox" name="spinBox_MesoDt">
                        <property name="minimum">
                         <number>2</number>
@@ -542,110 +724,9 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="3" column="2">
-                      <widget class="QLabel" name="label_microDt">
-                       <property name="text">
-                        <string>Micro time step</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="3">
-                      <widget class="QComboBox" name="comboBox_MicroDt">
-                       <property name="toolTip">
-                        <string>MICRO_DT_SEC — car-following / lane-change step. 0.5 s (default) is fine for freeway corridors; 0.1-0.2 s for detailed merges and weaving (2.5-5x the run time).</string>
-                       </property>
-                       <property name="currentIndex">
-                        <number>2</number>
-                       </property>
-                       <item>
-                        <property name="text">
-                         <string>0.1 s</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>0.2 s</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>0.5 s</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                     <item row="4" column="0">
-                      <widget class="QLabel" name="label_microOuter">
-                       <property name="text">
-                        <string>Outer loops</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="1">
-                      <widget class="QSpinBox" name="spinBox_MicroOuter">
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>5</number>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                       <property name="toolTip">
-                        <string>MICRO_OUTER — twoway_full only: how many times the statewide assignment is re-run against the micro corridor's travel times. 1 = no re-assignment (same as twoway_frozen).</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="2">
-                      <widget class="QLabel" name="label_probeStride">
-                       <property name="text">
-                        <string>Micro probe every</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="3">
-                      <widget class="QSpinBox" name="spinBox_ProbeStride">
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>1200</number>
-                       </property>
-                       <property name="value">
-                        <number>10</number>
-                       </property>
-                       <property name="suffix">
-                        <string> steps</string>
-                       </property>
-                       <property name="toolTip">
-                        <string>MICRO_PROBE_STRIDE — one micro_probe.csv row per lane every N micro steps (10 steps x 0.5 s = every 5 s).</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </widget>
-                  </item>
-                   <item>
-                    <spacer name="page_MM_SettingsSpacer">
-                     <property name="orientation">
-                      <enum>Qt::Vertical</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>20</width>
-                       <height>5</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </widget>
-                 <widget class="QWidget" name="page_MM_Diagnostics">
-                  <attribute name="title">
-                   <string>Meso diagnostics</string>
-                  </attribute>
-                  <layout class="QVBoxLayout" name="page_MM_DiagnosticsLayout">
+</layout>
+</widget>
+</item>
                   <item>
                    <widget class="QGroupBox" name="groupBox_MesoLogs">
                     <layout class="QGridLayout" name="gridLayout_mesologs" columnstretch="0,1,1,0">
@@ -736,7 +817,407 @@
                    </widget>
                   </item>
                    <item>
-                    <spacer name="page_MM_DiagnosticsSpacer">
+                    <spacer name="page_MM_SettingsSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>5</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+</layout>
+</widget>
+<widget class="QWidget" name="page_MM_Micro">
+<attribute name="title">
+<string>Micro</string>
+</attribute>
+<layout class="QVBoxLayout" name="page_MM_MicroLayout">
+<item>
+<widget class="QGroupBox" name="groupBox_Micro">
+<layout class="QGridLayout" name="gridLayout_micro">
+                     <item row="0" column="0">
+                      <widget class="QCheckBox" name="checkBox_Micro">
+                       <property name="text">
+                        <string>Micro corridor</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLineEdit" name="lineEdit_MicroFtypes">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                       <property name="toolTip">
+                        <string>FTYPEs tagged for the lane-level micro sim.</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="2">
+                      <widget class="QLabel" name="label_MicroModel">
+                       <property name="text">
+                        <string>Micro model</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="3">
+                      <widget class="QComboBox" name="comboBox_MicroModel">
+                       <property name="toolTip">
+                        <string>MICRO_MODEL. Freeway corridor: one contiguous freeway / express-lane corridor with EL choice and tolls. Network: every link of the micro area with its intersections -- lanes, pockets, movements, signal timing and stop / yield control from the GMNS package (GMNS tab).</string>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>Freeway corridor</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Network (GMNS)</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_coupling">
+                       <property name="text">
+                        <string>Coupling</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QComboBox" name="comboBox_Coupling">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                       <property name="toolTip">
+                        <string>MICRO_COUPLING. Macro > meso > micro (oneway): micro runs once on the converged traffic, no feedback. Micro feedback, demand fixed (twoway_frozen): micro travel times (freeway corridor: also the EL/GP split and tolls) feed back, traffic entering the area unchanged, no re-routing. Full loop (twoway_full): macro re-assigns statewide against the micro travel times, then micro again (Outer loops times).</string>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>Macro > meso > micro</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Micro feedback, demand fixed</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Full loop: macro re-routes</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="1" column="2">
+                      <widget class="QLabel" name="label_microchoice">
+                       <property name="text">
+                        <string>EL/GP choice</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="3">
+                      <widget class="QComboBox" name="comboBox_MicroChoice">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                       <property name="toolTip">
+                        <string>How EL vs GP is chosen inside a micro corridor: keep the EL or GP route each agent got from the macro / meso assignment (the Enroute Choice logit where it runs, otherwise generalized cost), or the micro time differential converted by each agent's VOT.</string>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>Enroute Choice</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Micro time-differential (VOT)</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="label_microDt">
+                       <property name="text">
+                        <string>Micro time step</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QComboBox" name="comboBox_MicroDt">
+                       <property name="toolTip">
+                        <string>MICRO_DT_SEC — car-following / lane-change step. 0.5 s (default) is fine for freeway corridors; 0.1-0.2 s for detailed merges and weaving (2.5-5x the run time).</string>
+                       </property>
+                       <property name="currentIndex">
+                        <number>2</number>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>0.1 s</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>0.2 s</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>0.5 s</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="2" column="2">
+                      <widget class="QLabel" name="label_probeStride">
+                       <property name="text">
+                        <string>Micro probe every</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="3">
+                      <widget class="QSpinBox" name="spinBox_ProbeStride">
+                       <property name="minimum">
+                        <number>1</number>
+                       </property>
+                       <property name="maximum">
+                        <number>1200</number>
+                       </property>
+                       <property name="value">
+                        <number>10</number>
+                       </property>
+                       <property name="suffix">
+                        <string> steps</string>
+                       </property>
+                       <property name="toolTip">
+                        <string>MICRO_PROBE_STRIDE — one micro_probe.csv row per lane every N micro steps (10 steps x 0.5 s = every 5 s).</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="QLabel" name="label_microOuter">
+                       <property name="text">
+                        <string>Outer loops</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="QSpinBox" name="spinBox_MicroOuter">
+                       <property name="minimum">
+                        <number>1</number>
+                       </property>
+                       <property name="maximum">
+                        <number>5</number>
+                       </property>
+                       <property name="value">
+                        <number>2</number>
+                       </property>
+                       <property name="toolTip">
+                        <string>MICRO_OUTER — twoway_full only: how many times the statewide assignment is re-run against the micro corridor's travel times. 1 = no re-assignment (same as twoway_frozen).</string>
+                       </property>
+                      </widget>
+                     </item>
+</layout>
+</widget>
+</item>
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_MicroPkg">
+                     <property name="title">
+                      <string>Micro package (rerun the micro area alone)</string>
+                     </property>
+                     <layout class="QGridLayout" name="gridLayout_micropkg">
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="label_MicroPkg">
+                        <property name="text">
+                         <string>Package folder</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1" colspan="2">
+                       <widget class="QLineEdit" name="lineEdit_MicroPkg">
+                        <property name="toolTip">
+                         <string>&lt;output&gt;/micro_package of a network micro run (MICRO_PACKAGE_WRITE).</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="3">
+                       <widget class="QToolButton" name="browse_MicroPkg">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QPushButton" name="btn_MicroPkgOpen">
+                        <property name="text">
+                         <string>Open for editing</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>Cut micro_gmns.gpkg (the area's GMNS, with geometry) (if missing) from the GMNS package on the GMNS tab, load it, and point the GMNS tools at it.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QPushButton" name="btn_MicroPkgRun">
+                        <property name="text">
+                         <string>Run</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>Rerun the micro area with the package's frozen traffic and its (edited) GMNS; adds the run's LOS layers.</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2" colspan="2">
+                       <widget class="QLineEdit" name="lineEdit_MicroPkgRun">
+                        <property name="placeholderText">
+                         <string>run name (default: date and time)</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="page_MM_MicroSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>5</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+</layout>
+</widget>
+                 <widget class="QWidget" name="page_MM_Gmns">
+                  <attribute name="title">
+                   <string>GMNS</string>
+                  </attribute>
+                  <layout class="QVBoxLayout" name="page_MM_GmnsLayout">
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_Gmns">
+                     <property name="title">
+                      <string>Lanes, pockets, movements, signal timing</string>
+                     </property>
+                     <layout class="QVBoxLayout" name="vLayout_gmns">
+                      <item>
+                       <layout class="QHBoxLayout" name="hLayout_gmnsFile">
+                        <item>
+                         <widget class="QLabel" name="label_GmnsFile">
+                          <property name="text">
+                           <string>GMNS package</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QLineEdit" name="lineEdit_GmnsFile">
+                          <property name="toolTip">
+                           <string>gmns_network.gpkg written by netPrep beside Link.csv (gmns_network_msr.gpkg for an MSR network).</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QToolButton" name="browse_GmnsFile">
+                          <property name="text">
+                           <string>...</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="hLayout_gmnsButtons">
+                        <item>
+                         <widget class="QPushButton" name="btn_GmnsLoad">
+                          <property name="text">
+                           <string>Load layers</string>
+                          </property>
+                          <property name="toolTip">
+                           <string>Add the GMNS layers to the map, styled, with forms linking link -&gt; lanes / pockets, node -&gt; movements and timing plan -&gt; phases -&gt; movements.</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QPushButton" name="btn_GmnsSignals">
+                          <property name="text">
+                           <string>Signal timing...</string>
+                          </property>
+                          <property name="toolTip">
+                           <string>Edit the timing plan of a signalized node: cycle, phases (ring, barrier, greens, clearance) and which movements each phase serves.</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QPushButton" name="btn_GmnsValidate">
+                          <property name="text">
+                           <string>Validate...</string>
+                          </property>
+                          <property name="toolTip">
+                           <string>Check the package: timing plans sum to the cycle, every signal movement is in a phase, lanes and pockets are in range. Also fills in missing pocket geometry.</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QPushButton" name="btn_GmnsImport">
+                          <property name="text">
+                           <string>Import timing pack...</string>
+                          </property>
+                          <property name="toolTip">
+                           <string>Load signal timing plans from a timing pack folder (signal_timing_plan / signal_timing_phase / signal_phase_mvmt CSVs, movements keyed by node, from node and to node). Replaces the timing of every node a pack controller drives. Samples: config/gmns/samples.</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+<item>
+<layout class="QHBoxLayout" name="hLayout_gmnsTarget">
+                      <item>
+                       <widget class="QLabel" name="label_GmnsTarget">
+                        <property name="text">
+                         <string>GMNS tools edit</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QComboBox" name="comboBox_GmnsTarget">
+                        <property name="toolTip">
+                         <string>Which file Load layers, Signal timing, Validate and Import timing pack work on.</string>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>GMNS package (statewide)</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Micro package (micro_gmns.gpkg)</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+</layout>
+</item>
+                      <item>
+                       <widget class="QCheckBox" name="checkBox_UseGmns">
+                        <property name="text">
+                         <string>Use GMNS in the run</string>
+                        </property>
+                        <property name="toolTip">
+                         <string>GMNS_DIR -- the layers are exported to &lt;output&gt;/gmns at run time. Timing plans set each timed approach's g/C and cycle in the macro / meso signal model, statewide (Signal delay on the Macro DTA tab must be on); lane allowed_uses restrict trucks in the micro corridor. This does not run micro: micro runs only on the micro area (Tiers &amp; probes), and a network micro run always uses the package.</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="page_MM_GmnsSpacer">
                      <property name="orientation">
                       <enum>Qt::Vertical</enum>
                      </property>
@@ -752,7 +1233,7 @@
                  </widget>
                  <widget class="QWidget" name="page_MM_Tags">
                   <attribute name="title">
-                   <string>Tiers and probes</string>
+                   <string>Tiers &amp;&amp; probes</string>
                   </attribute>
                   <layout class="QVBoxLayout" name="page_MM_TagsLayout">
                   <item>
@@ -965,477 +1446,7 @@
                    </item>
                   </layout>
                  </widget>
-                 <widget class="QWidget" name="page_MM_Gmns">
-                  <attribute name="title">
-                   <string>GMNS</string>
-                  </attribute>
-                  <layout class="QVBoxLayout" name="page_MM_GmnsLayout">
-                   <item>
-                    <widget class="QGroupBox" name="groupBox_Gmns">
-                     <property name="title">
-                      <string>Lanes, pockets, movements, signal timing</string>
-                     </property>
-                     <layout class="QVBoxLayout" name="vLayout_gmns">
-                      <item>
-                       <layout class="QHBoxLayout" name="hLayout_gmnsFile">
-                        <item>
-                         <widget class="QLabel" name="label_GmnsFile">
-                          <property name="text">
-                           <string>GMNS package</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLineEdit" name="lineEdit_GmnsFile">
-                          <property name="toolTip">
-                           <string>gmns_network.gpkg written by netPrep beside Link.csv (gmns_network_msr.gpkg for an MSR network).</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QToolButton" name="browse_GmnsFile">
-                          <property name="text">
-                           <string>...</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="hLayout_gmnsButtons">
-                        <item>
-                         <widget class="QPushButton" name="btn_GmnsLoad">
-                          <property name="text">
-                           <string>Load layers</string>
-                          </property>
-                          <property name="toolTip">
-                           <string>Add the GMNS layers to the map, styled, with forms linking link -&gt; lanes / pockets, node -&gt; movements and timing plan -&gt; phases -&gt; movements.</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QPushButton" name="btn_GmnsSignals">
-                          <property name="text">
-                           <string>Signal timing...</string>
-                          </property>
-                          <property name="toolTip">
-                           <string>Edit the timing plan of a signalized node: cycle, phases (ring, barrier, greens, clearance) and which movements each phase serves.</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QPushButton" name="btn_GmnsValidate">
-                          <property name="text">
-                           <string>Validate...</string>
-                          </property>
-                          <property name="toolTip">
-                           <string>Check the package: timing plans sum to the cycle, every signal movement is in a phase, lanes and pockets are in range. Also fills in missing pocket geometry.</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QPushButton" name="btn_GmnsImport">
-                          <property name="text">
-                           <string>Import timing pack...</string>
-                          </property>
-                          <property name="toolTip">
-                           <string>Load signal timing plans from a timing pack folder (signal_timing_plan / signal_timing_phase / signal_phase_mvmt CSVs, movements keyed by node, from node and to node). Replaces the timing of every node a pack controller drives. Samples: config/gmns/samples.</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <widget class="QCheckBox" name="checkBox_UseGmns">
-                        <property name="text">
-                         <string>Use GMNS in the run</string>
-                        </property>
-                        <property name="toolTip">
-                         <string>GMNS_DIR -- the layers are exported to &lt;output&gt;/gmns at run time. Timing plans set each timed approach's g/C and cycle in the macro / meso signal model, statewide (Signal delay on the Engine tab must be on; never in a static run); lane allowed_uses restrict trucks in the micro corridor. This does not run micro: micro runs only on the micro area (Tiers and probes), and a network micro run always uses the package.</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QGroupBox" name="groupBox_MicroPkg">
-                     <property name="title">
-                      <string>Micro package (rerun the micro area alone)</string>
-                     </property>
-                     <layout class="QGridLayout" name="gridLayout_micropkg">
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="label_MicroPkg">
-                        <property name="text">
-                         <string>Package folder</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1" colspan="2">
-                       <widget class="QLineEdit" name="lineEdit_MicroPkg">
-                        <property name="toolTip">
-                         <string>&lt;output&gt;/micro_package of a network micro run (MICRO_PACKAGE_WRITE).</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="3">
-                       <widget class="QToolButton" name="browse_MicroPkg">
-                        <property name="text">
-                         <string>...</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QPushButton" name="btn_MicroPkgOpen">
-                        <property name="text">
-                         <string>Open for editing</string>
-                        </property>
-                        <property name="toolTip">
-                         <string>Cut micro_gmns.gpkg (the area's GMNS, with geometry) from the GMNS package above into the package folder, load it, and point the GMNS tools at it.</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QPushButton" name="btn_MicroPkgRun">
-                        <property name="text">
-                         <string>Run</string>
-                        </property>
-                        <property name="toolTip">
-                         <string>Rerun the micro area with the package's frozen traffic and its (edited) GMNS; adds the run's LOS layers.</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="2" colspan="2">
-                       <widget class="QLineEdit" name="lineEdit_MicroPkgRun">
-                        <property name="placeholderText">
-                         <string>run name (default: date and time)</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLabel" name="label_GmnsTarget">
-                        <property name="text">
-                         <string>GMNS tools edit</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1" colspan="3">
-                       <widget class="QComboBox" name="comboBox_GmnsTarget">
-                        <property name="toolTip">
-                         <string>Which file Load layers, Signal timing, Validate and Import timing pack work on.</string>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>GMNS package (statewide)</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>Micro package (micro_gmns.gpkg)</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                   <item>
-                    <spacer name="page_MM_GmnsSpacer">
-                     <property name="orientation">
-                      <enum>Qt::Vertical</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>20</width>
-                       <height>5</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </widget>
                </widget>
-              </item>
-             </layout>
-            </widget>
-            <widget class="QWidget" name="page_DTA_Advanced">
-             <attribute name="title">
-              <string>Advanced (afdta)</string>
-             </attribute>
-             <layout class="QVBoxLayout" name="page_DTA_AdvancedLayout">
-              <item>
-               <widget class="QGroupBox" name="groupBox_Advanced">
-                <property name="title">
-                 <string>Advanced (afdta) — rerouting, LTM, sampling</string>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_adv">
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_rerouteFrac">
-                   <property name="text">
-                    <string>Reroute fraction (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="lineEdit_RerouteFraction">
-                   <property name="text">
-                    <string>0.05</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>REROUTE_FRACTION_MIN — the floor on how much demand may change path in one iteration. The share allowed is max(2/(n+1), this value): 100% at iteration 0, 67% at 1, 50% at 2 ... down to this floor, given to the route keys with the largest gaps first. Higher = faster but noisier; lower = smoother but slower to correct the last oscillations.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="2">
-                  <widget class="QLabel" name="label_rerouteThr">
-                   <property name="text">
-                    <string>Reroute threshold (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="3">
-                  <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
-                   <property name="text">
-                    <string>0.01</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>REROUTE_THRESHOLD_MIN — a route key only adopts its new shortest path when that path beats its current one by more than this many minutes of generalized cost. Keys within the threshold count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_spillback">
-                   <property name="text">
-                    <string>LTM max spillback (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="lineEdit_LtmSpillback">
-                   <property name="text">
-                    <string>20</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>LTM_MAX_SPILLBACK_MIN — cap on queue spillback propagation (minutes). LTM macro only.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="2">
-                  <widget class="QLabel" name="label_jam">
-                   <property name="text">
-                    <string>Jam density</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="3">
-                  <widget class="QLineEdit" name="lineEdit_JamDensity">
-                   <property name="text">
-                    <string>240</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>JAM_DENSITY — veh/mi/lane at jam (LTM).</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="label_maxtrips">
-                   <property name="text">
-                    <string>Max trips (0=all)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QLineEdit" name="lineEdit_MaxTrips">
-                   <property name="text">
-                    <string>0</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>MAX_TRIPS — cap trips loaded (0 = all). Use for quick test runs.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="2">
-                  <widget class="QLabel" name="label_sample">
-                   <property name="text">
-                    <string>Sample every</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="3">
-                  <widget class="QLineEdit" name="lineEdit_SampleEvery">
-                   <property name="text">
-                    <string>1</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>SAMPLE_EVERY — load every Nth trip (1 = all).</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="label_sampleSched">
-                   <property name="text">
-                    <string>Sampling schedule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QComboBox" name="comboBox_SampleSchedule">
-                   <property name="toolTip">
-                    <string>SAMPLE_SCHEDULE — coarse-to-fine sampling. Progressive runs the early iterations on a 25% then 50% sample and only the later ones at full sample, cutting wall time roughly 30% for the same converged result (each refinement causes a 1-2 iteration gap spike that damps). Full sample runs every iteration at 100%.</string>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>Progressive (25 -&gt; 50 -&gt; 100%)</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Full sample every iteration</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Custom</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="3" column="2">
-                  <widget class="QLabel" name="label_sampleCustom">
-                   <property name="text">
-                    <string>Custom schedule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="3">
-                  <widget class="QLineEdit" name="lineEdit_SampleSchedule">
-                   <property name="placeholderText">
-                    <string>1-4:25, 5-8:50, 9-15:100</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>Used only when Sampling schedule = Custom. Format: FROM-TO:PERCENT, comma separated.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="label_injectRes">
-                   <property name="text">
-                    <string>Loading resolution (min)</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QSpinBox" name="spinBox_InjectRes">
-                   <property name="minimum">
-                    <number>1</number>
-                   </property>
-                   <property name="maximum">
-                    <number>15</number>
-                   </property>
-                   <property name="value">
-                    <number>15</number>
-                   </property>
-                   <property name="suffix">
-                    <string> min</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>NODE_INJECT_RES — how finely a departure slot's trips are released onto the network by the node loaders (Node + PointQueue, Node + Spatial/LTM). 15 = one release per 15-min interval; 1 = minute by minute, which smooths the loading and avoids artificial queues at the start of each slot. Travel times still update every 15 minutes. Ignored by the per-link PointQueue mode.</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="2">
-                  <widget class="QLabel" name="label_departSlot">
-                   <property name="text">
-                    <string>Departure slots</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="3">
-                  <widget class="QComboBox" name="comboBox_DepartSlot">
-                   <property name="toolTip">
-                    <string>DEPART_SLOT_MIN — width of the departure slot in the route key (O · D · slot · marketVot) for a trip list with HH:MM:SS departure times. Auto follows the trip list's own grid: a 15-min agentPlans output gets 15-min keys, a 30-min output 30-min keys. A slot finer than the trip list loads each period's trips into its first part, so leave this on Auto unless testing.</string>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>Auto (match trip list)</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>15 min</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>30 min</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>60 min</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="5" column="0" rowspan="1" colspan="1">
-                  <widget class="QLabel" name="label_loadRefresh">
-                   <property name="text">
-                    <string>Per-link load refresh</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="1" rowspan="1" colspan="1">
-                  <widget class="QComboBox" name="comboBox_LoadRefresh">
-                   <property name="toolTip">
-                    <string>LOAD_REFRESH — PointQueue (legacy per-link) run mode only. How the per-link loader refreshes between route chunks: Exact rebuilds every key's arrivals; Incremental updates only the keys that re-routed (faster, an approximation). This is NOT the node balancer: the node loaders use Node refresh (NODE_SCHEDULE) on the Engine and equilibrium tab.</string>
-                   </property>
-                   <property name="currentIndex">
-                    <number>0</number>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>Exact (rebuild all)</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Incremental (delta)</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="5" column="2" rowspan="1" colspan="1">
-                  <widget class="QLabel" name="label_loadSchedule">
-                   <property name="text">
-                    <string>Per-link load schedule</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="3" rowspan="1" colspan="1">
-                  <widget class="QLineEdit" name="lineEdit_LoadSchedule">
-                   <property name="placeholderText">
-                    <string>(blank = every chunk)</string>
-                   </property>
-                   <property name="toolTip">
-                    <string>LOAD_SCHEDULE — PointQueue (legacy per-link) run mode only. Refresh stride of the per-link loader, the same syntax as Node refresh: e.g. 1-9:iter, 10-15:chunk. Blank = after every chunk.</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <spacer name="page_DTA_AdvancedSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
               </item>
              </layout>
             </widget>

@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.79
+version=2.80
 date=2026-10-21
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -59,8 +59,15 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (123 commits, 2026-06-19 to 2026-10-21):
+    One version per commit, newest first (128 commits, 2026-06-19 to 2026-10-24):
     .
+    2.80 (2026-10-24): HyDRA Enroute Choice tab - the ELToD express-lane logit
+    inside the HyDRA iterations, on wherever the node layer codes DTA_Type 90 /
+    91 decisions and 94 joins (sub-tabs for node and link types, the ELToD
+    utility parameters, constants and choice logs, and vehicle use on no_trucks
+    links); the micro EL/GP option is now "Enroute Choice"; Meso / Micro
+    sub-tabs (Meso, Micro, GMNS, Tiers & probes); Macro DTA tab name and tab
+    order; "Min. reroute share" label; afdta with the en-route choice.
     2.79 (2026-10-21): agentPlans for MSR - with Project Settings on MSR, the
     trip list (now an interim TSM-zone list) is disaggregated to the region's
     RPM zones for HyDRA (O/D = MSR network ids, TSM_O/TSM_D kept, region

@@ -51,10 +51,13 @@ model, and are greyed out for the node run modes.
 
 ### Advanced tab: rerouting and loading
 
-- **Reroute fraction (min)** (`REROUTE_FRACTION_MIN`, 0.05) — the floor on how much
-  demand may change path in one iteration. The share allowed is
-  max(2/(n+1), floor): 100% at iteration 0, 67%, 50%, 40% … down to the floor, given
-  to the route keys with the largest gaps first. Higher converges faster but noisier.
+- **Min. reroute share** (`REROUTE_FRACTION_MIN`, 0.05) — the smallest share of
+  route keys allowed to switch path in one iteration (0.05 = 5%). Candidates are
+  the keys whose new shortest path beats their current one by more than the
+  reroute threshold; the share allowed is max(2/(n+1), floor): 100% at iteration
+  0, 67%, 50%, 40% … down to the floor, picked at random (largest-gap-first sends
+  the worst corridors all to the same alternative and oscillates). A key switches
+  as a whole, all its agents together. Higher converges faster but noisier.
 - **Reroute threshold (min)** (`REROUTE_THRESHOLD_MIN`, 0.01) — a route key adopts a
   new path only if it beats its current path by more than this many minutes of
   generalized cost. Keys within it count as *stable* in the log.
@@ -65,19 +68,25 @@ model, and are greyed out for the node run modes.
   (O · D · slot · `marketVot`). Auto follows the trip list: a 15-min agentPlans
   output gets 15-min keys, a 30-min output 30-min keys.
 
-### Meso / Micro tab: time steps, diagnostics, tiers and probes
+### Meso / Micro tab
 
-- **Meso time step** (`MESO_DT_SEC`, 6 s) and **Micro time step** (`MICRO_DT_SEC`,
-  0.1 / 0.2 / 0.5 s). **Coupling** (`MICRO_COUPLING`):
+Four sub-tabs: **Meso**, **Micro**, **GMNS**, **Tiers & probes**.
+
+- **Meso**: Meso FTYPEs, **Meso time step** (`MESO_DT_SEC`, 6 s) and the
+  diagnostics -- interval, movement and segment logs (`meso_interval_log.csv`,
+  `meso_movement_log.csv`, `meso_segment_log.csv`), segment length or a
+  segment file.
+- **Micro**: **Micro corridor** (+ Micro FTYPEs), **Micro model**, EL/GP
+  choice, **Micro time step** (`MICRO_DT_SEC`, 0.1 / 0.2 / 0.5 s), **Micro
+  probe every** N steps (`MICRO_PROBE_STRIDE`), the **Micro package** group,
+  and **Coupling** (`MICRO_COUPLING`):
   *Macro > meso > micro* (`oneway`) runs micro once on the converged traffic, no
   feedback; *Micro feedback, demand fixed* (`twoway_frozen`) feeds micro travel
   times (freeway corridor: also the EL/GP split and tolls) back with the traffic
   entering the area unchanged -- no re-routing; *Full loop: macro re-routes*
   (`twoway_full`) re-assigns statewide against the micro travel times, then runs
-  micro again, **Outer loops** (`MICRO_OUTER`) times. **Micro probe every** N steps (`MICRO_PROBE_STRIDE`).
-- **Meso diagnostics**: interval, movement and segment logs (`meso_interval_log.csv`,
-  `meso_movement_log.csv`, `meso_segment_log.csv`), segment length or a segment file.
-- **Link tiers and probes**: the run reads three fields from the HyDRA layers --
+  micro again, **Outer loops** (`MICRO_OUTER`) times.
+- **Tiers & probes**: the run reads three fields from the HyDRA layers --
   `dta_meso` and `dta_micro` on links, `probe` on links and nodes (1 = on). Edit them
   directly (attribute table, Field Calculator), or use the buttons: *Selected links →
   meso / micro / probe*, *Selected nodes → probe*, *Set by expression…*, *Clear field*.
@@ -95,12 +104,12 @@ model, and are greyed out for the node run modes.
 
 ### Micro model: freeway corridor or network
 
-**Micro model** (Meso / Micro tab): *Freeway corridor* is one contiguous
+**Micro model** (Micro sub-tab): *Freeway corridor* is one contiguous
 freeway / express-lane corridor with EL choice and tolls. *Network (GMNS)*
 simulates the micro area with its intersections, from the GMNS package (it is
 exported for the run automatically):
 
-- **The area** (Tiers and probes > Micro): the `dta_micro` links, the links
+- **The area** (Tiers & probes > Micro): the `dta_micro` links, the links
   inside the **Micro area (polygon)** layer (selected polygons, else all), and,
   ticked, **the cross-street approaches of every intersection** they touch. Only
   this area is simulated.
@@ -116,7 +125,7 @@ exported for the run automatically):
   `movement_los` / `intersection_los` tables hold every 15-min interval with a
   `time` field for the Temporal Controller.
 
-### Engine tab: signals
+### Macro DTA tab: signals
 
 Unchecked, nothing about signals reaches the macro / meso loading: no
 discharge cap, no control delay, and saturation flow, cycle and g/C (greyed
@@ -134,7 +143,7 @@ macro and meso link, statewide; never to a static (STA) run, whose BPR curve
 runs on the planning capacity (afdta ignores `SIGNAL_MODEL` there). The micro
 tier simulates its own signals from the GMNS plans instead.
 
-### Meso / Micro tab: GMNS
+### Meso / Micro tab: GMNS sub-tab
 
 netPrep writes `gmns_network.gpkg` (`gmns_network_msr.gpkg` for MSR) beside
 `Link.csv`: node, link, lane, segment (turn pockets), segment_lane and movement
@@ -172,7 +181,7 @@ dual-ring plan at every GeoMaster signal (netprep/docs/GMNS.md).
   It does not run micro anywhere: micro runs only on the micro area, and the
   network micro always exports the package itself.
 
-### Meso / Micro tab: GMNS > Micro package
+### Micro sub-tab: Micro package
 
 A network micro run writes `<output>/micro_package` (about 1 MB): the area's
 link and node rows, its GMNS subset, and the traffic through the area with
@@ -183,10 +192,10 @@ when a change should move traffic onto other roads, rerun the full model or
 a subarea DTA.
 
 - **Package folder** -- filled in after a network micro run, which also puts
-  `micro_gmns.gpkg` (the area's GMNS with geometry, cut from the GMNS package
-  above) in it: the package is self-contained.
+  `micro_gmns.gpkg` (the area's GMNS with geometry, cut from the statewide GMNS
+  package) in it: the package is self-contained.
 - **Open for editing** -- loads `micro_gmns.gpkg` (cutting it first if it is
-  missing) and sets **GMNS tools edit** to it: Signal timing, Validate and
+  missing) and sets **GMNS tools edit** (GMNS tab) to it: Signal timing, Validate and
   Import timing pack, and the attribute tables, then change the package, not
   the statewide file.
 - **Back to the statewide package** -- timing: *Export plans...* in Signal
@@ -230,16 +239,92 @@ facility type from this dialog (the **Meso FTYPEs** box; the **Micro corridor** 
 
 ## EL vs GP and the en-route choice
 
-Express Lanes (EL) and the parallel General-Purpose (GP) lanes are modeled as
-distinct paths; an agent picks between them **en route** at the decision point:
+Express Lanes (EL) and the parallel General-Purpose (GP) lanes are separate links.
+Without the Enroute Choice tab, the router picks between them by generalized cost
+(time + distance + toll ÷ VOT) like any other route. With it, the choice at each
+coded decision node is the ELToD logit (next section).
 
-- **Meso (en-route logit):** the EL/GP split is a logit on the current EL vs GP
-  generalized cost (time + toll·VOT) for that agent's segment.
-- **Micro corridor — two modes (EL/GP choice):**
-  - **(a) Meso logit** — reuse the meso logit split inside the micro corridor.
-  - **(b) Micro time-differential (VOT)** — take the *actual* EL−GP travel-time
-    difference from the lane-level micro sim and convert it with **each agent's VOT**
-    to an individual EL/GP decision (toll worth it if VOT·Δtime ≥ toll).
+Inside a **micro corridor** the *EL/GP choice* setting on the Micro sub-tab decides:
+
+- **Enroute Choice** — each agent keeps the EL or GP route the
+  assignment gave it (generalized cost, or the en-route logit where it ran).
+- **Micro time-differential (VOT)** — the actual EL−GP travel-time difference from
+  the lane-level micro sim, converted with **each agent's VOT** into an individual
+  decision (the toll is worth it if VOT·Δtime ≥ toll).
+
+### Enroute Choice tab
+
+The ELToD 5 express-lane logit, run **inside** the HyDRA iterations with the
+current congested times and dynamic tolls (`ENROUTE_CHOICE`). The checkbox turns
+it on; four sub-tabs hold the settings: **Node & link types**, **Utility**,
+**Constants & logs** and **Vehicle use** (the last applies even with the choice off).
+
+**Where it runs.** Only where the node layer codes the decision and join nodes
+(`DTA_Type`); with no 90 or no 94 node in the network it stays off.
+
+| DTA_Type | Role |
+|---|---|
+| 90 (*Entry nodes*) | On the GP lanes: enter the express lanes or not. |
+| 91 (*Exit nodes*) | On the express lanes: stay, or exit back to GP. |
+| 94 (*Join nodes*) | Where the two alternatives meet again. |
+
+- Each decision node is paired with the **nearest 94 node that both alternatives
+  reach**, within *Join search (mi)*. `el_segments.csv` lists every pair and both
+  paths; a decision node without a join is listed and makes no choice.
+- The two alternatives from a decision node:
+  - at a **90**: the express one starts on any *Express link type*; the GP one uses
+    no express link.
+  - at a **91**: the stay one starts on the express mainline (an express type that
+    is not an *Access link type*); the exit one starts off it and never returns.
+- A trip makes the logit choice only if its route passes **both** the decision node
+  and its join. A trip that leaves or ends before the join has no common path to
+  compare, so it keeps its generalized-cost route.
+- Choices chain: a trip that enters at a 90 meets the 91 nodes further on and makes
+  a stay-or-exit choice at each.
+
+**The utility (ELToD 5).** Between the decision node and its join:
+
+    U    = C(node, time) + scale × ( TF×(perceived_EL − perceived_GP)
+                                     + KF×(toll_EL − toll_GP)
+                                     + TF×RR×(reliability_EL − reliability_GP) )
+    P_EL = 1 / (1 + e^−U)
+
+- **TF and KF** come from each market segment's `beta_time` and `beta_cost` in the
+  segment file, so every segment keeps its own VOT. Tolls are those the toll policy
+  sets for that link and 15 minutes, times the axle factor.
+- The **Utility** fields are the global ELToD parameters, with their ELToD names in
+  the tooltips. *Perceived* time grows with v/c; *reliability* = time × (congested −
+  free-flow time) × distance^−distance-exponent; *Max circuity* forces the shorter
+  side when one alternative is that many times longer. The *Path* values build the
+  two alternatives. *Express weight* is read but, as in ELToD 5, not used.
+- **Constants file** (optional): `NODE_ID, HH:MM, CONSTANT`, rows at 15, 30 or
+  60 minutes. A node's constant holds from its row's time until its next row; a node
+  not in the file uses node 0's rows, and without node 0 the constant is 0.
+
+**Who chooses what.** Each agent draws one random number per decision node, seeded
+by its **household**, so the persons of a shared ride always choose together. A
+choice changes between iterations only when P(EL) crosses the draw. The agents'
+paths in `agentPaths.duckdb` are the version they chose.
+
+**Vehicle use on no_trucks links.** *Barred classes* (`TRUCK_BAN`) applies to every
+link with `no_trucks` = 1, whether or not the choice runs: medium and heavy trucks
+(3+ axles, the default), heavy only (5+ axles), or none. A barred class makes no
+express-lane choice.
+
+**Outputs.**
+
+| File | Rows |
+|---|---|
+| `el_segments.csv` | One per decision node: its join, status, both paths. |
+| `el_choice_summary.csv` | Decision node × 15 min: trips, EL share, mean P(EL), EL/GP toll, congested time, free-flow time, length and speed. |
+| `el_choice_log.csv` | *Log nodes* only: one row per route key and choice, with every utility term (ELToD's model-data file). |
+| `el_choice_agents.csv` | *Log nodes* only: one row per agent and choice (hh, person, tour, trip, EL/GP, P, draw). |
+
+*Log nodes* takes decision node ids or `ALL`; *Write* keeps the final pass or
+appends every iteration.
+
+ODME keeps the last split while it re-assigns. A static (STA) run has no per-agent
+paths to split, so the choice does not run there.
 
 ---
 
