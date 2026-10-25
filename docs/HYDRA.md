@@ -335,10 +335,23 @@ by its **household**, so the persons of a shared ride always choose together. A
 choice changes between iterations only when P(EL) crosses the draw. The agents'
 paths in `agentPaths.duckdb` are the version they chose.
 
-**Vehicle use on no_trucks links.** *Barred classes* (`TRUCK_BAN`) applies to every
-link with `no_trucks` = 1, whether or not the choice runs: medium and heavy trucks
-(3+ axles, the default), heavy only (5+ axles), or none. A barred class makes no
-express-lane choice.
+**Vehicle use.**
+
+- *Prohibited classes* (`TRUCK_BAN`) applies to every link with `no_trucks` = 1,
+  whether or not the choice runs: medium and heavy trucks (3+ axles, the default),
+  heavy only (5+ axles), or none. A prohibited class makes no express-lane choice.
+- *Discounted tolls* (`EL_DISCOUNT`) and *Discounted rate* (`EL_DISCOUNT_RATE`):
+  travellers who pay a share of the express-lane toll in the choice. 1.00 is the
+  full toll, 0.00 free, anything between a reduced toll. GP tolls are never
+  discounted.
+  - **HOV2+ / HOV3+** — by the trip list's `occupancy` (persons in the vehicle).
+  - **FL residents** — the resident market segments (`_Res` in `marketVot`, e.g.
+    `SDT_Res_Hig`); visitors and trucks pay the full toll.
+
+  The discount acts where each traveller chooses, the logit at a decision node: a
+  route key mixes solo drivers and carpools, so the route search itself prices the
+  posted toll. `el_choice_agents.csv` flags the discounted travellers and
+  `el_choice_log.csv` gives both probabilities.
 
 **Outputs.**
 

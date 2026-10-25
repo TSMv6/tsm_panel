@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.82
+version=2.83
 date=2026-10-21
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -59,8 +59,12 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (130 commits, 2026-06-19 to 2026-10-24):
+    One version per commit, newest first (131 commits, 2026-06-19 to 2026-10-24):
     .
+    2.83 (2026-10-24): HyDRA Enroute Choice > Vehicle use - "Prohibited
+    classes" (was Barred) and discounted express-lane tolls for HOV2+, HOV3+
+    or FL residents at a 0.00-1.00 rate of the toll, applied in the en-route
+    choice.
     2.82 (2026-10-24): HyDRA tab layout - Signals moved to the Advanced tab;
     max trips, sampling schedule, loading resolution and departure slots moved
     to the Macro DTA tab; the per-link load refresh / schedule row removed

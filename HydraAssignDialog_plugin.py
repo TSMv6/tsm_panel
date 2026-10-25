@@ -120,6 +120,8 @@ P1_FIELDS = (("checkBox_Signals", "hydra_signals", "check"),
              ("checkBox_Enroute", "hydra_enroute", "check"),
              ("comboBox_ElLogIters", "hydra_el_log_iters", "combo"),
              ("comboBox_TruckBan", "hydra_truck_ban", "combo"),
+             ("comboBox_ElDiscount", "hydra_el_discount", "combo"),
+             ("doubleSpinBox_ElDiscRate", "hydra_el_disc_rate", "spin"),
              ("lineEdit_LaneSchedule", "hydra_lane_schedule", "text"))
 
 # Enroute Choice tab: line edit -> (control key, default). Written only when
@@ -146,6 +148,8 @@ ENROUTE_KEYS = (("lineEdit_ElEntry", "EXPRESS_ENTRY_TYPES", "90"),
 P1_FIELDS += tuple((w, "hydra_" + w.split("_", 1)[1].lower(), "text") for w, _k, _d in ENROUTE_KEYS)
 P1_FIELDS += (("lineEdit_ElConstFile", "hydra_elconstfile", "text"),
               ("lineEdit_ElLogNodes", "hydra_ellognodes", "text"))
+# EL_DISCOUNT value per comboBox_ElDiscount entry (None writes nothing).
+EL_DISCOUNTS = {"HOV2+": "HOV2", "HOV3+": "HOV3", "FL residents": "RESIDENT"}
 # TRUCK_BAN value per comboBox_TruckBan entry (no_trucks = 1 links).
 TRUCK_BANS = {"Medium & heavy trucks": "MEDIUM_HEAVY", "Heavy trucks only": "HEAVY",
               "None": "NONE"}
@@ -236,6 +240,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
         self.checkBox_Signals.toggled.connect(self._toggle_signals)
         self.checkBox_Enroute.toggled.connect(self._toggle_enroute)
+        self.comboBox_ElDiscount.currentIndexChanged.connect(
+            lambda *_: self._toggle_enroute(self.checkBox_Enroute.isChecked()))
         self.btn_ElConstFile.clicked.connect(
             lambda: self.select_file(self.lineEdit_ElConstFile, "CSV (*.csv)"))
         self.browse_CountFile.clicked.connect(lambda: self.select_file(self.lineEdit_CountFile, "Counts (*.csv)"))
@@ -681,10 +687,16 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             w.setEnabled(on)
 
     def _toggle_enroute(self, on):
-        # Unchecked, no ENROUTE_* key is written. The Vehicle use sub-tab stays
-        # live: it applies to no_trucks links whether or not the choice runs.
+        # Unchecked, no ENROUTE_* key is written. Prohibited classes stay live:
+        # they apply to no_trucks links whether or not the choice runs. The
+        # toll discount acts in the choice only.
         for page in (self.page_El_Types, self.page_El_Utility, self.page_El_Out):
             page.setEnabled(on)
+        for w in (self.label_ElDiscount, self.comboBox_ElDiscount):
+            w.setEnabled(on)
+        rate_on = on and self.comboBox_ElDiscount.currentText() in EL_DISCOUNTS
+        for w in (self.label_ElDiscRate, self.doubleSpinBox_ElDiscRate):
+            w.setEnabled(rate_on)
 
     def _coupling(self):
         """MICRO_COUPLING value of the coupling combo (its labels are descriptive)."""
@@ -1604,6 +1616,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     const = self.lineEdit_ElConstFile.text().strip()
                     if const:
                         f.write(f"ENROUTE_CONSTANT_FILE {const}\n")
+                    disc = EL_DISCOUNTS.get(self.comboBox_ElDiscount.currentText())
+                    if disc:
+                        f.write(f"EL_DISCOUNT           {disc}\n")
+                        f.write(f"EL_DISCOUNT_RATE      {self.doubleSpinBox_ElDiscRate.value():.2f}\n")
                     nodes = self.lineEdit_ElLogNodes.text().strip()
                     if nodes:
                         f.write(f"ENROUTE_LOG_NODES     {nodes}\n")
