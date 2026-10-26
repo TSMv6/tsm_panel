@@ -343,7 +343,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self.lineEdit_SegParams.setText(settings.get("hydra_segment_params"))
         # Advanced numeric keys (each falls back to the .ui default if unset).
         for key, edit in (("hydra_reroute_fraction", self.lineEdit_RerouteFraction),
-                          ("hydra_reroute_threshold", self.lineEdit_RerouteThreshold),
+                          ("hydra_reroute_threshold_pct", self.lineEdit_RerouteThresholdPct),
                           ("hydra_ltm_spillback", self.lineEdit_LtmSpillback),
                           ("hydra_jam_density", self.lineEdit_JamDensity),
                           ("hydra_max_trips", self.lineEdit_MaxTrips),
@@ -352,6 +352,11 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                           ("hydra_checkpoint_every", self.lineEdit_CheckpointEvery)):
             if settings.get(key) not in (None, ""):
                 edit.setText(str(settings.get(key)))
+        # 0.01 min was the old default, saved by every earlier run of the dialog:
+        # treat it as unset so the 0.25-min band applies.
+        thr = str(settings.get("hydra_reroute_threshold") or "").strip()
+        if thr and thr != "0.01":
+            self.lineEdit_RerouteThreshold.setText(thr)
         if settings.get("hydra_inject_res") not in (None, ""):
             try:
                 self.spinBox_InjectRes.setValue(int(float(settings.get("hydra_inject_res"))))
@@ -1350,6 +1355,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_segment_params", self.lineEdit_SegParams.text())
         settings.set("hydra_reroute_fraction", self.lineEdit_RerouteFraction.text())
         settings.set("hydra_reroute_threshold", self.lineEdit_RerouteThreshold.text())
+        settings.set("hydra_reroute_threshold_pct", self.lineEdit_RerouteThresholdPct.text())
         settings.set("hydra_ltm_spillback", self.lineEdit_LtmSpillback.text())
         settings.set("hydra_jam_density", self.lineEdit_JamDensity.text())
         settings.set("hydra_max_trips", self.lineEdit_MaxTrips.text())
@@ -1632,7 +1638,13 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                     f.write(f"SEGMENT_PARAM_FILE    {seg_params}\n")
                 # Rerouting controls
                 f.write(f"REROUTE_FRACTION_MIN  {self.lineEdit_RerouteFraction.text().strip() or '0.05'}\n")
-                f.write(f"REROUTE_THRESHOLD_MIN {self.lineEdit_RerouteThreshold.text().strip() or '0.01'}\n")
+                f.write(f"REROUTE_THRESHOLD_MIN {self.lineEdit_RerouteThreshold.text().strip() or '0.25'}\n")
+                # The box is in percent; afdta takes a fraction of best cost.
+                try:
+                    pct = float(self.lineEdit_RerouteThresholdPct.text().strip() or "2")
+                except ValueError:
+                    pct = 2.0
+                f.write(f"REROUTE_THRESHOLD_PCT {pct / 100:g}\n")
                 # LTM / spillback (used by the LTM macro models)
                 f.write(f"LTM_MAX_SPILLBACK_MIN {self.lineEdit_LtmSpillback.text().strip() or '20'}\n")
                 f.write(f"JAM_DENSITY           {self.lineEdit_JamDensity.text().strip() or '240'}\n")

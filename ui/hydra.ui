@@ -511,21 +511,38 @@
                  <item row="0" column="3">
                   <widget class="QLineEdit" name="lineEdit_RerouteThreshold">
                    <property name="text">
-                    <string>0.01</string>
+                    <string>0.25</string>
                    </property>
                    <property name="toolTip">
-                    <string>REROUTE_THRESHOLD_MIN — a route key only adopts its new shortest path when that path beats its current one by more than this many minutes of generalized cost. Keys within the threshold count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
+                    <string>REROUTE_THRESHOLD_MIN: the smallest gain, in minutes of generalized cost, for which a route key adopts its new shortest path. A key switches only when its gap exceeds the larger of this and the percent below. Keys within the band count as stable (the stable % in the log). Stops paths from flipping between near-identical routes.</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
+                 <item row="1" column="2">
+                  <widget class="QLabel" name="label_rerouteThrPct">
+                   <property name="text">
+                    <string>Reroute threshold (%)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="lineEdit_RerouteThresholdPct">
+                   <property name="text">
+                    <string>2</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>REROUTE_THRESHOLD_PCT: the smallest gain, as a percent of the shortest path's generalized cost, for which a route key adopts it. A key switches only when its gap exceeds max(minutes above, this percent x best cost): with 0.25 min and 2%, a 10-minute trip needs 0.25 min, a 60-minute trip 1.2 min. 0 = minutes only. Keep the relative gap target above the band (e.g. 0.02 for 2%), or the run may stop at the iteration limit instead.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0">
                   <widget class="QLabel" name="label_spillback">
                    <property name="text">
                     <string>LTM max spillback (min)</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
+                 <item row="2" column="1">
                   <widget class="QLineEdit" name="lineEdit_LtmSpillback">
                    <property name="text">
                     <string>20</string>
@@ -535,14 +552,14 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="2">
+                 <item row="2" column="2">
                   <widget class="QLabel" name="label_jam">
                    <property name="text">
                     <string>Jam density</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="3">
+                 <item row="2" column="3">
                   <widget class="QLineEdit" name="lineEdit_JamDensity">
                    <property name="text">
                     <string>240</string>

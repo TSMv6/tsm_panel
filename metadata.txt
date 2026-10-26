@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.83
+version=2.84
 date=2026-10-21
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -59,8 +59,13 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (131 commits, 2026-06-19 to 2026-10-24):
+    One version per commit, newest first (132 commits, 2026-06-19 to 2026-10-26):
     .
+    2.84 (2026-10-26): HyDRA reroute band - Reroute threshold (%) beside the
+    minutes threshold; a key switches only when its gap beats the larger of
+    the two (defaults 0.25 min and 2%, was 0.01 min). The iteration log adds a
+    travel-time-only relative gap (rel_gap_time) beside the generalized-cost
+    rel_gap.
     2.83 (2026-10-24): HyDRA Enroute Choice > Vehicle use - "Prohibited
     classes" (was Barred) and discounted express-lane tolls for HOV2+, HOV3+
     or FL residents at a 0.00-1.00 rate of the toll, applied in the en-route

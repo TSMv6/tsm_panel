@@ -69,9 +69,31 @@ Also on the Macro DTA tab:
   0, 67%, 50%, 40% … down to the floor, picked at random (largest-gap-first sends
   the worst corridors all to the same alternative and oscillates). A key switches
   as a whole, all its agents together. Higher converges faster but noisier.
-- **Reroute threshold (min)** (`REROUTE_THRESHOLD_MIN`, 0.01) — a route key adopts a
-  new path only if it beats its current path by more than this many minutes of
-  generalized cost. Keys within it count as *stable* in the log.
+- **Reroute threshold (min)** (`REROUTE_THRESHOLD_MIN`, 0.25) and **Reroute
+  threshold (%)** (`REROUTE_THRESHOLD_PCT`, 2%) — the indifference band. A route key
+  adopts a new path only if its gap beats the larger of the two:
+  `gap > max(minutes, percent × best cost)`. With the defaults a 10-minute trip
+  needs 0.25 min, a 60-minute trip 1.2 min. Keys within the band count as *stable*
+  in the log. Percent 0 = minutes only (the pre-2.84 behaviour, which used 0.01 min).
+  Keep **Relative gap** above the band (about 0.02 for 2%): keys inside the band
+  never move, so the gap can level off there.
+
+**How the gap is measured.** Each iteration, every route key's current path is
+priced on the last loading's time-varying link times, for a departure at the
+middle of its slot, in generalized cost: `beta_time × time + distance × miles +
+beta_cost × toll` from `market_segment_vot.csv`, in minutes. The key gap is
+`max(actual − shortest, 0)`. The log reports two relative gaps:
+
+- `rel_gap` — Σ vehicles × key gap ÷ Σ vehicles × actual cost, in generalized
+  cost. This is what routing minimises and what the **Relative gap** stop tests.
+- `rel_gap_time` — the same ratio in travel time only, against the fastest path,
+  on a 5% sample of origin groups (`TIME_GAP_SAMPLE`, ctl only; 1 = all groups,
+  about double the routing time). For reporting and comparison with other models.
+  It does not stop the run. The distance term (0.9 min/mile in the default file)
+  inflates generalized cost, so the two differ.
+
+Vehicles are the trip list's `vehTrips` summed over the key's agents (a
+two-person shared ride is 0.5 + 0.5 = 1 vehicle), scaled under sampling and ODME.
 - **LTM max spillback** and **Jam density** — the spatial-queue (LTM) settings.
 - **Signals (macro and meso)** — see *Advanced tab: signals* below.
 
