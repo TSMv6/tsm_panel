@@ -1,0 +1,51 @@
+StateFIPS,State,ZoneID,Interstate,ExtStation,Note
+1,AL,,I-10,11504,
+2,AK,,I-95,11560,R default (not in states_I10/states_I75)
+4,AZ,,I-10,11504,
+5,AR,,I-75,11548,
+6,CA,,I-75,11548,
+8,CO,,I-75,11548,
+9,CT,,I-95,11560,R default (not in states_I10/states_I75)
+10,DE,,I-95,11560,R default (not in states_I10/states_I75)
+11,DC,,I-95,11560,R default (not in states_I10/states_I75)
+13,GA,,I-95,11560,R default (not in states_I10/states_I75)
+15,HI,,I-95,11560,R default (not in states_I10/states_I75)
+16,ID,,I-75,11548,
+17,IL,,I-75,11548,
+18,IN,,I-75,11548,
+19,IA,,I-75,11548,
+20,KS,,I-75,11548,
+21,KY,,I-75,11548,
+22,LA,,I-10,11504,
+23,ME,,I-95,11560,R default (not in states_I10/states_I75)
+24,MD,,I-95,11560,R default (not in states_I10/states_I75)
+25,MA,,I-95,11560,R default (not in states_I10/states_I75)
+26,MI,,I-75,11548,
+27,MN,,I-75,11548,
+28,MS,,I-75,11548,
+29,MO,,I-75,11548,
+30,MT,,I-95,11560,R default (not in states_I10/states_I75)
+31,NE,,I-75,11548,
+32,NV,,I-75,11548,
+33,NH,,I-95,11560,R default (not in states_I10/states_I75)
+34,NJ,,I-95,11560,R default (not in states_I10/states_I75)
+35,NM,,I-75,11548,
+36,NY,,I-95,11560,R default (not in states_I10/states_I75)
+37,NC,,I-95,11560,R default (not in states_I10/states_I75)
+38,ND,,I-75,11548,
+39,OH,,I-75,11548,
+40,OK,,I-75,11548,
+41,OR,,I-75,11548,
+42,PA,,I-95,11560,R default (not in states_I10/states_I75)
+44,RI,,I-95,11560,R default (not in states_I10/states_I75)
+45,SC,,I-95,11560,R default (not in states_I10/states_I75)
+46,SD,,I-95,11560,R default (not in states_I10/states_I75)
+47,TN,,I-75,11548,
+48,TX,,I-10,11504,
+49,UT,,I-75,11548,
+50,VT,,I-95,11560,R default (not in states_I10/states_I75)
+51,VA,,I-95,11560,R default (not in states_I10/states_I75)
+53,WA,,I-95,11560,R default (not in states_I10/states_I75)
+54,WV,,I-95,11560,R default (not in states_I10/states_I75)
+55,WI,,I-75,11548,
+56,WY,,I-75,11548,

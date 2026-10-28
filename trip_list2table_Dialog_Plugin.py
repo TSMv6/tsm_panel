@@ -525,6 +525,7 @@ class ConvertTripListtoTable(QDialog, Ui_Dialog_Triptable):
             "canaveral_cruise":     cfg + "/canaveral_cruise.csv",
             "ga_al_destinations":   cfg + "/ga_al_ldt_destinations.csv",
             "cbm_external_lookup":  cfg + "/cbm_external_lookup.csv",
+            "os_state_externals":   cfg + "/OutofState_to_ExternalStations_Mapping.csv",
             "taz_dma":              cfg + "/Florida_Zones_appended_STL_TSMv4.csv",
         }
 

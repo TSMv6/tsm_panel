@@ -30,6 +30,8 @@ airport_shares       = {airport_shares}
 canaveral_cruise     = {canaveral_cruise}
 ga_al_destinations   = {ga_al_destinations}
 cbm_external_lookup  = {cbm_external_lookup}
+# visitor (EI) auto entry station by origin state / zone (apply_originState_based_externals)
+os_state_externals   = {os_state_externals}
 taz_dma              = {taz_dma}
 sdt_syn_hh           = {sdt_syn_hh}
 

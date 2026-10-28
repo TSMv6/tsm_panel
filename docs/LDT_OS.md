@@ -88,9 +88,9 @@ fields you set on the left are written into it:
 
 | GUI field | Control key |
 |---|---|
-| Input Directory | `InputDirectoryName` |
-| Road / Rail / Air LOS (OMX) | `RoadLOSFileName` / `RailLOSFileName` / `AirLOSFileName` |
-| Land-use (FL) | `ZoneLandUseFileName` |
+| Input Directory | LDT input folder: `os_landuse_<year>.gpkg` (out-of-state landuse) and `ldt_fl_zone_attributes.csv` (fixed FL zone area/centroid), used to build `LDT_Landuse.dat` |
+| Road / Rail / Air LOS (OMX) | `RoadLOSFileName` / `RailLOSFileName` / `AirLOSFileName` — full paths, read in place (not copied) |
+| Land-use (FL) | `ZoneLandUseFileName` = `<scenario>/LDT_Landuse.dat`, built by `ldtprep landuse` from this layer (FL) + the OS GeoPackage |
 | Syn HH (FL/US) | `HouseholdFileName` |
 | Num of HHs | `numberOfHouseholds` |
 | Output Dir | `OutputDirectoryName` |

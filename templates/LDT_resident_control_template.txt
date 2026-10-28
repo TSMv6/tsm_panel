@@ -20,15 +20,15 @@ ScenarioPercentAirFareChange  0
 ScenarioPercentRailTimeChange 0
 OutputFileDelimeter           44
 
-InputDirectoryName            {INPUT_DIR}
-OutputDirectoryName           {OUTPUT_DIR}
-RoadLOSFileName               {ROAD_SKIM}
-RailLOSFileName               {RAIL_SKIM}
-AirLOSFileName                {AIR_SKIM}
-ZoneLandUseFileName           {LAND_USE}
-HouseholdFileName             {SYN_HH}
+InputDirectoryName            "{INPUT_DIR}"
+OutputDirectoryName           "{OUTPUT_DIR}"
+RoadLOSFileName               "{ROAD_SKIM}"
+RailLOSFileName               "{RAIL_SKIM}"
+AirLOSFileName                "{AIR_SKIM}"
+ZoneLandUseFileName           "{LAND_USE}"
+HouseholdFileName             "{SYN_HH}"
 numberOfHouseholds            {NUM_HH}
-vehicleTypeAltsFilename       vehicle_type_alts.csv
+vehicleTypeAltsFilename       "{VEH_ALTS}"
 
 HouseholdOutputFileName       FL_LD_household.csv
 TourOutputFileName            FL_LD_tour_out.csv

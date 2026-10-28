@@ -267,6 +267,22 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
             return False
 
         settings = Config()
+        # Skims and vehicle_type_alts are read in place from where the dialog
+        # points (ldt-run.exe takes absolute file names as-is). They used to be
+        # copied into the scenario dir, a leftover of the TSMv5 Pascal model's
+        # single input folder.
+        road_skim = settings.get("LDT_resident_RoadSkim")
+        rail_skim = settings.get("LDT_resident_RailSkim")
+        air_skim = settings.get("LDT_resident_AirSkim")
+        # Shared veh-type-choice set with SDT: Inputs/vehTypeChoice.
+        veh_alts = os.path.join(settings.get("tsm_location"), "Inputs", "vehTypeChoice", "vehicle_type_alts.csv")
+        if not os.path.exists(veh_alts):
+            veh_alts = os.path.join(settings.get("LDT_resident_InputDir"), "vehicle_type_alts.csv")
+        for _label, _path in (("Road skim", road_skim), ("Rail skim", rail_skim),
+                              ("Air skim", air_skim), ("Vehicle type alternatives", veh_alts)):
+            if not os.path.exists(_path):
+                QMessageBox.critical(self, "Error", f"{_label} file not found:\n{_path}")
+                return False
         # compute number of households (updates LDT_resident_SynHH)
         self.check_nHH()
 
@@ -284,15 +300,23 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
             QMessageBox.critical(self, "Error", f"Utility not found: {ldtprep_exe}")
             return False
 
-        us_lu_file = settings.get("scenarioYear") + "_landuse.dat"
-        # LDT reference inputs (landuse, vehicle_type_alts, ...) all live in the
-        # user-selected LDT Input Directory (panel field -> LDT_resident_InputDir,
-        # e.g. {tsm_location}/Inputs/LDT_Skims_LU_SynHH). NOT a hardcoded folder.
-        ldt_resident_default = os.path.join(settings.get("LDT_resident_InputDir"), us_lu_file).replace("\\","/")
+        # LDT_Landuse.dat is built from the landuse GeoPackages: FL from the
+        # selected layer, out-of-state from os_landuse_{scenarioYear}.gpkg, plus
+        # the fixed FL zone attributes (area, centroid, ...). Both live in the
+        # LDT Input Directory; the per-year 20YY_landuse.dat is no longer read.
+        ldt_input_dir = settings.get("LDT_resident_InputDir")
+        os_landuse_gpkg = os.path.join(ldt_input_dir, "os_landuse_" + str(settings.get("scenarioYear")) + ".gpkg").replace("\\","/")
+        fl_zone_attr = os.path.join(ldt_input_dir, "ldt_fl_zone_attributes.csv").replace("\\","/")
+        for _label, _path in (("Out-of-state landuse GeoPackage", os_landuse_gpkg),
+                              ("FL zone attributes", fl_zone_attr)):
+            if not os.path.exists(_path):
+                QMessageBox.critical(self, "Error", f"{_label} not found in the LDT Input Directory:\n{_path}")
+                return False
         ldt_resident_updated = os.path.join(settings.get("scenarioDir"), "LDT_Landuse.dat").replace("\\","/")
         settings.set("LDT_resident_Landuse_updated", ldt_resident_updated)
         print(f"Updated Landuse file: {ldt_resident_updated}")
-        print(f"Default Landuse file: {ldt_resident_default}")
+        print(f"OS landuse gpkg: {os_landuse_gpkg}")
+        print(f"FL zone attributes: {fl_zone_attr}")
         print(f"Landuse layer path: {landuse_layer_path}")
         print(f"ldtprep exe: {ldtprep_exe}")
         # ONE live window for the whole LDT-resident run: open a console that tails
@@ -301,7 +325,7 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         ldt_log = os.path.join(settings.get("scenarioDir"), "LDT_resident.log")
         begin_run_console(ldt_log, "LDT Resident - run log")
         try:
-            result1 = Config().run_app([ldtprep_exe, "landuse", landuse_layer_path, ldt_resident_default, ldt_resident_updated],
+            result1 = Config().run_app([ldtprep_exe, "landuse", landuse_layer_path, os_landuse_gpkg, fl_zone_attr, ldt_resident_updated],
                                        log_path=ldt_log, console=False, append=True)
             if result1.returncode == 0:
                 print(f"Running LDT Landuse updated successful: {ldt_resident_updated}")
@@ -371,32 +395,16 @@ class LDTResidentModel(QDialog, Ui_Dialog_LDTRes):
         ldt_res_template = os.path.join(settings.get("plugin_dir"), "templates", "LDT_resident_control_template.txt")
         properties_file = os.path.join(settings.get("scenarioDir"), "LDT_resident.txt").replace("/", "\\")
 
-        # Copy files to scenario directory
-        try:
-            if settings.get("LDT_resident_RoadSkim"):
-                shutil.copy(settings.get("LDT_resident_RoadSkim"), os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_RoadSkim"))))
-            if settings.get("LDT_resident_RailSkim"):
-                shutil.copy(settings.get("LDT_resident_RailSkim"), os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_RailSkim"))))
-            if settings.get("LDT_resident_AirSkim"):
-                shutil.copy(settings.get("LDT_resident_AirSkim"), os.path.join(settings.get("scenarioDir"), os.path.basename(settings.get("LDT_resident_AirSkim"))))
-            # Shared veh-type-choice set with SDT: Inputs/vehTypeChoice. Copied into
-            # the scenario dir (the engine reads it from cwd), so the source change
-            # needs no LDT.exe rebuild.
-            shutil.copy(os.path.join(settings.get("tsm_location"), "Inputs", "vehTypeChoice", "vehicle_type_alts.csv"),
-                        os.path.join(settings.get("scenarioDir"),"vehicle_type_alts.csv"))
-        except Exception as e:
-            print(f"Error copying input files: {e}")
-            QMessageBox.critical(self, "Error", f"Error copying input files: {e}")
-            return False
 
         replacements = {
             "OUTPUT_DIR" : settings.get("scenarioDir").replace("/", "\\"),
             "INPUT_DIR" : settings.get("scenarioDir").replace("/", "\\"),
-            "ROAD_SKIM" : os.path.basename(settings.get("LDT_resident_RoadSkim")),
-            "RAIL_SKIM" : os.path.basename(settings.get("LDT_resident_RailSkim")),
-            "AIR_SKIM" : os.path.basename(settings.get("LDT_resident_AirSkim")),
-            "LAND_USE" : os.path.basename(settings.get("LDT_resident_Landuse_updated")),
-            "SYN_HH" : LDT_households_updated_basefile,
+            "ROAD_SKIM" : road_skim.replace("\\", "/"),
+            "RAIL_SKIM" : rail_skim.replace("\\", "/"),
+            "AIR_SKIM" : air_skim.replace("\\", "/"),
+            "VEH_ALTS" : veh_alts.replace("\\", "/"),
+            "LAND_USE" : settings.get("LDT_resident_Landuse_updated").replace("\\", "/"),
+            "SYN_HH" : LDT_households_updated.replace("\\", "/"),
             "NUM_HH" : str(settings.get("LDT_resident_nHH")),
             "COEFF_TOML_DIR" : LDT_Parameters
         }

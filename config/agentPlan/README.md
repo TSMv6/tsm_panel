@@ -10,6 +10,8 @@ Place the following CSVs here (the dialog references this folder, config/agentPl
 - canaveral_cruise.csv
 - ga_al_ldt_destinations.csv     (GA/AL crossborder destinations)
 - cbm_external_lookup.csv
+- OutofState_to_ExternalStations_Mapping.csv  (visitor auto entry station by origin
+  state, = the R states_I10/states_I75 lists; optional ZoneID rows override their state)
 - Florida_Zones_appended_STL_TSMv4.csv   (taz_dma)   [bundled]
 - TSMv5_Truck_ODME_TT.csv        (truck ODME matrix; large — place here or symlink)
 

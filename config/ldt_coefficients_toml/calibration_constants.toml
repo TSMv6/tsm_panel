@@ -1,6 +1,9 @@
 # calibration_constants.toml
 # Written by calibrate_loop.py — iteration 13
 # key = (model, segment index, coef id); delta is cumulative.
+# 2026-10-28: OS air ASC (mode_choice 400) 2.516 -> 3.4915 and OS tour rate
+# (tour_generation_first 100-500, segs 1-2) -0.2401, calibrated to 160k visitor
+# auto tours (2024 counts at I-10/I-75/I-95) and 230k visitor air persons.
 
 [[adjust]]
 model = "dest_choice"
@@ -1007,35 +1010,35 @@ note  = "FL dest DMA 9 (Disney)"
 model = "mode_choice"
 index = 1
 coef  = 400
-delta = 2.516171
+delta = 3.491515
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 2
 coef  = 400
-delta = 2.516171
+delta = 3.491515
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 3
 coef  = 400
-delta = 2.516171
+delta = 3.491515
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 4
 coef  = 400
-delta = 2.516171
+delta = 3.491515
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 5
 coef  = 400
-delta = 2.516171
+delta = 3.491515
 note  = "OS air share"
 
 [[adjust]]
@@ -1247,3 +1250,73 @@ index = 5
 coef  = 401
 delta = -0.157384
 note  = "OS party group3plus"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 1
+coef  = 100
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 1
+coef  = 200
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 1
+coef  = 300
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 1
+coef  = 400
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 1
+coef  = 500
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 2
+coef  = 100
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 2
+coef  = 200
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 2
+coef  = 300
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 2
+coef  = 400
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 2
+coef  = 500
+delta = -0.240140
+note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
