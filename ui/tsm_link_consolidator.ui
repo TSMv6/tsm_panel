@@ -180,6 +180,34 @@
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_SignalCtrl">
+           <item>
+            <widget class="QCheckBox" name="checkBox_SignalCtrl">
+             <property name="text">
+              <string>Signal controllers</string>
+             </property>
+             <property name="toolTip">
+              <string>SIGNAL_CONTROLLERS: run the signalized nodes of one divided-road intersection (2-4 nodes joined by median links) as one controller. NSignals counts the intersection once per path, and the GMNS package seeds one timing plan for the group. Off: one signal per node, as before.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEdit_SignalCtrl">
+             <property name="toolTip">
+              <string>SIGNAL_CONTROLLER_FILE: CSV with NODE_ID, SIGNAL_CONTROL_ID (NUM_SIGNALS optional, checked only). Blank: the node layer's SIGNAL_CONTROL_ID field. A node in the file takes the file's id.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="browse_SignalCtrl">
+             <property name="text">
+              <string>Browse</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QGridLayout" name="gridLayout_3">
            <item row="0" column="0">
             <widget class="QCheckBox" name="checkBox_Counts">

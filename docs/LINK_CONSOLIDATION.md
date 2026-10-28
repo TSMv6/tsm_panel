@@ -159,6 +159,16 @@ network.
 - **Length** — recomputed from the merged geometry (miles).
 - **Signals** — counted into `NSignals` wherever a merged segment ends at a
   signalized node (feeds the model's signal-delay model).
+- **Signal controllers** (checkbox, off by default) — a divided-road
+  intersection is 2-4 signalized nodes joined by short median links. Checked,
+  the nodes sharing a `SIGNAL_CONTROL_ID` run as one controller: `NSignals` skips
+  a signal reached over a median link (one signal per intersection per path), and
+  the GMNS package seeds one timing plan for the group. The ids come from the CSV
+  in the box (`NODE_ID`, `SIGNAL_CONTROL_ID`, `NUM_SIGNALS` optional, e.g.
+  `Inputs/GeoMaster/navteq24/Signal_Controller_id.csv`) or, with the box blank,
+  the node layer's `SIGNAL_CONTROL_ID` field; a node in the CSV takes the CSV's id.
+  It changes `NSignals`, so a calibrated network rebuilt with it on needs its
+  signalized-arterial results re-checked.
 - **Tolls** — summed across the merged segments.
 - **First-from / last-to** node, grade levels, and the facility attributes carry
   through; ELToD fields (free-flow speed, VDF α/β, capacity from QLOS) are derived.

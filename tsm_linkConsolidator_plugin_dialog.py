@@ -216,6 +216,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             cap = (os.path.join(tloc, "Inputs", "netPrep", "QLOS_capacities.csv").replace("\\", "/")
                    if tloc else "")
         self.lineEdit_Capacities.setText(cap)
+        # Signal controller groups (divided intersections): off by default.
+        self.checkBox_SignalCtrl.setChecked(self._str2bool(settings.get("netprep_signal_ctrl") or "False"))
+        self.lineEdit_SignalCtrl.setText(settings.get("netprep_signal_ctrl_file") or "")
+        self.checkBox_SignalCtrl.toggled.connect(self._toggle_signal_ctrl)
+        self._toggle_signal_ctrl(self.checkBox_SignalCtrl.isChecked())
 
         # Help text: render docs/LINK_CONSOLIDATION.md into the side panel.
         self.textBrowser = self.findChild(QTextBrowser, 'textBrowser')
@@ -243,6 +248,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         self.modelResolution.currentTextChanged.connect(lambda _t: self._show_zone_ids())
         self.browse_Capacities.clicked.connect(
             lambda: self.select_file(self.lineEdit_Capacities, "open", "CSV (*.csv)"))
+        self.browse_SignalCtrl.clicked.connect(
+            lambda: self.select_file(self.lineEdit_SignalCtrl, "open", "CSV (*.csv)"))
 
         # Enable/disable the MSR inputs based on model resolution
         self.modelResolution.currentTextChanged.connect(self.toggle_msr_fields)
@@ -328,6 +335,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         saved = Config()
         if cfg.get("capacities_file") and not saved.get("netprep_capacities_file"):
             self.lineEdit_Capacities.setText(cfg["capacities_file"])
+
+        if "SIGNAL_CONTROLLERS" in cfg and saved.get("netprep_signal_ctrl") in (None, ""):
+            self.checkBox_SignalCtrl.setChecked(self._str2bool(cfg["SIGNAL_CONTROLLERS"]))
+        if cfg.get("SIGNAL_CONTROLLER_FILE") and not saved.get("netprep_signal_ctrl_file"):
+            self.lineEdit_SignalCtrl.setText(cfg["SIGNAL_CONTROLLER_FILE"])
 
         if "keep_Counts" in cfg:
             self.checkBox_Counts.setChecked(self._str2bool(cfg["keep_Counts"]))
@@ -459,6 +471,11 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         else:
             self.textBrowser.setPlainText(md)
 
+    def _toggle_signal_ctrl(self, on):
+        """The controller file applies only with signal controllers on."""
+        self.lineEdit_SignalCtrl.setEnabled(on)
+        self.browse_SignalCtrl.setEnabled(on)
+
     def update_settings(self):
         """Persist the current selections into the Config store."""
         settings = Config()
@@ -467,6 +484,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         settings.set("network_version", version(self.networkVersion))
         settings.set("model_resolution", self.modelResolution.currentText())
         settings.set("netprep_capacities_file", self.lineEdit_Capacities.text())
+        settings.set("netprep_signal_ctrl", self.checkBox_SignalCtrl.isChecked())
+        settings.set("netprep_signal_ctrl_file", self.lineEdit_SignalCtrl.text())
         settings.set("bool_Counts", self.checkBox_Counts.isChecked())
         # Global count field(s), comma-joined -- netPrep, Summarization and
         # validation all read this.
@@ -738,6 +757,12 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"plugin_dir = {plugin_dir}\n")
                 # Capacities lookup path passed explicitly (no hardcoded path in the exe).
                 f.write(f"capacities_file = {capacities_file}\n")
+                # Signal controller groups: one controller per divided
+                # intersection (NSignals once per path, one GMNS plan).
+                f.write(f"SIGNAL_CONTROLLERS = {self.checkBox_SignalCtrl.isChecked()}\n")
+                sig_file = self.lineEdit_SignalCtrl.text().strip().replace("\\", "/")
+                if self.checkBox_SignalCtrl.isChecked() and sig_file:
+                    f.write(f"SIGNAL_CONTROLLER_FILE = {sig_file}\n")
                 # Centroid-connector attributes: model inputs, not engine
                 # constants. netPrep applies them by facility type (FTYPE 51),
                 # so they reach external connectors as well as internal ones.
