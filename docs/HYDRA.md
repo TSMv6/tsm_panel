@@ -101,7 +101,7 @@ two-person shared ride is 0.5 + 0.5 = 1 vehicle), scaled under sampling and ODME
 
 Four sub-tabs: **Meso**, **Micro**, **GMNS**, **Tiers & probes**.
 
-- **Meso**: Meso FTYPEs, **Meso time step** (`MESO_DT_SEC`, 6 s) and the
+- **Meso**: the **Meso FTYPEs** checkbox + list, **Meso time step** (`MESO_DT_SEC`, 6 s) and the
   diagnostics -- interval, movement and segment logs (`meso_interval_log.csv`,
   `meso_movement_log.csv`, `meso_segment_log.csv`), segment length or a
   segment file.
@@ -285,6 +285,17 @@ A link runs meso or micro when **either**:
 
 So you can target a corridor by editing the link attributes, or a whole class by
 facility type from this dialog (the **Meso FTYPEs** box; the **Micro corridor** box).
+
+Both are gated by their checkbox. With **Meso FTYPEs** unchecked the control
+file gets `MESO_ENABLED NO` and no link runs meso -- links with `dta_meso = 1`
+run on the macro loader like the rest. Likewise micro needs **Micro corridor**.
+The FTYPE list is saved with the scenario and kept when the Run Mode changes.
+
+The log names the loader the way this dialog does, e.g.
+`[flow-model] Spatial/LTM(nodeDNL) -- MACRO_MODEL DTA_NodeLTM, node-conserving,
+spatial storage + spillback receiving | ... | meso on: 18705 MESO links`.
+The node loaders run every non-meso link themselves, so there is no separate
+per-link LTM/point-queue count for them.
 
 ---
 

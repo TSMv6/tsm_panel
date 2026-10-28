@@ -691,9 +691,15 @@
 <widget class="QGroupBox" name="groupBox_MesoMicro">
 <layout class="QGridLayout" name="gridLayout_mm">
                      <item row="0" column="0">
-                      <widget class="QLabel" name="label_meso">
+                      <widget class="QCheckBox" name="checkBox_Meso">
                        <property name="text">
                         <string>Meso FTYPEs</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                       <property name="toolTip">
+                        <string>Run the meso engine. Off = no meso anywhere (MESO_ENABLED NO): links tagged dta_meso = 1 run on the macro loader too.</string>
                        </property>
                       </widget>
                      </item>

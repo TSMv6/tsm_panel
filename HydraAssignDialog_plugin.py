@@ -238,6 +238,7 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self.browse_LaneSchedule.clicked.connect(lambda: self.select_file(self.lineEdit_LaneSchedule, "CSV (*.csv)"))
         self.comboBox_Macro.currentTextChanged.connect(self.apply_macro_preset)
         self.checkBox_Micro.toggled.connect(self.toggle_micro)
+        self.checkBox_Meso.toggled.connect(self.toggle_meso)
         self.checkBox_Signals.toggled.connect(self._toggle_signals)
         self.checkBox_Enroute.toggled.connect(self._toggle_enroute)
         self.comboBox_ElDiscount.currentIndexChanged.connect(
@@ -441,11 +442,17 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             w["check"].setChecked(_b(f"{key}_resume"))
             self._refresh_resume(p)
 
-        # apply_macro_preset() overwrites Meso FTYPEs from the preset, so restore the
-        # saved override AFTER it; toggle_micro() applies the enable state.
-        self.apply_macro_preset(self.comboBox_Macro.currentText())
-        if settings.get("hydra_meso_ftypes"):
-            self.lineEdit_MesoFtypes.setText(settings.get("hydra_meso_ftypes"))
+        # Meso: the saved FTYPE list is restored as saved (the run mode does not
+        # replace it); an empty or missing list falls back to limited access.
+        # Scenarios saved before the checkbox stored meso-off as an empty list.
+        saved_ftypes = settings.get("hydra_meso_ftypes")
+        self.lineEdit_MesoFtypes.setText(str(saved_ftypes or "").strip() or MESO_LIMITED_ACCESS)
+        if settings.get("hydra_meso_enabled") not in (None, ""):
+            meso_on = _b("hydra_meso_enabled")
+        else:
+            meso_on = saved_ftypes is None or str(saved_ftypes).strip() != ""
+        self.checkBox_Meso.setChecked(meso_on)
+        self.toggle_meso(meso_on)
         self.toggle_micro(self.checkBox_Micro.isChecked())
         self._toggle_signals(self.checkBox_Signals.isChecked())
         self._sync_loader_controls()
@@ -610,8 +617,16 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             self.textBrowser.setPlainText(md)
 
     def apply_macro_preset(self, name):
-        _, meso, _ = MACRO_PRESETS.get(name, _DEFAULT_PRESET)
-        self.lineEdit_MesoFtypes.setText(meso)
+        # The run mode no longer owns the meso extent: the Meso checkbox and the
+        # user's FTYPE list are kept; an empty list gets the limited-access default.
+        if not self.lineEdit_MesoFtypes.text().strip():
+            self.lineEdit_MesoFtypes.setText(MESO_LIMITED_ACCESS)
+
+    def toggle_meso(self, on):
+        """Meso off greys out every meso-only control (they are not written)."""
+        for w in (self.lineEdit_MesoFtypes, self.label_mesoDt, self.spinBox_MesoDt,
+                  self.groupBox_MesoLogs):
+            w.setEnabled(on)
 
     def _select_node_schedule(self, value):
         """Select the node-schedule combo from a saved control value (per_iter /
@@ -1345,7 +1360,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         settings.set("hydra_link_layer_name", self.comboBox_LinkLayer.currentText())
         settings.set("hydra_node_layer_name", self.comboBox_NodeLayer.currentText())
         # Meso / Micro
-        settings.set("hydra_meso_ftypes", self.lineEdit_MesoFtypes.text())
+        settings.set("hydra_meso_enabled", self.checkBox_Meso.isChecked())
+        settings.set("hydra_meso_ftypes", self.lineEdit_MesoFtypes.text().strip())
         settings.set("hydra_micro_enabled", self.checkBox_Micro.isChecked())
         settings.set("hydra_micro_ftypes", self.lineEdit_MicroFtypes.text())
         settings.set("hydra_coupling", self._coupling())
@@ -1462,6 +1478,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             macro = self.comboBox_Macro.currentText()
             macro_model, _, signals = MACRO_PRESETS.get(macro, _DEFAULT_PRESET)
             meso = self.lineEdit_MesoFtypes.text().strip()
+        # Meso checkbox off: no meso anywhere, dta_meso = 1 link tags included.
+        meso_on = not sta and self.checkBox_Meso.isChecked()
+        if not meso_on:
+            meso = ""
         toll_policy = self.lineEdit_TollPolicy.text().strip()
 
         afdta = settings.app_exe("Hydra/afdta.exe")
@@ -1551,11 +1571,17 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 f.write("LINK_VOLUME_BREAKDOWN %s\n" % ", ".join(["Purpose"] + extra))
                 if self.checkBox_BdVotBin.isChecked():
                     f.write(f"VOT_BIN_EDGES         {self.lineEdit_VotEdges.text().strip() or '10,20,40,80'}\n")
-                if meso:
-                    f.write(f"MESO_FTYPE            {meso}\n")
+                if not meso_on:
+                    # afdta clears dta_meso tags too, so the link layer's own
+                    # meso flags cannot switch meso back on.
+                    f.write("MESO_ENABLED          NO\n")
+                else:
+                    if meso:
+                        f.write(f"MESO_FTYPE            {meso}\n")
                     # Anti-gridlock breaker -- MESO ONLY, so these keys are
-                    # written inside the `if meso` block and never appear in a
-                    # macro-only control file.
+                    # written inside the meso block and never appear in a
+                    # macro-only control file. Written with an empty FTYPE list
+                    # too: dta_meso = 1 links still run meso.
                     #
                     # The engine defaults are meso_breaker_rate=0 ("legacy") and
                     # meso_max_spillback_min=20, which together drain a
