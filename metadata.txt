@@ -1,12 +1,12 @@
 [general]
 name=TSM Model Plugin
-version=2.85
+version=2.87
 date=2026-10-28
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
-commit=2a3f7ed
-commit_date=2026-10-21
+commit=1e513d4
+commit_date=2026-10-28
 # Standard QGIS plugin metadata keys; the About dialog links the
 # source revision straight at the commit on GitHub.
 repository=https://github.com/TSMv6/tsm_panel
@@ -38,14 +38,14 @@ about=TSMv6 is Florida's Turnpike Enterprise (FTE's) State Model (TSM): a
 # was built -- About TSM Plugin reads these instead.
 engine_popsim=PopSyn 69c6117 2026-10-20
 engine_sdt=SDTModel d3e8fea 2026-08-11
-engine_ldt=LDTModel 1ad62fb 2026-07-15
-engine_agentplans=agentPlans 16eab94 2026-09-21
-engine_afdta=agentflow-dta d8d3b2b 2026-10-28
+engine_ldt=LDTModel da5e3b6 2026-10-28
+engine_agentplans=agentPlans bd0ed99 2026-10-28
+engine_afdta=agentflow-dta 1423b12 2026-10-28
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep 6aa9e9a 2026-10-28
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
-engine_utilities=utilities 03bbbbd 2026-10-21
+engine_utilities=utilities 7dc263f 2026-10-28
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
 
 changelog=
@@ -59,8 +59,17 @@ changelog=
     a unified C++ codebase (R, Java, Pascal, and Python/Anaconda2 runtime
     engines replaced by the bundled exes).
     .
-    One version per commit, newest first (134 commits, 2026-06-19 to 2026-10-28):
+    One version per commit, newest first (136 commits, 2026-06-19 to 2026-10-28):
     .
+    2.87 (2026-10-28): HyDRA Meso checkbox - Meso FTYPEs is a checkbox like
+    Micro corridor; off writes MESO_ENABLED NO and no link runs meso, dta_meso
+    = 1 included. The FTYPE list is kept as saved (Run Mode no longer resets
+    it). afdta logs the loader as PointQueue(nodeDNL) / Spatial/LTM(nodeDNL).
+    2.86 (2026-10-28): LDT reads skims and inputs in place (no scenario
+    copies); LDT_Landuse.dat from os_landuse_YYYY.gpkg + ldt_fl_zone_attributes
+    .csv; out-of-state -> external station CSV for agentPlans; visitor air
+    recalibration (air ASC 3.4915, tour rate -0.2401): 162.8k EI auto tours,
+    230.1k air persons.
     2.85 (2026-10-28): netPrep "Signal controllers" - the signalized nodes of
     a divided-road intersection that share a SIGNAL_CONTROL_ID (CSV or node
     layer) run as one controller: NSignals counts the intersection once per
