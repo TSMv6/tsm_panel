@@ -208,6 +208,30 @@
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_MergeFields">
+           <item>
+            <widget class="QLabel" name="label_MergeFields">
+             <property name="text">
+              <string>Merge Fields</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboBox_MergeFields">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="toolTip">
+              <string>MERGE_FIELDS: link-layer fields that must match for two links to merge into one model link (the direction always must). _YY is the network year (FTYPE_YY -&gt; FTYPE_24). Default FTYPE_YY, ATYPE_YY, LANE_YY, SPEED_YY. Street names are not a default: a name change never splits a road.</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QGridLayout" name="gridLayout_3">
            <item row="0" column="0">
             <widget class="QCheckBox" name="checkBox_Counts">

@@ -135,8 +135,12 @@ It walks the directed network and merges a run of successive links into one
 **consolidated link** as long as they are the *same kind of road* and there is **no
 reason to break** between them.
 
-**Merge while all of these match** (a link and its successor):
-`FACTYPE` (facility type) · `AREATYPE` · `NLANES` · `POSTSPEED` · `DIRECTION`.
+**Merge while all of these match** (a link and its successor): the **Merge
+Fields** picked in the panel (`MERGE_FIELDS`), by default `FTYPE_YY` (facility
+type) · `ATYPE_YY` (area type) · `LANE_YY` · `SPEED_YY`, where `_YY` is the
+network year — plus the `DIRECTION`, which always applies. Lanes and speed
+compare as the model link carries them (lanes per direction). Street names are
+not a default: a name change, or a missing name, never splits a road.
 
 **Stop the merge (start a new link) at a true decision point:**
 - **Intersection** — the downstream node has more than one approach/departure (a

@@ -26,6 +26,12 @@ CONNECTOR_DEFAULTS = {
 }
 
 
+# Link-consolidation fields (MERGE_FIELDS): two links merge only when all of
+# these match (netPrep always adds the direction). _YY = the network year.
+# Street names are deliberately not here: a name change must not split a road.
+MERGE_FIELDS_DEFAULT = ["FTYPE_YY", "ATYPE_YY", "LANE_YY", "SPEED_YY"]
+
+
 # TSM numbering when no TSMv6 centroid layer is available to read it from
 # (TSMv5 networks carry their centroids inside the node file).
 TSM_ZONE_DEFAULT = (1, 8721, 11501, 11560)
@@ -209,6 +215,19 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         self.checkBox_Counts.toggled.connect(self.comboBox_CountField.setEnabled)
         self.comboBox_CountField.setEnabled(self.checkBox_Counts.isChecked())
         self._populate_count_fields()
+        # Merge fields (MERGE_FIELDS): same multi-select, same swap, in its own
+        # row above Keep Counts (horizontalLayout_MergeFields, index 1).
+        _old = self.comboBox_MergeFields
+        self.comboBox_MergeFields = MultiFieldCombo(_old.parentWidget())
+        self.comboBox_MergeFields.setToolTip(_old.toolTip())
+        self.comboBox_MergeFields.setSizePolicy(_old.sizePolicy())
+        self.horizontalLayout_MergeFields.removeWidget(_old)
+        _old.hide()
+        _old.setParent(None)
+        _old.deleteLater()
+        self.horizontalLayout_MergeFields.insertWidget(1, self.comboBox_MergeFields, 1)
+        self.lineLayerCombo.currentIndexChanged.connect(self._populate_merge_fields)
+        self._populate_merge_fields()
         # QLOS capacities file (user setting). Default to {tsm_location}/Inputs/netPrep.
         cap = settings.get("netprep_capacities_file")
         if not cap:
@@ -345,6 +364,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             self.checkBox_Counts.setChecked(self._str2bool(cfg["keep_Counts"]))
         if cfg.get("COUNT_FIELD"):
             self.comboBox_CountField.set_checked(self._split_fields(cfg["COUNT_FIELD"]))
+        if cfg.get("MERGE_FIELDS") and not saved.get("merge_fields"):
+            self.comboBox_MergeFields.set_checked(self._split_fields(cfg["MERGE_FIELDS"]))
 
         if cfg.get("output_dir"):
             self.output_directory.setText(cfg["output_dir"])
@@ -380,6 +401,31 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             names = [f.name() for f in layer.fields() if pat.search(f.name())]
         names += [c for c in checked if c not in names]
         self.comboBox_CountField.set_fields(names, set(checked))
+
+    def _populate_merge_fields(self):
+        """Fill the merge-field multi-select from the selected GeoMaster line
+        layer. Year-suffixed fields (FTYPE_24, FTYPE_50, ...) are listed once as
+        FTYPE_YY -- netPrep substitutes the network year -- followed by the
+        plain fields. Checked: the current selection, else the saved one
+        (Config "merge_fields"), else MERGE_FIELDS_DEFAULT."""
+        import re as _re
+        checked = (self.comboBox_MergeFields.checked_fields() or
+                   self._split_fields(Config().get("merge_fields")) or
+                   list(MERGE_FIELDS_DEFAULT))
+        layer = self.lineLayerCombo.currentData()
+        yearly, plain = [], []
+        if layer is not None and hasattr(layer, "fields"):
+            for f in layer.fields():
+                m = _re.match(r"^(.+)_\d{2}$", f.name())
+                if m:
+                    n = m.group(1) + "_YY"
+                    if n not in yearly:
+                        yearly.append(n)
+                elif f.name() not in plain:
+                    plain.append(f.name())
+        # The checked fields first, so the selection is visible at the top.
+        names = [c for c in checked] + [n for n in yearly + plain if n not in checked]
+        self.comboBox_MergeFields.set_fields(names, set(checked))
 
     def toggle_msr_fields(self):
         """MSR is chosen in Project Settings > Model Resolution, not here: that
@@ -491,6 +537,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         # validation all read this.
         if self.comboBox_CountField.checked_fields():
             settings.set("count_field", ", ".join(self.comboBox_CountField.checked_fields()))
+        if self.comboBox_MergeFields.checked_fields():
+            settings.set("merge_fields", ", ".join(self.comboBox_MergeFields.checked_fields()))
         settings.set("GM_line_layer", self.lineLayerCombo.currentText())
         settings.set("GM_node_layer", self.nodeLayerCombo.currentText())
         settings.set("GM_centroid_layer", self.lineLayerCombo_2.currentText())
@@ -714,6 +762,15 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         count_field = ", ".join(self.comboBox_CountField.checked_fields())
         if count_field:
             settings.set("count_field", count_field)
+        # Consolidation fields: none checked would merge links on direction
+        # alone (every attribute change ignored), so refuse rather than run.
+        merge_fields = ", ".join(self.comboBox_MergeFields.checked_fields())
+        if not merge_fields:
+            QMessageBox.critical(
+                self, "Error",
+                "Pick at least one Merge Field (default: " + ", ".join(MERGE_FIELDS_DEFAULT) + ").")
+            return False
+        settings.set("merge_fields", merge_fields)
 
         # QLOS capacities lookup (FTYPE|lanes -> capacity) is a user setting / model
         # input, not a plugin asset and NOT a hardcoded path in netPrep. Default to
@@ -752,6 +809,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
                 f.write(f"keep_Counts = {bool_Counts}\n")
                 if count_field:
                     f.write(f"COUNT_FIELD = {count_field}\n")
+                f.write(f"MERGE_FIELDS = {merge_fields}\n")
                 f.write(f"TSM_Link_File = {output_linkfile}\n")
                 f.write(f"TSM_Node_File = {output_nodefile}\n")
                 f.write(f"plugin_dir = {plugin_dir}\n")
