@@ -32,6 +32,7 @@ from .tsm_subarea_plugin_dialog import TsmSubareaExtDialogX
 
 # The Editors
 from .MSR_Dialog_plugin import MSR_Disaggregate
+from .gmcheck_dialog import GMCheckDialog
 
 # The "Black Box"
 
@@ -361,6 +362,16 @@ class TsmPanelPlugin():
         # Editing). The .ui ships it disabled; activate it here regardless of UI source.
         MSRSetting_button.setEnabled(True)
         MSRSetting_button.setToolTip("Open the Multi-Spatial Resolution (MSR) disaggregation editor.")
+        # GeoMaster Checker (gmcheck.exe): added under MSR in the Editors grid
+        # (not in the .ui, like MSR's enable above, so it shows whatever the UI source).
+        if not hasattr(self.ui, "pushButton_GMCheck"):
+            btn = QPushButton("GeoMaster Checker (gmcheck)", self.ui.Step_2_Editors)
+            btn.setObjectName("pushButton_GMCheck")
+            btn.setToolTip("Check the GeoMaster network (class breaks, connectivity, median "
+                           "crossovers, lane / speed / area-type blips) and write a corrected copy.")
+            self.ui.gridLayout_15.addWidget(btn, 4, 1, 1, 1)
+            self.ui.pushButton_GMCheck = btn
+        self.ui.pushButton_GMCheck.clicked.connect(lambda _, tool="GMCheck": self.open_settings(tool))
         # update_links_button.clicked.connect(self.run_update_links_nodes)
 
         # The "Analyst" — the Summarization button opens the summary dialog
@@ -664,7 +675,7 @@ class TsmPanelPlugin():
         "GenConSet": "General Configuration", "ProjSpecs": "Scenario Specs",
         "ViewSettings": "View Settings", "UpdateLinksNodesPlugin": "GeoMaster Editor",
         "tsm_subarea_extractor": "Subarea Networks", "many_to_one": "Link Consolidator",
-        "MSR_Disaggregate": "MSR", "PopSIM": "PopSyn", "FL_skimmy": "Skimmy",
+        "MSR_Disaggregate": "MSR", "GMCheck": "GeoMaster Checker", "PopSIM": "PopSyn", "FL_skimmy": "Skimmy",
         "SDT_resident": "SDT Resident", "SDT_visitor": "SDT Visitor",
         "LDT_resident": "LDT Resident", "LDT_visitor": "LDT Visitor",
         "TripList2Table": "agentPlans", "tsm_assign": "ELToD",
@@ -697,6 +708,8 @@ class TsmPanelPlugin():
 
         if tool_name == 'MSR_Disaggregate':
             dialog = MSR_Disaggregate()
+        if tool_name == 'GMCheck':
+            dialog = GMCheckDialog()
 
         if tool_name == 'PopSIM':
             dialog = PopSynDialog()
