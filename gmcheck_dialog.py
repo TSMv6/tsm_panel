@@ -3,8 +3,10 @@
 gmcheck reads the GeoMaster link / node / connector layers, builds the network
 the way netPrep does and reports coding problems keyed on LINK_ID (R1 class
 breaks, R2 connectivity, R3 median crossovers, R4 LANE / SPEED / ATYPE
-smoothing). With "Write corrected copy" on it also writes a corrected copy of
-the link GeoPackage; the inputs are never modified.
+smoothing). Two steps: 1) the check writes the review GeoPackage (link_review,
+node_review) and the CSVs; 2) after review in QGIS (approved = 1 / 0, edited
+changes) the corrected copy of the link GeoPackage is written from the review
+file. The inputs are never modified.
 
 The dialog writes a gmcheck control file (key = value, the same keys as the
 command-line run kit) and runs Apps/netPrep/gmcheck.exe on it. Left: options.
@@ -110,37 +112,61 @@ class GMCheckDialog(QDialog):
             "<code>FTYPE_&lt;yy&gt;</code> on the layer.")
         lv.addWidget(g_in)
 
-        # Outputs
-        g_out = QGroupBox("Outputs")
+        # Step 1: check -> review file
+        g_out = QGroupBox("Step 1 – Check (writes the review file)")
         go = QGridLayout(g_out)
         self.leOutDir = self._path_row(go, 0, "Output folder", "dir",
             "Folder for <code>gmcheck_links.csv</code> (every change: LINK_ID, before, after), "
-            "<code>gmcheck_nodes.csv</code> (node issues), <code>gmcheck_review.gpkg</code> "
-            "and <code>gmcheck.log</code>.")
-        self.leCorrLink = self._path_row(go, 1, "Corrected link GPKG", "save",
-            "<b>Corrected copy of the link layer</b> written when <i>Write corrected copy</i> is "
-            "on. Same fields as the input plus <code>median_xover</code> and <code>gmcheck</code> "
-            "(rules applied). Point netPrep's link layer here to use it.")
-        self.leReview = self._path_row(go, 2, "Review GPKG", None,
-            "<b>Review GeoPackage</b> (always written to the output folder): layer "
-            "<code>link_review</code> = flagged links with their changes, layer "
-            "<code>node_review</code> = dead ends, islands, one-way traps, ZLEV mismatches. "
-            "The GeoMaster node layer itself is not changed: ZLEV fixes are written on the "
-            "links (F_ZLEV / T_ZLEV).")
-        self.leReview.setReadOnly(True)
-        self.leCtl = self._path_row(go, 3, "Control file", "ctl",
+            "<code>gmcheck_nodes.csv</code> (node issues), the review GPKG and "
+            "<code>gmcheck.log</code>.")
+        self.leReview = self._path_row(go, 1, "Review GPKG", "review",
+            "<b>Review GeoPackage</b>. Step 1 writes it; step 2 reads it. Layer "
+            "<code>link_review</code>: one row per link, year and rule, with "
+            "<code>confidence</code>, <code>changes</code> (<code>FIELD before-&gt;after; ...</code>), "
+            "<code>approved</code> (empty) and <code>proposed</code> (gmcheck's changes, kept for "
+            "reference). Layer <code>node_review</code>: dead ends, islands, one-way traps, ZLEV "
+            "mismatches. A review file with approved or edited rows is never overwritten: step 1 "
+            "renames it <code>&lt;name&gt;_&lt;date_time&gt;.gpkg</code> first.")
+        self.leCtl = self._path_row(go, 2, "Control file", "ctl",
             "The gmcheck control file this dialog writes (and can load with "
             "<i>Load control file</i>). Run it outside QGIS with "
-            "<code>gmcheck.exe &lt;file&gt;</code>.")
-        self.chkApply = self._check(go, 4, "Write corrected copy (APPLY)", True,
-            "Write the corrected link GeoPackage. Off = report only (CSVs, review GPKG, log).")
-        self.cbConf = QComboBox(); self.cbConf.addItems(["High", "Medium", "Low"])
-        self._row(go, 5, "Apply confidence", self.cbConf,
-            "Lowest confidence written to the corrected copy. <b>High</b> (default) applies "
-            "only the clear cases; Medium / Low rows stay in the CSV for review.")
-        self.chkLoad = self._check(go, 6, "Load review layers into QGIS", True,
-            "After the run, add <code>link_review</code> and <code>node_review</code> to the map.")
+            "<code>gmcheck.exe &lt;file&gt;</code> (step 1) and "
+            "<code>gmcheck.exe &lt;file&gt; MODE=apply_review</code> (step 2).")
+        self.chkLoad = self._check(go, 3, "Load review layers into QGIS", True,
+            "After step 1, add <code>link_review</code> and <code>node_review</code> to the map "
+            "for review.")
         lv.addWidget(g_out)
+
+        # Step 2: review file -> corrected copy
+        g_ap = QGroupBox("Step 2 – Corrected GeoMaster (from the review file)")
+        ga = QGridLayout(g_ap)
+        self.leCorrLink = self._path_row(ga, 0, "Corrected link GPKG", "save",
+            "<b>Corrected copy of the link layer</b>: the input link layer with the review rows "
+            "applied, plus <code>median_xover</code> and <code>gmcheck</code> (rules applied). "
+            "Point netPrep's link layer here to use it.")
+        self.cbConf = QComboBox(); self.cbConf.addItems(["High", "Medium", "Low"])
+        self.cbApproved = QComboBox()
+        self.cbApproved.addItem("Also approved = 1", "also")
+        self.cbApproved.addItem("Only approved = 1", "only")
+        self.cbApproved.addItem("Ignore approved", "ignore")
+        cw = QWidget(); ch = QHBoxLayout(cw); ch.setContentsMargins(0, 0, 0, 0)
+        labA = QLabel("User approved")
+        ch.addWidget(self.cbConf, 1); ch.addSpacing(12); ch.addWidget(labA); ch.addWidget(self.cbApproved, 1)
+        self._row(ga, 1, "Apply confidence", cw,
+            "<b>Apply confidence</b>: rows at or above this <code>confidence</code> are written "
+            "(High = only the clear cases). You can change a row's <code>confidence</code> in "
+            "<code>link_review</code>.")
+        self._describe(
+            "<b>User approved</b>, from the <code>approved</code> field of <code>link_review</code>:"
+            "<br><b>Also approved = 1</b> (default): rows at Apply confidence <i>plus</i> every "
+            "row with <code>approved = 1</code>; <code>approved = 0</code> is never written."
+            "<br><b>Only approved = 1</b>: just the approved rows."
+            "<br><b>Ignore approved</b>: confidence only."
+            "<br>A row's <code>changes</code> is written as it stands, so a value you edited "
+            "there is the value applied.", labA, self.cbApproved)
+        self.cbApproved.currentIndexChanged.connect(
+            lambda _i: self.cbConf.setEnabled(self.cbApproved.currentData() != "only"))
+        lv.addWidget(g_ap)
 
         # Rules
         g_r = QGroupBox("Rules")
@@ -200,13 +226,20 @@ class GMCheckDialog(QDialog):
         # Buttons: below the scrolling options, always in view
         bh = QHBoxLayout()
         self.btnLoadCtl = QPushButton("Load control file…")
-        self.btnRun = QPushButton("Run gmcheck")
+        self.btnRun = QPushButton("1. Check (write review)")
         self.btnRun.setDefault(True)
+        self.btnApply = QPushButton("2. Write corrected GPKG")
         self._describe("Fill the dialog from an existing gmcheck control file.", self.btnLoadCtl)
-        self._describe("Write the control file and run <code>gmcheck.exe</code> in a console "
-                       "window (about 1.5 minutes statewide). The log is "
+        self._describe("<b>Step 1</b>: write the control file and run <code>gmcheck.exe</code> "
+                       "in a console window (about 1.5 minutes statewide). Writes the review "
+                       "GPKG and CSVs; the GeoMaster is not changed. Log: "
                        "<code>gmcheck.log</code> in the output folder.", self.btnRun)
-        bh.addWidget(self.btnLoadCtl); bh.addStretch(1); bh.addWidget(self.btnRun)
+        self._describe("<b>Step 2</b>: write the corrected link GPKG from the review GPKG, "
+                       "taking the rows chosen by Apply confidence and User approved (a few "
+                       "seconds; the network is not rebuilt). Unsaved edits to "
+                       "<code>link_review</code> are saved first. Log: "
+                       "<code>gmcheck_apply.log</code>.", self.btnApply)
+        bh.addWidget(self.btnLoadCtl); bh.addStretch(1); bh.addWidget(self.btnRun); bh.addWidget(self.btnApply)
         self.bbox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
                                      QDialogButtonBox.StandardButton.Cancel)
 
@@ -244,6 +277,7 @@ class GMCheckDialog(QDialog):
         self.cbLink.currentIndexChanged.connect(lambda _i: self._default_outputs())
         self.btnLoadCtl.clicked.connect(self._load_ctl_dialog)
         self.btnRun.clicked.connect(lambda: self.run_gmcheck(show_message=True))
+        self.btnApply.clicked.connect(lambda: self.apply_review(show_message=True))
         self.bbox.accepted.connect(self.update_settings)
         self.bbox.rejected.connect(self.reject)
 
@@ -358,6 +392,9 @@ class GMCheckDialog(QDialog):
         start = le.text().strip() or self._start_dir()
         if kind == "dir":
             p = QFileDialog.getExistingDirectory(self, "Select Output Folder", start)
+        elif kind == "review":
+            p, _ = QFileDialog.getSaveFileName(self, "Review GeoPackage", start, "GeoPackage (*.gpkg)",
+                                               options=QFileDialog.Option.DontConfirmOverwrite)
         elif kind == "save":
             p, _ = QFileDialog.getSaveFileName(self, "Corrected Link GeoPackage", start,
                                                "GeoPackage (*.gpkg)")
@@ -373,7 +410,7 @@ class GMCheckDialog(QDialog):
 
     def _default_outputs(self, *_):
         """Blank outputs follow the link layer: <link dir>/gmcheck/, the corrected
-        copy <stem>_gmcheck.gpkg there; the review GPKG always sits in the folder."""
+        copy <stem>_gmcheck.gpkg and gmcheck_review.gpkg there."""
         lp = self.layer_path(self.cbLink.currentData())
         if not self.leOutDir.text().strip() and lp:
             self.leOutDir.blockSignals(True)
@@ -386,7 +423,8 @@ class GMCheckDialog(QDialog):
                 self.leCorrLink.setText(f"{out}/{stem}_gmcheck.gpkg")
             if not self.leCtl.text().strip():
                 self.leCtl.setText(f"{out}/gmcheck.ctl")
-            self.leReview.setText(f"{out}/gmcheck_review.gpkg")
+            if not self.leReview.text().strip():
+                self.leReview.setText(f"{out}/gmcheck_review.gpkg")
 
     # ------------------------------------------------------------ settings
     def _values(self):
@@ -405,8 +443,10 @@ class GMCheckDialog(QDialog):
             "XOVER_ACTION": self.cbXover.currentData(),
             "XOVER_FTYPE": str(self.sbXoverFt.value()),
             "XOVER_FNAME": self.leXoverFname.text().strip() or "Median",
-            "APPLY": str(self.chkApply.isChecked()),
+            "review_gpkg": self._norm(self.leReview.text()),
+            "APPLY": "False",  # step 1 is report only; step 2 is MODE=apply_review
             "APPLY_CONFIDENCE": self.cbConf.currentText(),
+            "APPLY_APPROVED": self.cbApproved.currentData(),
             "corrected_link_layer": self._norm(self.leCorrLink.text()),
         }
         for key, s in self.sb.items():
@@ -414,7 +454,7 @@ class GMCheckDialog(QDialog):
         return v
 
     def _known_keys(self):
-        return set(self._values()) | {"Settings_File"}
+        return set(self._values()) | {"Settings_File", "MODE"}
 
     def _set_values(self, v):
         """Fill the widgets from control-file / saved values (missing keys kept)."""
@@ -427,14 +467,17 @@ class GMCheckDialog(QDialog):
         if "YEARS" in v: self.leYears.setText(g("YEARS"))
         if g("output_dir"): self.leOutDir.setText(self._norm(g("output_dir")))
         if g("corrected_link_layer"): self.leCorrLink.setText(self._norm(g("corrected_link_layer")))
+        if g("review_gpkg"): self.leReview.setText(self._norm(g("review_gpkg")))
         tb = lambda k, d: g(k).lower() in ("true", "1", "yes") if g(k) else d
         self.chkMinor.setChecked(tb("MINOR_JUNCTIONS", self.chkMinor.isChecked()))
         self.chkSmooth.setChecked(tb("SMOOTH_ATTRS", self.chkSmooth.isChecked()))
-        self.chkApply.setChecked(tb("APPLY", self.chkApply.isChecked()))
         if g("OTHER_DIVIDED_FTYPE"): self.chkOther.setChecked(g("OTHER_DIVIDED_FTYPE") != "0")
         if g("APPLY_CONFIDENCE"):
             i = self.cbConf.findText(g("APPLY_CONFIDENCE").capitalize())
             if i >= 0: self.cbConf.setCurrentIndex(i)
+        if g("APPLY_APPROVED"):
+            i = self.cbApproved.findData(g("APPLY_APPROVED").lower())
+            if i >= 0: self.cbApproved.setCurrentIndex(i)
         if g("XOVER_ACTION"):
             for i in range(self.cbXover.count()):
                 if self.cbXover.itemData(i).lower() == g("XOVER_ACTION").lower():
@@ -487,7 +530,7 @@ class GMCheckDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Cannot read {p}:\n{e}")
             return
         # Outputs come from the file: clear the defaults first.
-        self.leCorrLink.clear(); self.leOutDir.clear()
+        self.leCorrLink.clear(); self.leOutDir.clear(); self.leReview.clear()
         self._set_values(v)
         self.leCtl.setText(self._norm(p))
 
@@ -499,7 +542,8 @@ class GMCheckDialog(QDialog):
         order = [
             ("Geomaster_line_layer", None), ("Geomaster_node_layer", None),
             ("Geomaster_cencon_layer", None), ("connector_type", None), ("", ""),
-            ("output_dir", "# Outputs: gmcheck_links.csv, gmcheck_nodes.csv, gmcheck_review.gpkg"),
+            ("output_dir", "# Outputs: gmcheck_links.csv, gmcheck_nodes.csv, gmcheck.log"),
+            ("review_gpkg", None),
             ("use_field", "# Network checked, as netPrep builds it (use_field = 1, LANE_<yy> > 0)"),
             ("YEARS", None),
             ("MINOR_JUNCTIONS", "# Rules"), ("OTHER_DIVIDED_FTYPE", None), ("SMOOTH_ATTRS", None),
@@ -516,23 +560,34 @@ class GMCheckDialog(QDialog):
         if self._extra:  # from a loaded control file, kept as they were
             lines += ["", "# Other settings (from the loaded control file)"]
             lines += [f"{k:<22} = {val}" for k, val in self._extra.items()]
-        lines += ["", "# APPLY = True writes the corrected copy (rows with confidence >= APPLY_CONFIDENCE)"]
-        lines += [f"{k:<22} = {v[k]}" for k in ("APPLY", "APPLY_CONFIDENCE", "corrected_link_layer")]
+        lines += ["", "# Step 2: gmcheck.exe <this file> MODE=apply_review writes corrected_link_layer",
+                  "# from review_gpkg: rows with confidence >= APPLY_CONFIDENCE and/or approved = 1",
+                  "# (APPLY_APPROVED = also | only | ignore). APPLY = True would also write it in",
+                  "# step 1 from confidence alone."]
+        lines += [f"{k:<22} = {v[k]}" for k in ("APPLY", "APPLY_CONFIDENCE", "APPLY_APPROVED",
+                                                 "corrected_link_layer")]
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
 
-    def _check_inputs(self, v):
+    def _check_inputs(self, v, step2=False):
         if not v["Geomaster_line_layer"]:
             return "Select the GeoMaster link layer."
         if not v["output_dir"]:
             return "Set the output folder."
-        if v["APPLY"] == "True":
+        if not v["review_gpkg"]:
+            return "Set the review GeoPackage."
+        if step2:
+            if not os.path.exists(v["review_gpkg"]):
+                return f"No review GeoPackage at {v['review_gpkg']}. Run step 1 first."
             cl = v["corrected_link_layer"]
             if not cl:
-                return "Set the corrected link GeoPackage (or turn off Write corrected copy)."
-            if os.path.normcase(os.path.abspath(cl)) == os.path.normcase(os.path.abspath(v["Geomaster_line_layer"])):
+                return "Set the corrected link GeoPackage."
+            same = lambda a, b: os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+            if same(cl, v["Geomaster_line_layer"]):
                 return "The corrected link GeoPackage must differ from the input link layer."
+            if same(cl, v["review_gpkg"]):
+                return "The corrected link GeoPackage must differ from the review GeoPackage."
         return None
 
     def update_settings(self):
@@ -549,44 +604,105 @@ class GMCheckDialog(QDialog):
         self.accept()
 
     # ------------------------------------------------------------ run
-    def run_gmcheck(self, show_message=False):
+    def _layers_on(self, path):
+        """Project layers whose source is the GeoPackage at path."""
+        target = os.path.normcase(os.path.abspath(path))
+        return [l for l in QgsProject.instance().mapLayers().values()
+                if isinstance(l, QgsVectorLayer) and
+                os.path.normcase(os.path.abspath(l.source().split("|")[0])) == target]
+
+    def _save_review_edits(self, path, question):
+        """Unsaved edits on review layers: save them (True) or cancel (False)."""
+        unsaved = [l for l in self._layers_on(path) if l.isEditable() and l.isModified()]
+        if not unsaved:
+            return True
+        r = QMessageBox.question(self, "gmcheck", question,
+                                 QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel)
+        if r != QMessageBox.StandardButton.Save:
+            return False
+        for l in unsaved:
+            if not l.commitChanges():
+                QMessageBox.critical(self, "gmcheck", f"Cannot save the edits to {l.name()}.")
+                return False
+        return True
+
+    def _prepare(self, step2):
+        """Check the inputs and write the control file; returns (values, exe, ctl) or None."""
         v = self._values()
-        err = self._check_inputs(v)
+        err = self._check_inputs(v, step2)
         if err:
             QMessageBox.critical(self, "gmcheck", err)
-            return False
+            return None
         exe = os.path.join(self.plugin_dir, "Apps", "netPrep", "gmcheck.exe")
         if not os.path.exists(exe):
             QMessageBox.critical(self, "Error", f"gmcheck.exe not found at: {exe}")
-            return False
+            return None
         ctl = self._norm(self.leCtl.text()) or f"{v['output_dir']}/gmcheck.ctl"
         self.leCtl.setText(ctl)
         try:
             self.write_ctl(ctl, v)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Cannot write {ctl}:\n{e}")
-            return False
+            return None
         self.settings.set("gmcheck_ctl", ctl)
         os.makedirs(v["output_dir"], exist_ok=True)
-        log = f"{v['output_dir']}/gmcheck.log"
+        return v, exe, ctl
+
+    def _run(self, args, log):
         try:
-            res = self.settings.run_app([exe, ctl], log_path=log, console=True)
+            res = self.settings.run_app(args, log_path=log, console=True)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"gmcheck failed to start:\n{e}")
             return False
         if res.returncode != 0:
             QMessageBox.critical(self, "Error", f"gmcheck failed (exit {res.returncode}). See {log}.")
             return False
-        review = f"{v['output_dir']}/gmcheck_review.gpkg"
+        return True
+
+    def run_gmcheck(self, show_message=False):
+        """Step 1: the check; writes the review GeoPackage and the CSVs."""
+        p = self._prepare(step2=False)
+        if not p:
+            return False
+        v, exe, ctl = p
+        review = v["review_gpkg"]
+        if not self._save_review_edits(review, "The review layer has unsaved edits. Save them "
+                                       "before step 1? (A reviewed file is kept as a dated copy.)"):
+            return False
+        # Layers on the old review file hold it open: drop them, reload after.
+        QgsProject.instance().removeMapLayers([l.id() for l in self._layers_on(review)])
+        if not self._run([exe, ctl], f"{v['output_dir']}/gmcheck.log"):
+            return False
         if self.chkLoad.isChecked() and os.path.exists(review):
             for name in ("link_review", "node_review"):
                 lyr = QgsVectorLayer(f"{review}|layername={name}", f"gmcheck {name}", "ogr")
                 if lyr.isValid():
                     QgsProject.instance().addMapLayer(lyr)
         if show_message:
-            msg = [f"gmcheck finished. Outputs in {v['output_dir']}:",
-                   "  gmcheck_links.csv, gmcheck_nodes.csv, gmcheck_review.gpkg, gmcheck.log"]
-            if v["APPLY"] == "True":
-                msg.append(f"Corrected link layer: {v['corrected_link_layer']}")
-            QMessageBox.information(self, "gmcheck", "\n".join(msg))
+            QMessageBox.information(self, "gmcheck", "\n".join([
+                f"Step 1 finished. Outputs in {v['output_dir']}:",
+                "  gmcheck_links.csv, gmcheck_nodes.csv, gmcheck.log",
+                f"  {review}",
+                "",
+                "Review link_review: set approved = 1 (apply) or 0 (reject), edit changes",
+                "or confidence where needed, save, then run step 2."]))
+        return True
+
+    def apply_review(self, show_message=False):
+        """Step 2: the corrected link GeoPackage from the review GeoPackage."""
+        p = self._prepare(step2=True)
+        if not p:
+            return False
+        v, exe, ctl = p
+        if not self._save_review_edits(v["review_gpkg"],
+                                       "The review layer has unsaved edits. Save them and use them?"):
+            return False
+        log = f"{v['output_dir']}/gmcheck_apply.log"
+        if not self._run([exe, ctl, "MODE=apply_review"], log):
+            return False
+        if show_message:
+            QMessageBox.information(self, "gmcheck", "\n".join([
+                "Step 2 finished.",
+                f"Corrected link layer: {v['corrected_link_layer']}",
+                f"Rows taken per rule: {log}"]))
         return True
