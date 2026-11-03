@@ -362,15 +362,31 @@ class ProjectSpecsDialog(QDialog, Ui_Dialog_ProjectSettings):
                 settings.set("GM_centroid_layer", self.centroidLayerCombo.currentData().name())
             if self.cenconLayerCombo.currentData():
                 settings.set("GM_cencon_layer", self.cenconLayerCombo.currentData().name())
-        # Save does not build the zone structure (Create MSR LU does); warn when
-        # the Model Resolution shown is not the one last created.
+        # Model Resolution: the radio buttons are the setting every tool follows
+        # (Link Consolidator MSR outputs, trip list, PopSyn, HyDRA), so Save
+        # records them. Create MSR LU builds the region files and the zonal
+        # land use for the choice (msr_zones_file, zone_landuse_file, ...).
+        msr = self.radioButton_MSR.isChecked()
+        settings.set("model_structure", "MSR" if msr else "TSM")
+        settings.set("popsyn_rpm_statewide", (not msr) and self.checkBox_PopSynRPM.isChecked())
+        if msr:
+            rpm = self.radioButton_RPMRegion.isChecked()
+            bnd = self.comboBox_BoundaryLayer.currentData() if not rpm else None
+            settings.set("msr_rpm_model", self.comboBox_RPMRegion.currentText() if rpm else "")
+            settings.set("msr_boundary_layer", bnd.name() if bnd is not None else "")
+        settings.check_and_save_to_file("scenario_settings_file")
+        # Offer to build the files when the choice shown is not the one built.
         last = settings.get("msr_choice")
         if last is None or list(self._resolution_choice()) != list(last):
-            QMessageBox.warning(self, "Model Resolution",
-                                "The Model Resolution shown has not been created yet -- click "
-                                "'Create MSR LU' to build and load its zonal land use. The rest "
-                                "of the settings are saved.")
-        settings.check_and_save_to_file("scenario_settings_file")
+            r = QMessageBox.question(
+                self, "Model Resolution",
+                f"Model Resolution is saved as {'MSR' if msr else 'Standard TSM'}, but its "
+                "zonal land use has not been built for this choice yet.\n\n"
+                "Build it now (Create MSR LU)?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if r == QMessageBox.StandardButton.Yes:
+                self.create_zone_structure()
+                return
         QMessageBox.information(self, "Settings Updated", "Project Specific settings have been updated.")
         # self.close() 
         

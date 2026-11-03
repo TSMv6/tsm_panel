@@ -748,8 +748,8 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
             if not (msr_zones_file and os.path.exists(msr_zones_file)):
                 QMessageBox.critical(
                     self, "Error",
-                    "MSR needs its region: open Project Settings, pick Model Resolution > MSR "
-                    "(RPM region or user-defined boundary) and Save.\n\n"
+                    "MSR needs its region files: open Project Settings > Model Resolution > MSR "
+                    "(RPM region or user-defined boundary) and click 'Create MSR LU'.\n\n"
                     f"Region file: {msr_zones_file or '(none)'}")
                 return False
             msr_linkfile = self.lineEdit_MSRLink.text().strip()
