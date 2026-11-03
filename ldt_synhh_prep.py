@@ -1,6 +1,7 @@
 """
 Pandas replacement for the ldtprep syn-HH preparation steps, run as a subprocess
-with QGIS's bundled Python (pandas 2.x ships with QGIS, so no extra install).
+with QGIS's bundled Python (pandas ships with QGIS, so no extra install; older
+QGIS 3 installs bundle pandas 1.x, so keep calls compatible with both).
 
 Why Python here: pandas does the 134M-row sort in ~8s and the filter in ~9s; the
 only real cost is I/O. Doing sort+filter in ONE pass (read once, write once)
@@ -40,6 +41,15 @@ def _read(path):
     return pd.read_csv(path, sep=_sep(path), compression=comp)
 
 
+def _to_tsv(df, path):
+    """Tab-delimited, LF line ends. pandas < 1.5 (older QGIS 3 installs) only
+    knows line_terminator; pandas 2.x only knows lineterminator."""
+    try:
+        df.to_csv(path, sep="\t", index=False, lineterminator="\n")
+    except TypeError:
+        df.to_csv(path, sep="\t", index=False, line_terminator="\n")
+
+
 def _normalize_whole_floats(df):
     """Match ldtprep fmt_num: write whole-valued floats as integers (1.0 -> 1)."""
     for c in df.columns:
@@ -71,7 +81,7 @@ def visitor(in_path, scen, ref, out_path):
     out["totWorkDist"] = 0
     _normalize_whole_floats(out)
     t_proc = time.time() - t0 - t_read
-    out.to_csv(out_path, sep="\t", index=False, lineterminator="\n")
+    _to_tsv(out, out_path)
     print(f"[py-synhh {mode}] {len(out):,} households "
           f"(read {t_read:.0f}s, filter+sort {t_proc:.0f}s, write {time.time()-t0-t_read-t_proc:.0f}s, "
           f"TOTAL {time.time()-t0:.0f}s) -> {out_path}", flush=True)
@@ -118,7 +128,7 @@ def resident(syn_all, syn_veh, template, out_path):
     _normalize_whole_floats(df)
     # VEH: integer where matched, blank where not (mirrors C++ blank-on-no-match)
     df["VEH"] = df["VEH"].map(lambda x: "" if pd.isna(x) else str(int(x)))
-    df.to_csv(out_path, sep="\t", index=False, lineterminator="\n")
+    _to_tsv(df, out_path)
     print(f"[py-convert] {len(df):,} households in {time.time()-t0:.0f}s -> {out_path}", flush=True)
     return 0
 
