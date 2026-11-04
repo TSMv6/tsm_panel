@@ -172,11 +172,12 @@ macro and meso link, statewide; never to a static (STA) run, whose BPR curve
 runs on the planning capacity (afdta ignores `SIGNAL_MODEL` there). The micro
 tier simulates its own signals from the GMNS plans instead.
 
-### Macro DTA tab: lane schedule
+### Lane use (CSV)
 
-*Schedule file* (`CAPACITY_FILE`, optional) changes a link's lanes by time of
-day: reversible facilities (I-595) and peak-hour shoulder lanes. One row per link
-and window:
+*Lane use (CSV)* (`LANE_USE_FILE`, optional) sits under *Toll policy (CSV)* and
+applies to STA and DTA runs alike. It changes a link's lanes by time of day:
+reversible facilities (I-595) and peak-hour shoulder lanes. One row per link and
+window:
 
     A,B,start_time,end_time,added_lanes
     1039418447,1039417885,00:00,04:00,-1
@@ -191,8 +192,15 @@ and window:
   its window only. An optional `added_vph` column gives the capacity directly.
 - A link with no capacity left in an interval is **closed**: routing does not
   enter it then, and the macro, node and meso loaders discharge nothing from it.
+- STA prices each window's v/c on the link's capacity scaled by the schedule, so
+  a shoulder lane or a closed lane changes STA travel times too.
 - Times are clock times; past midnight is allowed (`26:00` = 2 AM next day).
-- A static (STA) run does not read the schedule.
+  End a closure at `28:00`, not `24:00`, or it lifts in the simulation's
+  overflow hours.
+- Truck restrictions are not in this file: code `no_trucks` = 1 on the link
+  (GeoMaster field, carried by netPrep). The separate `EL_LANE_USE_FILE` (truck
+  overrides, HOT/EV discounts) is an EL-choice input, read only when en-route EL
+  choice or the micro corridor runs.
 
 ### Meso / Micro tab: GMNS sub-tab
 

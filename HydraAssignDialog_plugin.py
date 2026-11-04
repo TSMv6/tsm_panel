@@ -1633,9 +1633,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 if toll_policy:
                     f.write(f"TOLL_POLICY_FILE      {toll_policy}\n")
                 # Time-of-day lane changes: reversible directions, peak shoulders.
-                lane_sched = self.lineEdit_LaneSchedule.text().strip()
-                if lane_sched:
-                    f.write(f"CAPACITY_FILE         {lane_sched}\n")
+                lane_use = self.lineEdit_LaneSchedule.text().strip()
+                if lane_use:
+                    f.write(f"LANE_USE_FILE         {lane_use}\n")
                 # Vehicle classes barred from no_trucks = 1 links, and the
                 # en-route express-lane choice (Enroute Choice tab).
                 ban = TRUCK_BANS.get(self.comboBox_TruckBan.currentText(), "MEDIUM_HEAVY")
@@ -1821,6 +1821,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 # Impedance is shared with the DTA tab (same scenario inputs).
                 if toll_policy:
                     f.write(f"TOLL_POLICY_FILE       {toll_policy}\n")
+                # Time-of-day lane changes: reversible directions, peak shoulders.
+                lane_use = self.lineEdit_LaneSchedule.text().strip()
+                if lane_use:
+                    f.write(f"LANE_USE_FILE          {lane_use}\n")
                 seg_params = self.lineEdit_SegParams.text().strip()
                 if seg_params:
                     f.write(f"SEGMENT_PARAM_FILE     {seg_params}\n")
