@@ -31,11 +31,12 @@ import csv
 import os
 
 from qgis.core import (
-    QgsCoordinateTransform, QgsFeature, QgsFeatureRequest, QgsField, QgsFields,
+    QgsCoordinateTransform, QgsFeature, QgsFeatureRequest, QgsFields,
     QgsGeometry, QgsProject, QgsVectorFileWriter, QgsVectorLayer,
     QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import QMetaType
+
+from .qgs_compat import make_field
 
 REQUIRED = ("TSM_NG", "PopSyn_Index", "Model")
 REGION_CSV = "msr_region_zones.csv"
@@ -255,9 +256,9 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print,
         boundary_gpkg = (output_paths(landuse_out)[1] if landuse_out
                          else os.path.join(out_dir, BOUNDARY_GPKG).replace("\\", "/"))
         bf = QgsFields()
-        for n, t in (("models", QMetaType.Type.QString), ("tsm_zones", QMetaType.Type.Int),
-                     ("rpm_zones", QMetaType.Type.Int)):
-            bf.append(QgsField(n, t))
+        for n, t in (("models", "string"), ("tsm_zones", "int"),
+                     ("rpm_zones", "int")):
+            bf.append(make_field(n, t))
         feat = QgsFeature(bf)
         feat.setGeometry(solid_boundary(QgsGeometry.unaryUnion([f.geometry() for f in rpm_rows])))
         feat.setAttributes([", ".join(sorted({str(f["Model"]) for f in rpm_rows})),
@@ -269,16 +270,16 @@ def build_zone_structure(landuse, out_dir, models=(), boundary=None, log=print,
 
     # --- the model's zonal land use ---
     of = QgsFields()
-    for n, t in (("ZONE", QMetaType.Type.Int), ("RES", QMetaType.Type.QString),
-                 ("TSM_NG", QMetaType.Type.Int), ("PopSyn_Index", QMetaType.Type.Int),
-                 ("TAZ_REG", QMetaType.Type.Int), ("Model", QMetaType.Type.QString),
-                 ("County", QMetaType.Type.QString)):
-        of.append(QgsField(n, t))
+    for n, t in (("ZONE", "int"), ("RES", "string"),
+                 ("TSM_NG", "int"), ("PopSyn_Index", "int"),
+                 ("TAZ_REG", "int"), ("Model", "string"),
+                 ("County", "string")):
+        of.append(make_field(n, t))
     for k in sums:
-        of.append(QgsField(k, QMetaType.Type.Double))
+        of.append(make_field(k, "double"))
     for k in WEIGHTED:
         if fields.indexOf(k) >= 0:
-            of.append(QgsField(k, QMetaType.Type.Double))
+            of.append(make_field(k, "double"))
     out = []
     for t in sorted(tsm_acc):
         a = tsm_acc[t]

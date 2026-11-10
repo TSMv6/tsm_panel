@@ -883,13 +883,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         idx = lyr.fields().indexOf(field)
         if idx >= 0:
             return idx
-        from qgis.core import QgsField
-        try:
-            from qgis.PyQt.QtCore import QMetaType
-            fld = QgsField(field, QMetaType.Type.Int)
-        except (ImportError, AttributeError, TypeError):
-            from qgis.PyQt.QtCore import QVariant
-            fld = QgsField(field, QVariant.Int)
+        from .qgs_compat import make_field
+        fld = make_field(field, "int")
         if lyr.isEditable():
             lyr.addAttribute(fld)
         else:

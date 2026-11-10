@@ -189,8 +189,8 @@ def _mark_zone_nodes(path, ext_ids, node_field="N"):
     if not path or not os.path.exists(path) or not ext_ids:
         return 0
     try:
-        from qgis.core import QgsVectorLayer, QgsField
-        from qgis.PyQt.QtCore import QVariant
+        from qgis.core import QgsVectorLayer
+        from .qgs_compat import make_field
     except Exception:
         return -1
     lyr = QgsVectorLayer(path, "subarea nodes (edit)", "ogr")
@@ -204,7 +204,7 @@ def _mark_zone_nodes(path, ext_ids, node_field="N"):
     di = lyr.fields().lookupField("DTA_Type")
     if di < 0:
         # A node layer without the column still has to carry it downstream.
-        lyr.dataProvider().addAttributes([QgsField("DTA_Type", QVariant.Int)])
+        lyr.dataProvider().addAttributes([make_field("DTA_Type", "int")])
         lyr.updateFields()
         di = lyr.fields().lookupField("DTA_Type")
         if di < 0:

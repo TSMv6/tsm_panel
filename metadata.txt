@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.89
-date=2026-11-04
+version=2.90
+date=2026-11-05
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
