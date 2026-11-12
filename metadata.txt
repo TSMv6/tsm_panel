@@ -1,4 +1,4 @@
-﻿[general]
+[general]
 name=TSM Model Plugin
 version=2.93
 date=2026-11-12
