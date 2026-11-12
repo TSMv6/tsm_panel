@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.90
-date=2026-11-05
+version=2.91
+date=2026-11-12
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -61,6 +61,13 @@ changelog=
     .
     One version per commit, newest first (136 commits, 2026-06-19 to 2026-10-28):
     .
+    2.91 (2026-11-12): LDT external-station recalibration - the 2024 counts at
+    I-10/I-75/I-95 (159,690) are two-way vehicles, not inbound tours. LDT
+    visitor auto now targets its 83.9% share / 2 = 66,980 inbound tours
+    (was 162,817): OS air ASC 3.4915 -> 4.817, OS tour rate -0.2401 -> -1.130,
+    air held at 230k persons. FL resident tour rate (segs 3-4) -0.910 scales
+    resident trips at the big-3 by the same 0.411 (in-state resident LDT
+    falls with it). calibration_constants.toml: 198 adjustments.
     2.88 (2026-11-04): HyDRA lane use - the time-of-day lane file
     (reversible facilities, peak shoulder lanes) is now LANE_USE_FILE and sits
     under Toll policy (CSV), so STA and DTA runs both use it; afdta applies it

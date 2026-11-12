@@ -4,6 +4,14 @@
 # 2026-10-28: OS air ASC (mode_choice 400) 2.516 -> 3.4915 and OS tour rate
 # (tour_generation_first 100-500, segs 1-2) -0.2401, calibrated to 160k visitor
 # auto tours (2024 counts at I-10/I-75/I-95) and 230k visitor air persons.
+# 2026-11-11: re-targeted. The 160k count is TWO-WAY, all vehicles; each tour makes
+# an in + out trip. Visitor auto = its 83.9% share of 159,690 two-way / 2 = 66,980
+# inbound tours. Air ASC 3.4915 -> 4.817, tour rate -0.2401 -> -1.130.
+# Full run: 67,067 auto tours, 229,886 air persons (recal_2026-11-11/it2).
+# 2026-11-11: FL resident tour rate (tour_generation_first 100-500, segs 3-4) -0.910,
+# scaling resident trips at the big-3 by the same 0.411 (24.2k -> ~10.0k two-way).
+# Full run: 6,442 out-of-state auto tours (target 6,499), 103,166 resident auto
+# tours (was 253,810) -- the offset lowers in-state resident LDT too (recal_.../res2).
 
 [[adjust]]
 model = "dest_choice"
@@ -1010,35 +1018,35 @@ note  = "FL dest DMA 9 (Disney)"
 model = "mode_choice"
 index = 1
 coef  = 400
-delta = 3.491515
+delta = 4.817
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 2
 coef  = 400
-delta = 3.491515
+delta = 4.817
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 3
 coef  = 400
-delta = 3.491515
+delta = 4.817
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 4
 coef  = 400
-delta = 3.491515
+delta = 4.817
 note  = "OS air share"
 
 [[adjust]]
 model = "mode_choice"
 index = 5
 coef  = 400
-delta = 3.491515
+delta = 4.817
 note  = "OS air share"
 
 [[adjust]]
@@ -1255,68 +1263,138 @@ note  = "OS party group3plus"
 model = "tour_generation_first"
 index = 1
 coef  = 100
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 1
 coef  = 200
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 1
 coef  = 300
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 1
 coef  = 400
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 1
 coef  = 500
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 2
 coef  = 100
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 2
 coef  = 200
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 2
 coef  = 300
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 2
 coef  = 400
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
 
 [[adjust]]
 model = "tour_generation_first"
 index = 2
 coef  = 500
-delta = -0.240140
+delta = -1.130
 note  = "OS visitor tour rate (offsets air-ASC logsum lift)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 3
+coef  = 100
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 3
+coef  = 200
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 3
+coef  = 300
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 3
+coef  = 400
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 3
+coef  = 500
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 4
+coef  = 100
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 4
+coef  = 200
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 4
+coef  = 300
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 4
+coef  = 400
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
+
+[[adjust]]
+model = "tour_generation_first"
+index = 4
+coef  = 500
+delta = -0.910
+note  = "FL resident tour rate (big-3 externals)"
