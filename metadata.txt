@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.91
+version=2.92
 date=2026-11-12
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -40,9 +40,9 @@ engine_popsim=PopSyn 69c6117 2026-10-20
 engine_sdt=SDTModel 28096fe 2026-11-04
 engine_ldt=LDTModel da5e3b6 2026-10-28
 engine_agentplans=agentPlans bd0ed99 2026-10-28
-engine_afdta=agentflow-dta 3f5cc7e 2026-11-04
+engine_afdta=agentflow-dta 7aeea3f 2026-11-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
-engine_netprep=netprep d3e6c9c 2026-11-02
+engine_netprep=netprep c07b0e2 2026-11-12
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
 engine_utilities=utilities 7dc263f 2026-10-28
@@ -61,6 +61,12 @@ changelog=
     .
     One version per commit, newest first (136 commits, 2026-06-19 to 2026-10-28):
     .
+    2.92 (2026-11-12): netPrep splits a node id that sits at two or more
+    ZLEVs (with a connectivity guard) and walks identical parallel copies
+    once (netprep c07b0e2). HyDRA (afdta 7aeea3f): lane-use closures - no
+    entry into a closed link, zero turn share, forced reroute across the
+    whole slot; per-trip timing in agentPlans_out.csv (entry wait, loaded
+    vs free-flow vs ideal tt) plus trip_timing_summary.csv.
     2.91 (2026-11-12): LDT external-station recalibration - the 2024 counts at
     I-10/I-75/I-95 (159,690) are two-way vehicles, not inbound tours. LDT
     visitor auto now targets its 83.9% share / 2 = 66,980 inbound tours
