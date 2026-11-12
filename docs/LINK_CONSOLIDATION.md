@@ -103,14 +103,33 @@ ZONE_ID`); the dialog shows the ids the last run used.
 ## Centroid connectors
 
 Connectors are synthesized as `FTYPE 51` links and carry fixed attributes rather
-than looked-up ones: a free-flow **speed** (so paths are not tempted to travel
-along them), the synthesized link's **posted speed**, and an effectively
-unlimited **capacity** (a connector must never be the binding constraint on
-loading a zone). These are written into `link_consolidation_settings.txt` on
-every run — `centroid_connector_speed`, `centroid_connector_postspeed` and
-`centroid_connector_capacity` — and can be changed in the configuration table
-without rebuilding netPrep. netPrep applies them by **facility type**, so
-connectors at external stations get them exactly as internal ones do.
+than looked-up ones. A connector is a zone's loading point, not a road, so it
+must not shape paths or limit flow:
+
+- a high free-flow **speed**: 60 mph;
+- the synthesized link's **posted speed**: 60;
+- an effectively unlimited **capacity**: 99,999;
+- one short **distance** on every connector: 0.01 mi.
+
+Then the network behind the connectors decides where a zone loads, not the
+drawn connector length. Until 2026-11-12 connectors ran at 10 mph over their
+drawn length (up to 24 mi, 2.4 h).
+
+These values are written into `link_consolidation_settings.txt` on every run,
+as `centroid_connector_speed`, `centroid_connector_postspeed`,
+`centroid_connector_capacity` and `centroid_connector_distance`.
+`centroid_connector_distance = GEOMETRY` keeps the drawn length. The values
+can be changed in the configuration table without rebuilding netPrep.
+
+netPrep applies them to every FTYPE 5x link and every link with a zone at
+either end. External stations and RPM zones are treated exactly as internal
+zones.
+
+`netprep_checks.csv` lists:
+- long connectors (`CC_LONG`);
+- zones that load only onto weak roads (`ZONE_WEAK_ACCESS`, e.g. one connector
+  onto a single 720 veh/h local road). These need more connectors or a
+  higher-class road.
 
 ---
 

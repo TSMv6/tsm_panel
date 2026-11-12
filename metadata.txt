@@ -1,6 +1,6 @@
 [general]
 name=TSM Model Plugin
-version=2.92
+version=2.93
 date=2026-11-12
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
@@ -42,7 +42,7 @@ engine_ldt=LDTModel da5e3b6 2026-10-28
 engine_agentplans=agentPlans bd0ed99 2026-10-28
 engine_afdta=agentflow-dta 7aeea3f 2026-11-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
-engine_netprep=netprep c07b0e2 2026-11-12
+engine_netprep=netprep 1a23282 2026-11-12
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
 engine_utilities=utilities 7dc263f 2026-10-28
@@ -61,6 +61,15 @@ changelog=
     .
     One version per commit, newest first (136 commits, 2026-06-19 to 2026-10-28):
     .
+    2.93 (2026-11-12): Zone connectors never shape paths or limit flow:
+    Link Consolidation now writes SPEED 60, POSTSPEED 60, CAPACITY 99999 and
+    DISTANCE 0.01 mi on every connector (new centroid_connector_distance;
+    GEOMETRY keeps the drawn length) - it was 10 mph over the drawn length, up
+    to 2.4 h. netprep_checks lists long connectors (CC_LONG) and zones loading
+    onto weak roads (ZONE_WEAK_ACCESS) for the user to fix. netPrep (netprep
+    1a23282) also writes meso_segment.csv (sub-link segments of every
+    meso-capable link for HyDRA) and, under MSR, skips the TSM pass's
+    gmns_network.gpkg (HyDRA uses gmns_network_msr.gpkg).
     2.92 (2026-11-12): netPrep splits a node id that sits at two or more
     ZLEVs (with a connectivity guard) and walks identical parallel copies
     once (netprep c07b0e2). HyDRA (afdta 7aeea3f): lane-use closures - no

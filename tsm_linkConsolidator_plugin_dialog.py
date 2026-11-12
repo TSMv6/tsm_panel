@@ -19,10 +19,16 @@ SETTINGS_FILENAME = "link_consolidation_settings.txt"
 # than engine constants, but they change rarely enough not to deserve their own
 # widgets yet, so they travel through Config (editable in the configuration
 # table) and are written into the control file on every run.
+#
+# Zone connectors must not shape paths or limit flow (user rule, 2026-11-12):
+# a high speed and capacity and one short DISTANCE on every connector, so the
+# network behind it decides where a zone loads. "GEOMETRY" as the distance
+# keeps the drawn connector length.
 CONNECTOR_DEFAULTS = {
-    "centroid_connector_speed": "10",       # free-flow SPEED on the connector
-    "centroid_connector_postspeed": "25",   # POSTSPEED of the synthesized link
+    "centroid_connector_speed": "60",       # free-flow SPEED on the connector
+    "centroid_connector_postspeed": "60",   # POSTSPEED of the synthesized link
     "centroid_connector_capacity": "99999",
+    "centroid_connector_distance": "0.01",  # DISTANCE (mi) of every connector
 }
 
 
