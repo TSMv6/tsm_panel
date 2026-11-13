@@ -38,6 +38,17 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         add_common_section(self)   # shared agentPaths.duckdb + separators
         add_agent_analysis_tabs(self)
 
+        # Volume Aggregation: hourly / 15-min / period volumes, balanced or raw,
+        # in its own dialog (volume_aggregation_dialog.py). Sits in the
+        # "is a Subarea / Run Validation Stats" row.
+        from qgis.PyQt.QtWidgets import QPushButton
+        self.pushButton_VolAgg = QPushButton("Volume Aggregation...")
+        self.pushButton_VolAgg.setToolTip(
+            "Aggregate link volumes to hours, 15-minute intervals or user periods,\n"
+            "node-balanced (inflow = outflow) or raw model volumes.")
+        self.splitter_2.addWidget(self.pushButton_VolAgg)
+        self.pushButton_VolAgg.clicked.connect(self.open_volume_aggregation)
+
         # Populate the dropdowns with available land-use layers (polygons)
         self.populate_layer_combobox(self.comboBox_linkLayer, "LineString")
 
@@ -163,6 +174,10 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             self.lineEdit_validationStats.setEnabled(False)
             self.lineEdit_validationStats.clear()
             settings.set("validationStats", False)
+
+    def open_volume_aggregation(self):
+        from .volume_aggregation_dialog import VolumeAggregationDialog
+        VolumeAggregationDialog(self).exec()
 
     def cancel_action(self):
         """Handles the Cancel button."""

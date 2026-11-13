@@ -31,6 +31,43 @@ def _input_block(section, path):
         section, path.replace("\\", "/"))
 
 
+def run_volagg(link, vol, out_gpkg, subarea, resolution, periods=None,
+               balance=True, log_csv=False, vol2=None, vol3=None, layer="volagg"):
+    """Fill templates/summarize_volagg.toml and run summarize.exe in volagg mode.
+
+    resolution: "hour" | "15min" | "period". periods: list of
+    (name, "HH:MM", "HH:MM") on the 15-min grid (end <= start wraps midnight;
+    "24:00" allowed as an end). The CSV is written beside out_gpkg (.csv).
+    Returns the subprocess.CompletedProcess."""
+    settings = Config()
+    tpl_path = os.path.join(settings.get("plugin_dir"), "templates", "summarize_volagg.toml")
+    with open(tpl_path, "r") as f:
+        text = f.read()
+    out_gpkg = (out_gpkg or "").replace("\\", "/")
+    out_csv = (out_gpkg[:-5] if out_gpkg.lower().endswith(".gpkg") else out_gpkg) + ".csv"
+    per = ", ".join('"%s=%s-%s"' % p for p in (periods or []))
+    text = (text
+            .replace("@LAYER@", layer)
+            .replace("@VOL@", (vol or "").replace("\\", "/"))
+            .replace("@INPUT2@", _input_block("input2", vol2))
+            .replace("@INPUT3@", _input_block("input3", vol3))
+            .replace("@LINK@", (link or "").replace("\\", "/"))
+            .replace("@RENAME@", _rename(subarea, False))
+            .replace("@RES@", resolution)
+            .replace("@PERIODS@", per)
+            .replace("@BALANCE@", "true" if balance else "false")
+            .replace("@LOG@", "true" if log_csv else "false")
+            .replace("@OUT_CSV@", out_csv)
+            .replace("@OUT_GPKG@", out_gpkg))
+    ctl = os.path.splitext(out_gpkg)[0] + "_volagg_run.toml"
+    with open(ctl, "w") as f:
+        f.write(text)
+    exe = settings.app_exe("utilities/summarize.exe")
+    if not os.path.exists(exe):
+        raise FileNotFoundError("summarize.exe not found at: %s" % exe)
+    return settings.run_app([exe, ctl], log_path=os.path.splitext(ctl)[0] + ".log", console=True)
+
+
 def run_summary(template, link, vol, out_gpkg, subarea, vol2=None, vol3=None,
                 include_speed_ff=True):
     """Fill `template` and run summarize.exe. The daily CSV path is derived from

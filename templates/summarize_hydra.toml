@@ -17,6 +17,16 @@ rename = ["a_node=A", "b_node=B"]
 path = "@LINK@"
 rename = [@RENAME@]
 
+# Node balancing (on by default): hourly volumes are adjusted by the smallest
+# volume-proportional amount that makes in = out at every non-centroid node
+# each hour; VOL_hh, VOL_DAILY, VMT, VHT, VHD, MAX_VOL and PUR_ use the
+# balanced volumes. log_csv = true also writes <out>_balance.csv (raw ->
+# balanced per link-hour, ~600 MB statewide) + <out>_balance_summary.csv.
+[balance]
+enabled = true
+log_csv = false
+centroid_fname = "Centroid_Conn"
+
 [output]
 csv = "@OUT_CSV@"
 gpkg = "@OUT_GPKG@"

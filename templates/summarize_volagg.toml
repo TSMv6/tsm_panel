@@ -1,0 +1,30 @@
+# HyDRA volume aggregation (template; filled by the Volume Aggregation dialog).
+# mode="volagg" reads the 15-min link_performance CSVs (macro required, meso /
+# micro optional), folds the simulation's 24:00-29:59 onto 00:00-05:59, sums
+# volumes into hourly / 15-min / user-period bins and, with [balance] enabled,
+# adjusts each bin so inflow = outflow at every non-centroid node.
+name = "@LAYER@"
+mode = "volagg"
+group_by = ["A", "B"]
+
+[input]
+path = "@VOL@"
+rename = ["a_node=A", "b_node=B"]
+@INPUT2@
+@INPUT3@
+[join]
+path = "@LINK@"
+rename = [@RENAME@]
+
+[aggregate]
+resolution = "@RES@"
+periods = [@PERIODS@]
+
+[balance]
+enabled = @BALANCE@
+log_csv = @LOG@
+centroid_fname = "Centroid_Conn"
+
+[output]
+csv = "@OUT_CSV@"
+gpkg = "@OUT_GPKG@"
