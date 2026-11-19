@@ -38,6 +38,20 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
         add_common_section(self)   # shared agentPaths.duckdb + separators
         add_agent_analysis_tabs(self)
 
+        # Count field for Run Validation Stats, right after the checkbox. The
+        # user picks it from the link layer's count columns; validation never
+        # guesses one (it used to fall back to TSMv5.COUNT_24 or the first
+        # *count* column), and it cannot run without one.
+        from qgis.PyQt.QtWidgets import QComboBox
+        self.comboBox_CountField = QComboBox()
+        self.comboBox_CountField.setToolTip(
+            "Count field compared with the assigned volumes by Run Validation Stats.\n"
+            "Listed: the link layer's fields named *CNT*, *COUNT* or *AADT*.\n"
+            "Required for validation; none listed = the layer carries no counts\n"
+            "(add one, or turn on Keep Counts in Link Consolidation).")
+        self.splitter_2.insertWidget(self.splitter_2.indexOf(self.checkBox_ValidationStats) + 1,
+                                     self.comboBox_CountField)
+
         # Volume Aggregation: hourly / 15-min / period volumes, balanced or raw,
         # in its own dialog (volume_aggregation_dialog.py). Sits in the
         # "is a Subarea / Run Validation Stats" row.
@@ -51,6 +65,7 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
 
         # Populate the dropdowns with available land-use layers (polygons)
         self.populate_layer_combobox(self.comboBox_linkLayer, "LineString")
+        self.comboBox_linkLayer.currentIndexChanged.connect(self.populate_count_fields)
 
         # Restore from Config. Factored into load_settings() so the Load button
         # can re-apply a settings file to the open dialog, not just __init__.
@@ -116,6 +131,35 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             self.lineEdit_validationStats.setText(settings.get("validationStats_file"))
         if settings.get("validationStats"):
             self.checkBox_ValidationStats.setChecked(settings.get("validationStats"))
+        self.populate_count_fields(saved=settings.get("summary_count_field") or "")
+
+    def populate_count_fields(self, *_args, saved=None):
+        """List the link layer's count columns (names with CNT / COUNT / AADT;
+        county fields excluded). Keeps the current choice, else the saved one
+        (Config "summary_count_field"), else Link Consolidation's first count
+        field -- always shown in the box, so the user sees what is used. With
+        no count column the box says so and validation cannot run."""
+        cb = self.comboBox_CountField
+        keep = saved if saved is not None else (cb.currentData() or "")
+        if not keep:
+            keep = (Config().get("count_field") or "").split(",")[0].strip()
+        layer = self.comboBox_linkLayer.currentData()
+        names = []
+        if layer is not None and hasattr(layer, "fields"):
+            pat = re.compile(r"CNT|AADT|COUNT(?!Y|IES)", re.I)
+            names = [f.name() for f in layer.fields() if pat.search(f.name())]
+        cb.blockSignals(True)
+        cb.clear()
+        if names:
+            cb.addItem("Select count field", None)
+            for n in names:
+                cb.addItem(n, n)
+            i = cb.findData(keep) if keep else -1
+            cb.setCurrentIndex(i if i >= 0 else 0)
+        else:
+            cb.addItem("No count field on the link layer", None)
+        cb.blockSignals(False)
+        cb.setEnabled(self.checkBox_ValidationStats.isChecked() and bool(names))
 
     def save_settings_to_file(self):
         """Export the current settings to a JSON file.
@@ -174,6 +218,8 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             self.lineEdit_validationStats.setEnabled(False)
             self.lineEdit_validationStats.clear()
             settings.set("validationStats", False)
+        cb = self.comboBox_CountField
+        cb.setEnabled(self.checkBox_ValidationStats.isChecked() and cb.findData(None) == 0 and cb.count() > 1)
 
     def open_volume_aggregation(self):
         from .volume_aggregation_dialog import VolumeAggregationDialog
@@ -258,6 +304,8 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             settings.set("isSubareaLevel", True)
         else:
             settings.set("isSubareaLevel", False)
+        if self.comboBox_CountField.currentData():
+            settings.set("summary_count_field", self.comboBox_CountField.currentData())
 
         # Persist the optional meso/micro DTA inputs + every agentAnalysis tab
         # field into the same scenario settings JSON, just like volume_file.
@@ -328,10 +376,10 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             else:
                 print(f"Error Unable to Layer Symbology to: {layer_name}")
                 
-    def _write_validation_stats(self, loadedOut_file, xlsx_path):
+    def _write_validation_stats(self, loadedOut_file, xlsx_path, count_field):
         """Build the validation workbook (.xlsx) from the daily CSV that
-        summarize.exe just wrote. Pure Python -- logs live to the History box +
-        log file, no console window."""
+        summarize.exe just wrote, against the user's `count_field`. Pure
+        Python -- logs live to the History box + log file, no console window."""
         from qgis.PyQt.QtWidgets import QApplication
         out = (loadedOut_file or "").replace("\\", "/")
         daily_csv = (out[:-5] + "_daily.csv") if out.lower().endswith(".gpkg") \
@@ -342,15 +390,12 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             QApplication.processEvents()  # repaint the History box live (we're on the UI thread)
         try:
             from .validation_runner import write_validation_xlsx
-            # The ground-count column is the user's Link Consolidation choice
-            # (Config "count_field"). That key may list SEVERAL fields (daily +
-            # period/hourly); daily validation compares against the FIRST one.
-            # Falls back to auto-detect if unset.
-            cf = (Config().get("count_field") or "").split(",")[0].strip() or None
-            n = write_validation_xlsx(daily_csv, xlsx_path, count_field=cf, log=logf)
+            logf("Summarization: validation count field = %s" % count_field)
+            n = write_validation_xlsx(daily_csv, xlsx_path, count_field=count_field, log=logf)
             QMessageBox.information(
                 self, "Validation Stats",
-                "Validation workbook written (%d counted locations):\n%s" % (n, xlsx_path))
+                "Validation workbook written against count field %s (%d counted locations):\n%s"
+                % (count_field, n, xlsx_path))
         except Exception as ve:
             logf("Summarization: validation FAILED -- %s" % ve)
             QMessageBox.warning(self, "Validation Stats",
@@ -372,6 +417,19 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
             return
         
         validationStats = settings.get("validationStats")
+        count_field = self.comboBox_CountField.currentData()
+        if validationStats and not count_field:
+            if self.comboBox_CountField.count() > 1:
+                msg = ("Run Validation Stats needs a count field.\n\n"
+                       "Choose one in the Count field list next to Run Validation Stats.")
+            else:
+                msg = ("Run Validation Stats needs a count field, and the link layer '%s' "
+                       "has none (no field named *CNT*, *COUNT* or *AADT*).\n\n"
+                       "Add a count field to the link layer, or turn on Keep Counts in "
+                       "Link Consolidation and rebuild the network, then choose it here."
+                       % link_layer.name())
+            QMessageBox.warning(self, "Count field required", msg)
+            return
         if validationStats and not self.lineEdit_validationStats.text():
             QMessageBox.warning(self, "Warning", "Please select a validation stats file.")
             return
@@ -436,7 +494,7 @@ class Summary_Dialog(QDialog, Ui_QDailog_LoadedNetwork):
                 # daily CSV summarize just wrote. Logs live to the History box + log
                 # file; no extra console window.
                 if validationStats:
-                    self._write_validation_stats(loadedOut_file, validationStats_file)
+                    self._write_validation_stats(loadedOut_file, validationStats_file, count_field)
 
                 QMessageBox.information(self, "Success", "Loaded network volumes script ran successfully.")
             else:

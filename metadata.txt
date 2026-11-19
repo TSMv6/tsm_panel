@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.93
-date=2026-11-12
+version=2.94
+date=2026-11-19
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -42,10 +42,10 @@ engine_ldt=LDTModel da5e3b6 2026-10-28
 engine_agentplans=agentPlans bd0ed99 2026-10-28
 engine_afdta=agentflow-dta 7aeea3f 2026-11-12
 engine_eltod=(separate repo, not in TSMv6_Codebase)
-engine_netprep=netprep 1a23282 2026-11-12
+engine_netprep=netprep 28e1b0d 2026-11-19
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
 engine_pathskim=PathSkim eb7c271 2026-10-09
-engine_utilities=utilities 7dc263f 2026-10-28
+engine_utilities=utilities 7ee738c 2026-11-13
 engine_skimconverter=SkimConverter 57c5f64 2026-05-25
 
 changelog=
@@ -61,6 +61,15 @@ changelog=
     .
     One version per commit, newest first (136 commits, 2026-06-19 to 2026-10-28):
     .
+    2.94 (2026-11-19): Summarization > Run Validation Stats takes a Count
+    field chosen from the link layer's count columns (CNT / COUNT / AADT,
+    county fields excluded) and will not run without one; validation no
+    longer falls back to TSMv5.COUNT_24 or the first *count* column, and the
+    log, message and workbook name the field used. netPrep (netprep 28e1b0d)
+    honours Keep Counts off: no count column in Link.csv / TSM_Link /
+    MSR_Link (the TSMv5.COUNT_24 default had slipped back in). Volume
+    Aggregation dialog: balanced or raw volumes by hour, 15 min or named
+    periods; summarize.exe node-balances HyDRA volumes (utilities 7ee738c).
     2.93 (2026-11-12): Zone connectors never shape paths or limit flow:
     Link Consolidation now writes SPEED 60, POSTSPEED 60, CAPACITY 99999 and
     DISTANCE 0.01 mi on every connector (new centroid_connector_distance;

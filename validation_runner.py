@@ -29,18 +29,20 @@ def _group_label(lo, hi):
     return "{:,}-{:,}".format(int(lo), int(hi))
 
 
-def _pick_count_col(df, preferred):
-    """Resolve the ground-count column: the caller's preference if present, else
-    the first column whose name contains 'count' that actually carries positive
-    values."""
-    import pandas as pd
-    if preferred and preferred in df.columns:
-        return preferred
-    cands = [c for c in df.columns if "count" in c.lower()]
-    for c in cands:
-        if pd.to_numeric(df[c], errors="coerce").fillna(0).gt(0).any():
-            return c
-    return cands[0] if cands else None
+def _count_col(df, count_field):
+    """The ground-count column is the user's choice (Summarization > Count
+    field) and nothing else: no fallback to TSMv5.COUNT_24 or to the first
+    *count* column, so the workbook always says which counts it used."""
+    if not count_field:
+        raise RuntimeError("no count field chosen -- pick one in the Count field list "
+                           "next to Run Validation Stats")
+    if count_field not in df.columns:
+        have = [c for c in df.columns
+                if any(k in c.upper() for k in ("CNT", "AADT")) or
+                ("COUNT" in c.upper() and "COUNTY" not in c.upper() and "COUNTIES" not in c.upper())]
+        raise RuntimeError("count field '%s' is not in the loaded CSV (count columns there: %s)"
+                           % (count_field, ", ".join(have) or "none"))
+    return count_field
 
 
 def _pick_assigned_col(df, preferred):
@@ -99,9 +101,7 @@ def write_validation_xlsx(csv_path, xlsx_path, count_field=None,
     df = pd.read_csv(csv_path, low_memory=False)
     log("[validation] %d link rows read" % len(df))
 
-    count_col = _pick_count_col(df, count_field)
-    if not count_col:
-        raise RuntimeError("no ground-count column found in the loaded CSV")
+    count_col = _count_col(df, count_field)
     assigned_col = _pick_assigned_col(df, assigned_col)
     if not assigned_col:
         raise RuntimeError("no assigned-volume column ('Total' / 'VOL_DAILY') "
@@ -128,7 +128,8 @@ def write_validation_xlsx(csv_path, xlsx_path, count_field=None,
 
     counted = tw[tw["_cnt"] > 0].copy()
     if counted.empty:
-        raise RuntimeError("no links carry a positive count -- nothing to validate")
+        raise RuntimeError("count field '%s' has no positive counts -- nothing to validate"
+                           % count_col)
     log("[validation] %d two-way counted locations" % len(counted))
 
     asg = counted["_asg"].to_numpy(float)

@@ -403,7 +403,7 @@ class TsmNetManDialog(QDialog, Ui_Dialog):
         layer = self.lineLayerCombo.currentData()
         names = []
         if layer is not None and hasattr(layer, "fields"):
-            pat = _re.compile(r"CNT|COUNT|AADT", _re.I)
+            pat = _re.compile(r"CNT|AADT|COUNT(?!Y|IES)", _re.I)   # not from_county / to_county
             names = [f.name() for f in layer.fields() if pat.search(f.name())]
         names += [c for c in checked if c not in names]
         self.comboBox_CountField.set_fields(names, set(checked))
