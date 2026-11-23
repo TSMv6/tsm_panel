@@ -142,8 +142,9 @@ class TsmPanelPlugin():
                 ("Repository", '<a href="%s">%s</a>' % (repo, repo) if repo else "?"),
                 ("Released", meta.get("date", "?")),
                 ("Author", meta.get("author", "?")),
-                ("Contact", meta.get("email", "?")),
-                ("Plugin folder", plugin_dir.replace(chr(92), "/"))]
+                ("Contact", meta.get("email", "?"))]
+        # No install path here: it is the user's own QGIS profile folder, so it
+        # differs per machine and has no place in a shared About box.
 
         # Every exe the panel actually launches, in pipeline order, then the
         # shared utilities. Paths are the ones the code really calls: agentPlans
@@ -176,9 +177,22 @@ class TsmPanelPlugin():
                  ("msr",           "Apps/utilities/msr.exe", "utilities"),
                  ("SkimConverter", "Apps/skimConvert/SkimConverter.exe", "skimconverter")]
 
+        import re as _re
+
+        def _rev(key, with_repo=False):
+            """metadata keeps 'repo commit date'; the row label already names
+            the engine, so show 'commit (date)'. with_repo keeps the repo in
+            front -- for the utilities row, which mixes two repos."""
+            raw = meta.get("engine_" + key, "revision not recorded")
+            m = _re.match(r"^(\S+)\s+([0-9a-f]{6,40})\s+(\d{4}-\d{2}-\d{2})$", raw.strip())
+            if not m:
+                return raw
+            s = "%s (%s)" % (m.group(2), m.group(3))
+            return "%s %s" % (m.group(1), s) if with_repo else s
+
         def _row(rel, key):
             present = os.path.exists(os.path.join(plugin_dir, rel.replace("/", os.sep)))
-            rev = meta.get("engine_" + key, "revision not recorded")
+            rev = _rev(key)
             return rev if present else "NOT INSTALLED (%s)" % rev
 
         engines = [(lbl, _row(rel, key)) for lbl, rel, key in ENGINES]
@@ -194,12 +208,14 @@ class TsmPanelPlugin():
             if not os.path.exists(os.path.join(plugin_dir, rel.replace("/", os.sep))):
                 missing.append(lbl)
                 continue
-            rv = meta.get("engine_" + key, "revision not recorded")
+            # The main utilities repo shows bare; another repo (SkimConverter)
+            # keeps its name so the two revisions can be told apart.
+            rv = _rev(key, with_repo=(key != "utilities"))
             if rv not in seen:
                 seen[rv] = 0
                 order.append(rv)
             seen[rv] += 1
-        parts = ["%s (%d)" % (rv, seen[rv]) if seen[rv] > 1 else rv for rv in order]
+        parts = ["%s, %d exes" % (rv, seen[rv]) if seen[rv] > 1 else rv for rv in order]
         util_line = " &middot; ".join(parts) if parts else "none installed"
         if missing:
             util_line += ("<br><b style='color:#c0392b;'>NOT INSTALLED:</b> %s"

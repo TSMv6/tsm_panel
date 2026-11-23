@@ -72,7 +72,8 @@ ODME_FIELDS = (("lineEdit_OdmeRounds", "hydra_odme_rounds"),
                ("lineEdit_OdmeMaxStep", "hydra_odme_max_step"),
                ("lineEdit_OdmeBounds", "hydra_odme_bounds"),
                ("lineEdit_OdmeMinImportance", "hydra_odme_min_importance"),
-               ("lineEdit_OdmeModelClip", "hydra_odme_model_clip"))
+               ("lineEdit_OdmeModelClip", "hydra_odme_model_clip"),
+               ("lineEdit_OdmeTripFile", "hydra_odme_trip_file"))
 
 
 def _pair(text, default_a, default_b):
@@ -313,6 +314,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         for _t in (self.tabWidget_Tags, self.tabWidget_MesoMicro, self.tabWidget_Enroute, self.tabWidget_DTA,
                    self.tabWidget_STA, self.tabWidget_Engine):
             _t.currentChanged.connect(self._fit_tabs)
+        # One Counts / ODME page shared by both engines (see _place_odme_tab).
+        self.tabWidget_Engine.currentChanged.connect(self._place_odme_tab)
+        self._place_odme_tab()
         self._fit_tabs()
         self.comboBox_Macro.currentIndexChanged.connect(self._refresh_run_enabled)
         self.comboBox_StaMethod.currentIndexChanged.connect(self._refresh_run_enabled)
@@ -391,7 +395,9 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             if settings.get(key) not in (None, ""):
                 edit.setText(str(settings.get(key)))
         for attr, key in ODME_FIELDS:
-            if settings.get(key) not in (None, ""):
+            # The trip-list name may be saved blank on purpose (= not written).
+            if settings.get(key) not in (None, "") or (
+                    attr == "lineEdit_OdmeTripFile" and settings.get(key) == ""):
                 getattr(self, attr).setText(str(settings.get(key)))
         if settings.get("hydra_odme_mode"):
             self._select_combo(self.comboBox_OdmeMode, settings.get("hydra_odme_mode"))
@@ -529,6 +535,23 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
         self._fit_one_tab(self.tabWidget_DTA)
         self._fit_one_tab(self.tabWidget_STA)
         self._fit_one_tab(self.tabWidget_Engine)
+
+    def _place_odme_tab(self, *_):
+        """The Counts / ODME page is ONE page, moved into whichever engine tab
+        is showing, so DTA and STA read the same counts, ODME and supplemental
+        demand settings (and both control writers emit them). Two copies of the
+        widgets could drift apart; one page cannot."""
+        page = self.page_DTA_Odme
+        target = self.tabWidget_STA if self._is_sta() else self.tabWidget_DTA
+        if target.indexOf(page) >= 0:
+            return
+        source = self.tabWidget_DTA if target is self.tabWidget_STA else self.tabWidget_STA
+        was_current = source.currentWidget() is page
+        if source.indexOf(page) >= 0:
+            source.removeTab(source.indexOf(page))
+        target.addTab(page, "Counts / ODME")
+        if was_current:
+            target.setCurrentWidget(page)
 
     # ------------------------------------------------------------------
     def _is_sta(self):
@@ -1239,6 +1262,8 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
             f.write(f"ODME_MIN_IMPORTANCE   {self.lineEdit_OdmeMinImportance.text().strip() or '0'}\n")
             f.write(f"ODME_MIN_MODEL        {min_model}\n")
             f.write(f"ODME_RATIO_CLIP       {clip}\n")
+            # Adjusted trip list (blank = not written).
+            f.write(f"ODME_TRIP_FILE        {self.lineEdit_OdmeTripFile.text().strip() or 'NONE'}\n")
         supp = self.lineEdit_SuppFile.text().strip()
         if supp:
             f.write(f"SUPPLEMENT_TRIP_FILE  {supp}\n")
@@ -1823,6 +1848,10 @@ class HydraAssignModel(QDialog, Ui_DialogHydra):
                 seg_params = self.lineEdit_SegParams.text().strip()
                 if seg_params:
                     f.write(f"SEGMENT_PARAM_FILE     {seg_params}\n")
+                # Counts / ODME / supplemental demand: the shared tab. On a
+                # flow-space STA, ODME works on each OD's equilibrium route mix
+                # and its re-assign iterations continue the solve warm.
+                self._write_odme_ctl(f)
                 f.write(f"MAX_TRIPS              {self.lineEdit_StaMaxTrips.text().strip() or '0'}\n")
                 f.write(f"SAMPLE_EVERY           {self.lineEdit_StaSampleEvery.text().strip() or '1'}\n")
                 sched = self._sample_schedule_value(

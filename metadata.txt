@@ -1,7 +1,7 @@
 [general]
 name=TSM Model Plugin
-version=2.94
-date=2026-11-19
+version=2.95
+date=2026-11-23
 # This plugin's own source revision, shown in Help > About TSM Plugin
 # alongside the engine revisions below. It names the commit carrying the code;
 # the one-line commit that stamps it here necessarily comes after.
@@ -16,8 +16,8 @@ qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 supportsQt6=True
 icon=icons/FL_USA250 logo.png
-description=QGIS interface to Florida's Turnpike Enterprise (FTE's) State Model - TSM v6. Configure, run and summarize the full model chain from one panel.
-about=TSMv6 is Florida's Turnpike Enterprise (FTE's) State Model (TSM): a
+description=QGIS interface to Florida's Turnpike Enterprise State Model - TSM v6. Configure, run and summarize the full model chain from one panel.
+about=TSMv6 is Florida's Turnpike Enterprise State Model (TSM): a
     statewide, agent-based travel model (AgBM = ABM + DTA); this plugin is its
     user interface. All engines are bundled C++ exes under Apps/ (with their
     own GDAL + VC runtime DLLs) - nothing to install beyond QGIS.
@@ -40,7 +40,7 @@ engine_popsim=PopSyn 69c6117 2026-10-20
 engine_sdt=SDTModel 28096fe 2026-11-04
 engine_ldt=LDTModel da5e3b6 2026-10-28
 engine_agentplans=agentPlans bd0ed99 2026-10-28
-engine_afdta=agentflow-dta 7aeea3f 2026-11-12
+engine_afdta=agentflow-dta 4ad3155 2026-11-23
 engine_eltod=(separate repo, not in TSMv6_Codebase)
 engine_netprep=netprep 28e1b0d 2026-11-19
 engine_agentanalysis=agentAnalysis ef4ceb2 2026-10-14
@@ -61,6 +61,18 @@ changelog=
     .
     One version per commit, newest first (136 commits, 2026-06-19 to 2026-10-28):
     .
+    2.95 (2026-11-23): HyDRA Counts / ODME is one tab shared by both engines
+    and now runs with STA too: the STA control file carries the count file and
+    ODME keys, and afdta (agentflow-dta 4ad3155) runs ODME on each OD's
+    equilibrium route mix and continues the STA solve warm for the
+    Re-assign iterations (it used to re-solve from free flow; Broward ODME
+    3615 s -> 584 s, same fit). New Adjusted trip list field (ODME_TRIP_FILE,
+    default triplist_ODME.csv.gz): the input trip list with vehTrips x each
+    trip's ODME factor. afdta also carries the macro/meso boundary work P0-P3
+    (meso owns meso links, node-loader-timed meso entry, fair meso merges;
+    MESO_ENTRY_CAP and MESO_BOUNDARY_LOG default off) -- DTA runs with meso
+    differ from 2.94; previous exe kept as afdta_2026-11-23_pre_meso_p3.exe.
+    About box: no install path; engine revisions as commit (date).
     2.94 (2026-11-19): Summarization > Run Validation Stats takes a Count
     field chosen from the link layer's count columns (CNT / COUNT / AADT,
     county fields excluded) and will not run without one; validation no
